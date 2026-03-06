@@ -70,7 +70,7 @@ export interface LinkedContentMeta {
 
 /** Translation result for non-Traditional-Chinese content */
 export interface TranslationResult {
-  detectedLanguage: 'en' | 'zh-CN' | 'ja' | 'ko' | 'other';
+  detectedLanguage: 'en' | 'zh-CN' | 'zh-TW' | 'ja' | 'ko' | 'other';
   translatedText: string;
   translatedTitle?: string;
 }

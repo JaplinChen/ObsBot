@@ -7,6 +7,7 @@ import { enrichContent } from './learning/ai-enricher.js';
 import { getTopKeywordsForCategory } from './learning/dynamic-classifier.js';
 import { executeLearn, formatLearnReport } from './learning/learn-command.js';
 import { executeReclassify } from './learning/reclassify-command.js';
+import { executeBatchTranslate } from './learning/batch-translator.js';
 import type { ExtractorWithComments } from './extractors/types.js';
 import { postProcess } from './enrichment/post-processor.js';
 import { handleTimeline } from './commands/timeline-command.js';
@@ -73,6 +74,7 @@ export function createBot(config: AppConfig): Telegraf {
     '/status — Bot 運行狀態',
     '/learn — 重新掃描 Vault 更新分類',
     '/reclassify — 重新分類所有筆記',
+    '/translate — 批次翻譯英文/簡中筆記',
     '/help — 顯示此說明',
   ].join('\n');
 
@@ -153,6 +155,20 @@ export function createBot(config: AppConfig): Telegraf {
       .catch(err => {
         ctx.reply(formatErrorMessage(err)).catch(() => {});
       });
+  });
+
+  // Fire-and-forget: batch translation may exceed 90s
+  bot.command('translate', (ctx) => {
+    if (!config.anthropicApiKey) { ctx.reply('未設定 ANTHROPIC_API_KEY，無法翻譯。').catch(() => {}); return; }
+    ctx.reply('開始批次翻譯筆記，完成後會通知你。').catch(() => {});
+    executeBatchTranslate(config)
+      .then(r => {
+        const lines = [`批次翻譯完成：掃描 ${r.total} 篇`, `✅${r.translated} ⏭${r.skipped} 🈚${r.noNeed} ❌${r.failed}`];
+        for (const d of r.details.slice(0, 15)) lines.push(`• [${d.lang}] ${d.file.slice(0, 40)} ${d.status}`);
+        if (r.details.length > 15) lines.push(`...等共 ${r.details.length} 篇`);
+        ctx.reply(lines.join('\n')).catch(() => {});
+      })
+      .catch(err => ctx.reply(formatErrorMessage(err)).catch(() => {}));
   });
 
   bot.command('recent', async (ctx) => {
@@ -273,6 +289,7 @@ export function createBot(config: AppConfig): Telegraf {
     { command: 'status', description: 'Bot 運行狀態' },
     { command: 'learn', description: '重新掃描 Vault 更新分類' },
     { command: 'reclassify', description: '重新分類所有筆記' },
+    { command: 'translate', description: '批次翻譯英文/簡中筆記' },
     { command: 'help', description: '顯示說明' },
   ]).catch((err) => console.warn('[bot] setMyCommands failed:', err));
 
