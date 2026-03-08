@@ -8,7 +8,7 @@ import { logger } from '../core/logger.js';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { mkdir, rm, access } from 'node:fs/promises';
+import { mkdir, rm, access, readFile, readdir } from 'node:fs/promises';
 import type { ExtractedContent, Extractor, VideoInfo } from './types.js';
 
 const execFileAsync = promisify(execFile);
@@ -137,6 +137,25 @@ function isPlaylistUrl(url: string): boolean {
   return PLAYLIST_PATTERN.test(url);
 }
 
+async function fetchSubtitles(url: string, dir: string): Promise<string | null> {
+  try {
+    await execFileAsync('yt-dlp', [
+      '--skip-download', '--write-auto-sub', '--sub-lang', 'zh-Hant,zh-TW,zh,en',
+      '--convert-subs', 'srt', '-o', join(dir, 'subs'), '--no-playlist', '--no-warnings', url,
+    ], { timeout: 30_000 });
+    const files = await readdir(dir);
+    const srt = files.find(f => f.startsWith('subs.') && f.endsWith('.srt'));
+    if (!srt) return null;
+    const text = (await readFile(join(dir, srt), 'utf-8'))
+      .split(/\r?\n/)
+      .filter(l => l.trim() && !/^\d+$/.test(l.trim()) && !l.includes('-->'))
+      .map(l => l.replace(/<[^>]+>/g, '').trim())
+      .filter((l, i, a) => l && (i === 0 || l !== a[i - 1]))
+      .join(' ').replace(/\s+/g, ' ').trim();
+    return text.length >= 50 ? text : null;
+  } catch { return null; }
+}
+
 async function extractVideo(url: string): Promise<ExtractedContent> {
   let stdout: string;
   try {
@@ -174,6 +193,12 @@ async function extractVideo(url: string): Promise<ExtractedContent> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.warn('youtube', 'video download failed', { message: msg.slice(0, 200) });
+  }
+
+  // Fetch subtitles (reuses tmpDir, ~5s with --skip-download)
+  const transcript = await fetchSubtitles(url, tmpDir);
+
+  if (!localPath) {
     await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
   }
 
@@ -187,6 +212,7 @@ async function extractVideo(url: string): Promise<ExtractedContent> {
     videos: [{ url: data.webpage_url, type: 'video' as const, localPath }],
     date: formatDate(data.upload_date),
     url,
+    transcript: transcript ?? undefined,
     tempDir: localPath ? tmpDir : undefined,
   };
 }

@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 cd /d "%~dp0"
 
 :: Kill any existing bot instances to avoid Telegram 409 conflict

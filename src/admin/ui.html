@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GetThreads 設定</title>
+  <title>GetThreads 設�?</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -107,69 +107,58 @@
 </head>
 <body>
 <div class="card">
-  <h1>🤖 GetThreads 設定</h1>
-  <p class="subtitle">完成以下步驟，讓 Bot 開始幫你儲存內容到 Obsidian</p>
+  <h1>?? GetThreads 設�?</h1>
+  <p class="subtitle">完�?以�?步�?，�? Bot ?��?幫�??��??�容??Obsidian</p>
 
   <div class="step">
-    <div class="step-label">步驟 1</div>
+    <div class="step-label">步�? 1</div>
     <div class="step-title">Telegram Bot Token</div>
     <div class="input-row">
-      <input type="password" id="token" placeholder="貼上你的 Bot Token" />
-      <button class="btn btn-ghost" onclick="togglePass('token')" title="顯示/隱藏">👁</button>
-      <button class="btn btn-ghost" onclick="testToken()">測試連線</button>
+      <input type="password" id="token" placeholder="貼�?你�? Bot Token" />
+      <button class="btn btn-ghost" onclick="togglePass('token')" title="顯示/?��?">??</button>
+      <button class="btn btn-ghost" onclick="testToken()">測試???</button>
     </div>
     <div class="status" id="tokenStatus"></div>
     <p class="hint">
-      沒有 Token？<a href="https://t.me/botfather" target="_blank">點我前往 @BotFather 申請</a><br>
-      傳送 <span class="tag">/newbot</span> → 輸入 Bot 名稱 → 複製 Token 貼到這裡
+      沒�? Token�?a href="https://t.me/botfather" target="_blank">點�??��? @BotFather ?��?</a><br>
+      ?��?<span class="tag">/newbot</span> ??輸入 Bot ?�稱 ??複製 Token 貼到?�裡
     </p>
   </div>
 
   <div class="step">
-    <div class="step-label">步驟 2</div>
-    <div class="step-title">Obsidian Vault 資料夾位置</div>
+    <div class="step-label">步�? 2</div>
+    <div class="step-title">Obsidian Vault 資�?夾�?�?/div>
     <div class="input-row">
-      <input type="text" id="vault" placeholder="例如：C:/Users/xxx/Documents/MyVault" />
-      <button class="btn btn-ghost" onclick="detectVaults()">自動偵測</button>
+      <input type="text" id="vault" placeholder="例�?：C:/Users/xxx/Documents/MyVault" />
+      <button class="btn btn-ghost" onclick="detectVaults()">?��??�測</button>
     </div>
     <div class="vault-list" id="vaultList"></div>
-    <p class="hint">按「自動偵測」找看看，或直接貼上 Vault 資料夾的完整路徑</p>
+    <p class="hint">?�「自?�偵測」找?��?，�??�接貼�? Vault 資�?夾�?完整路�?</p>
   </div>
 
-  <div class="step">
-    <div class="step-label">步驟 3（可選）</div>
-    <div class="step-title">Claude API Key</div>
-    <div class="input-row">
-      <input type="password" id="apiKey" placeholder="sk-ant-... （不填也可以正常使用）" />
-      <button class="btn btn-ghost" onclick="togglePass('apiKey')" title="顯示/隱藏">👁</button>
-    </div>
-    <p class="hint">填入後可啟用 AI 自動摘要與關鍵字功能，可留空</p>
-  </div>
 
   <div class="step">
-    <div class="step-label">步驟 4（建議）</div>
-    <div class="step-title">Bot 使用者白名單</div>
+    <div class="step-label">步�? 4（建議�?</div>
+    <div class="step-title">Bot 使用?�白?�單</div>
     <div class="input-row">
-      <input type="text" id="allowedIds" placeholder="例如：123456789,987654321" />
-      <button class="btn btn-ghost" onclick="howToGetId()">如何取得？</button>
+      <input type="text" id="allowedIds" placeholder="例�?�?23456789,987654321" />
+      <button class="btn btn-ghost" onclick="howToGetId()">如�??��?�?/button>
     </div>
     <div class="status" id="idsStatus"></div>
     <p class="hint">
-      填入允許使用 Bot 的 Telegram 用戶 ID（逗號分隔）。<br>
-      不填則任何人皆可使用，<strong>建議填入以防止濫用</strong>。
-    </p>
+      填入?�許使用 Bot ??Telegram ?�戶 ID（逗�??��?）�?br>
+      不填?�任何人?�可使用�?strong>建議填入以防止濫??/strong>??    </p>
   </div>
 
   <div class="divider"></div>
-  <button class="btn btn-primary" id="saveBtn" onclick="saveConfig()">✅ 儲存設定</button>
+  <button class="btn btn-primary" id="saveBtn" onclick="saveConfig()">???��?設�?</button>
 
   <div class="success-box" id="successBox">
-    <h2>✅ 設定完成！</h2>
+    <h2>??設�?完�?�?/h2>
     <p>
-      設定已儲存。<br><br>
-      請關閉此視窗，之後雙擊<br>
-      <strong>「啟動.bat」</strong> 即可讓 Bot 開始運作。
-    </p>
+      設�?已儲存�?br><br>
+      請�??�此視�?，�?後�???br>
+      <strong>?��???bat??/strong> ?�可�?Bot ?��??��???    </p>
   </div>
 </div>
 
@@ -182,8 +171,8 @@ function togglePass(id) {
 async function testToken() {
   const token = document.getElementById('token').value.trim();
   const status = document.getElementById('tokenStatus');
-  if (!token) { setStatus('tokenStatus', '請先輸入 Token', false); return; }
-  setStatus('tokenStatus', '測試中...', null);
+  if (!token) { setStatus('tokenStatus', '請�?輸入 Token', false); return; }
+  setStatus('tokenStatus', '測試�?..', null);
   const res = await fetch('/api/test-token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -191,19 +180,19 @@ async function testToken() {
   });
   const data = await res.json();
   if (data.ok) {
-    setStatus('tokenStatus', `✓ 連線成功：@${data.username}`, true);
+    setStatus('tokenStatus', `??????��?：@${data.username}`, true);
   } else {
-    setStatus('tokenStatus', `✗ ${data.error}`, false);
+    setStatus('tokenStatus', `??${data.error}`, false);
   }
 }
 
 async function detectVaults() {
   const list = document.getElementById('vaultList');
-  list.innerHTML = '<p style="color:#999;font-size:13px;padding:4px 0">偵測中...</p>';
+  list.innerHTML = '<p style="color:#999;font-size:13px;padding:4px 0">?�測�?..</p>';
   const res = await fetch('/api/vaults');
   const { vaults } = await res.json();
   if (!vaults.length) {
-    list.innerHTML = '<p style="color:#bbb;font-size:13px;padding:4px 0">找不到 Obsidian Vault，請手動輸入路徑</p>';
+    list.innerHTML = '<p style="color:#bbb;font-size:13px;padding:4px 0">?��???Obsidian Vault，�??��?輸入路�?</p>';
     return;
   }
   list.innerHTML = vaults.map(v =>
@@ -225,11 +214,11 @@ function setStatus(id, msg, ok) {
 
 function howToGetId() {
   alert(
-    '如何取得 Telegram 用戶 ID：\n\n' +
-    '1. 啟動 Bot 後，傳送任何訊息給 Bot\n' +
-    '2. Bot 的 console 會顯示：[auth] Unauthorized message from user ID: 123456789\n' +
-    '3. 複製數字填入此欄位，重新儲存設定即可\n\n' +
-    '或直接搜尋 @userinfobot，傳送任意訊息，它會回覆你的 ID。'
+    '如�??��? Telegram ?�戶 ID：\n\n' +
+    '1. ?��? Bot 後�??�送任何�??�給 Bot\n' +
+    '2. Bot ??console ?�顯示�?[auth] Unauthorized message from user ID: 123456789\n' +
+    '3. 複製?��?填入此�?位�??�新?��?設�??�可\n\n' +
+    '?�直?��?�?@userinfobot，傳?�任?��??��?它�??��?你�? ID??
   );
 }
 
@@ -237,42 +226,41 @@ function validateIds(raw) {
   if (!raw) return { ok: true, cleaned: '' };
   const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
   const invalid = parts.filter(p => !/^\d+$/.test(p));
-  if (invalid.length > 0) return { ok: false, error: `格式錯誤：${invalid.join(', ')}（只允許數字）` };
+  if (invalid.length > 0) return { ok: false, error: `?��??�誤�?{invalid.join(', ')}（只?�許?��?）` };
   return { ok: true, cleaned: parts.join(',') };
 }
 
 async function saveConfig() {
   const token = document.getElementById('token').value.trim();
   const vault = document.getElementById('vault').value.trim();
-  const apiKey = document.getElementById('apiKey').value.trim();
   const rawIds = document.getElementById('allowedIds').value.trim();
-  if (!token) { alert('請填入 Telegram Bot Token'); return; }
-  if (!vault) { alert('請填入 Obsidian Vault 位置'); return; }
+  if (!token) { alert('請填??Telegram Bot Token'); return; }
+  if (!vault) { alert('請填??Obsidian Vault 位置'); return; }
   const { ok, cleaned, error } = validateIds(rawIds);
   if (!ok) { setStatus('idsStatus', error, false); return; }
   if (!cleaned) {
-    const proceed = confirm('未填入使用者白名單，任何人都可以使用你的 Bot。確定要繼續嗎？');
+    const proceed = confirm('?�填?�使?�者白?�單，任何人?�可以使?��???Bot?�確定�?繼�??��?');
     if (!proceed) return;
   }
   const btn = document.getElementById('saveBtn');
   btn.disabled = true;
-  btn.textContent = '儲存中...';
+  btn.textContent = '?��?�?..';
   await fetch('/api/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ BOT_TOKEN: token, VAULT_PATH: vault, ANTHROPIC_API_KEY: apiKey, ALLOWED_USER_IDS: cleaned }),
+    body: JSON.stringify({ BOT_TOKEN: token, VAULT_PATH: vault, ALLOWED_USER_IDS: cleaned }),
   });
   btn.style.display = 'none';
   document.getElementById('successBox').style.display = 'block';
 }
 
-// 載入現有設定
+// 載入?��?設�?
 fetch('/api/config').then(r => r.json()).then(data => {
   if (data.VAULT_PATH) document.getElementById('vault').value = data.VAULT_PATH;
-  if (data.BOT_TOKEN_set) setStatus('tokenStatus', '（已設定，輸入新 Token 可覆蓋）', null);
+  if (data.BOT_TOKEN_set) setStatus('tokenStatus', '（已設�?，輸?�新 Token ?��??��?', null);
   if (data.ALLOWED_USER_IDS) {
     document.getElementById('allowedIds').value = data.ALLOWED_USER_IDS;
-    setStatus('idsStatus', `已設定 ${data.ALLOWED_USER_IDS.split(',').length} 個用戶`, true);
+    setStatus('idsStatus', `已設�?${data.ALLOWED_USER_IDS.split(',').length} ?�用?�`, true);
   }
 });
 </script>

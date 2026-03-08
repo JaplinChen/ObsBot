@@ -1,4 +1,5 @@
-﻿@echo off
+@echo off
+cd /d "%~dp0"
 echo.
 echo ==============================
 echo   GetThreads Bot Launcher

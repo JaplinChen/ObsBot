@@ -1,4 +1,4 @@
-ï»¿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExtractedContent } from '../../extractors/types.js';
 
 vi.mock('../../classifier.js', () => ({
@@ -22,6 +22,7 @@ import { postProcess } from '../../enrichment/post-processor.js';
 import { enrichContent } from '../../learning/ai-enricher.js';
 import { getTopKeywordsForCategory } from '../../learning/dynamic-classifier.js';
 import { enrichExtractedContent } from './enrich-content-service.js';
+import { AI_TRANSCRIPT_PREFIX } from '../user-messages.js';
 
 const mockClassifyContent = vi.mocked(classifyContent);
 const mockPostProcess = vi.mocked(postProcess);
@@ -45,7 +46,7 @@ function makeContent(): ExtractedContent {
 describe('enrich-content-service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockClassifyContent.mockReturnValue('æŠ€è¡“');
+    mockClassifyContent.mockReturnValue('§Þ³N');
     mockGetTopKeywordsForCategory.mockReturnValue(['ai', 'agent']);
     mockPostProcess.mockResolvedValue(undefined as never);
     mockEnrichContent.mockResolvedValue({} as never);
@@ -62,39 +63,38 @@ describe('enrich-content-service', () => {
     });
 
     expect(mockClassifyContent).toHaveBeenCalledWith('T', 'Body');
-    expect(content.category).toBe('æŠ€è¡“');
+    expect(content.category).toBe('§Þ³N');
     expect(mockPostProcess).toHaveBeenCalledTimes(1);
   });
 
-  it('uses transcript prefix and applies enrich result when api key exists', async () => {
+  it('uses transcript prefix and applies enrich result', async () => {
     const content = makeContent();
     content.transcript = 'transcript text';
     mockEnrichContent.mockResolvedValue({
       keywords: ['k1'],
       summary: 's1',
       title: 'new title',
-      category: 'æ–°åˆ†é¡ž',
+      category: '·s¤ÀÃþ',
     } as never);
 
     await enrichExtractedContent(content, {
       botToken: 'x',
       vaultPath: 'v',
-      anthropicApiKey: 'key',
       enableTranslation: true,
       maxLinkedUrls: 5,
     });
 
-    expect(mockGetTopKeywordsForCategory).toHaveBeenCalledWith('æŠ€è¡“');
+    expect(mockGetTopKeywordsForCategory).toHaveBeenCalledWith('§Þ³N');
     expect(mockEnrichContent).toHaveBeenCalledTimes(1);
     const aiText = mockEnrichContent.mock.calls[0][1] as string;
-    expect(aiText).toContain('\n\næ–‡å­—ç¨¿ï¼š');
+    expect(aiText).toContain(AI_TRANSCRIPT_PREFIX);
     expect(content.enrichedKeywords).toEqual(['k1']);
     expect(content.enrichedSummary).toBe('s1');
     expect(content.title).toBe('new title');
-    expect(content.category).toBe('æ–°åˆ†é¡ž');
+    expect(content.category).toBe('·s¤ÀÃþ');
   });
 
-  it('skips AI enrich when api key is missing', async () => {
+  it('runs AI enrich without requiring local provider config', async () => {
     const content = makeContent();
 
     await enrichExtractedContent(content, {
@@ -104,7 +104,7 @@ describe('enrich-content-service', () => {
       maxLinkedUrls: 2,
     });
 
-    expect(mockEnrichContent).not.toHaveBeenCalled();
+    expect(mockEnrichContent).toHaveBeenCalledTimes(1);
   });
 
   it('swallows post-process errors', async () => {
@@ -119,3 +119,7 @@ describe('enrich-content-service', () => {
     })).resolves.toBeUndefined();
   });
 });
+
+
+
+

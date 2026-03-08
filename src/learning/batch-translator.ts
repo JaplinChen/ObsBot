@@ -1,7 +1,7 @@
 /**
  * Batch-translate existing Vault notes that lack a Traditional Chinese translation.
  * Scans all .md files, detects language, and inserts a "ÁπÅ‰∏≠ÁøªË≠Ø" section
- * for non-zh-TW content (opencc-js for zh-CN, Google Translate for en).
+ * for non-zh-TW content (opencc-js for zh-CN, local LLM CLI for en).
  */
 
 import type { AppConfig } from '../utils/config.js';
@@ -17,7 +17,7 @@ export interface BatchTranslateResult {
   total: number;
   skipped: number;      // already has translation section
   translated: number;   // successfully translated
-  failed: number;       // API failure
+  failed: number;       // local LLM failed
   noNeed: number;       // already zh-TW
   details: Array<{ file: string; lang: string; status: string }>;
 }
@@ -63,8 +63,8 @@ function extractTitle(raw: string): string {
 
 /** Build the translation section markdown. */
 function buildTranslationSection(lang: string, translatedTitle: string | undefined, translatedText: string): string {
-  const langLabel = lang === 'en' ? 'English' : lang === 'zh-CN' ? 'ÁÆÄ‰Ωì‰∏≠Êñá' : lang;
-  const parts = [TRANSLATION_HEADING, `> ÂéüÊñáË™ûË®ÄÔºö${langLabel}`, ''];
+  const langLabel = lang === 'en' ? 'English' : lang === 'zh-CN' ? '? ^§§§Â' : lang;
+  const parts = [TRANSLATION_HEADING, `> ?üÊ?Ë™ûË?Ôº?{langLabel}`, ''];
   if (translatedTitle) parts.push(`**${translatedTitle}**`, '');
   parts.push(translatedText, '');
   return parts.join('\n');
@@ -72,19 +72,19 @@ function buildTranslationSection(lang: string, translatedTitle: string | undefin
 
 /**
  * Insert translation section at the right position in the markdown.
- * Priority: after "## ÈáçÈªûÊëòË¶Å" > before "## Ë©ïË´ñ"/"## Áõ∏ÈóúÈÄ£Áµê" > end of file.
+ * Priority: after "## ?çÈ??òË?" > before "## Ë©ïË?"/"## ?∏È????" > end of file.
  */
 function insertTranslation(raw: string, section: string): string {
-  // After ÈáçÈªûÊëòË¶Å
-  const summaryIdx = raw.indexOf('## ÈáçÈªûÊëòË¶Å');
+  // After ?çÈ??òË?
+  const summaryIdx = raw.indexOf('## ?çÈ??òË?');
   if (summaryIdx >= 0) {
     const nextHeading = raw.indexOf('\n## ', summaryIdx + 10);
     const insertAt = nextHeading >= 0 ? nextHeading : raw.length;
     return raw.slice(0, insertAt) + '\n\n' + section + raw.slice(insertAt);
   }
 
-  // Before Ë©ïË´ñ or Áõ∏ÈóúÈÄ£Áµê
-  for (const heading of ['## Ë©ïË´ñÊèêÂèä', '## Ë©ïË´ñ', '## Áõ∏ÈóúÈÄ£Áµê']) {
+  // Before Ë©ïË? or ?∏È????
+  for (const heading of ['## Ë©ïË??êÂ?', '## Ë©ïË?', '## ?∏È????']) {
     const idx = raw.indexOf(heading);
     if (idx >= 0) return raw.slice(0, idx) + section + '\n' + raw.slice(idx);
   }
@@ -110,7 +110,7 @@ export async function executeBatchTranslate(config: AppConfig): Promise<BatchTra
     let raw: string;
     try { raw = await readFile(filePath, 'utf-8'); } catch { continue; }
 
-    // Already has translation ‚Üí skip
+    // Already has translation ??skip
     if (raw.includes(TRANSLATION_HEADING)) {
       result.skipped++;
       continue;
@@ -131,7 +131,7 @@ export async function executeBatchTranslate(config: AppConfig): Promise<BatchTra
       const tr = await translateIfNeeded(title, body);
       if (!tr) {
         result.failed++;
-        result.details.push({ file: name, lang, status: 'API ÂõûÂÇ≥Á©∫' });
+        result.details.push({ file: name, lang, status: 'translation failed' });
         continue;
       }
 
@@ -140,7 +140,7 @@ export async function executeBatchTranslate(config: AppConfig): Promise<BatchTra
       await writeFile(filePath, updated, 'utf-8');
 
       result.translated++;
-      result.details.push({ file: name, lang: tr.detectedLanguage, status: '‚úÖ' });
+      result.details.push({ file: name, lang: tr.detectedLanguage, status: 'ok' });
     } catch (err) {
       result.failed++;
       result.details.push({ file: name, lang, status: (err as Error).message.slice(0, 60) });
@@ -152,3 +152,5 @@ export async function executeBatchTranslate(config: AppConfig): Promise<BatchTra
 
   return result;
 }
+
+

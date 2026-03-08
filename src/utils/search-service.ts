@@ -12,23 +12,6 @@ export interface SearchResult {
   snippet: string;
 }
 
-interface RedditSearchChild {
-  data: {
-    title: string;
-    author: string;
-    subreddit: string;
-    selftext: string;
-    permalink: string;
-    score: number;
-    created_utc: number;
-    url: string;
-  };
-}
-
-interface RedditSearchResponse {
-  data: { children: RedditSearchChild[] };
-}
-
 /** Domains filtered from all web searches (irrelevant system pages). */
 const SKIP_DOMAINS = [
   'help.x.com', 'support.x.com', 'help.twitter.com', 'support.twitter.com',
@@ -40,28 +23,18 @@ function isSkipDomain(hostname: string): boolean {
 }
 
 export async function searchReddit(keyword: string, limit = 5): Promise<ExtractedContent[]> {
-  const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&limit=${limit}&sort=new`;
-  try {
-    const res = await fetchWithTimeout(url, 20_000, {
-      headers: { 'User-Agent': 'GetThreads-Bot/1.0', Accept: 'application/json' },
-    });
-    if (!res.ok) return [];
-    const json = (await res.json()) as RedditSearchResponse;
-    return (json.data?.children ?? []).map(c => ({
-      platform: 'reddit' as const,
-      author: c.data.author,
-      authorHandle: `u/${c.data.author}`,
-      title: c.data.title,
-      text: c.data.selftext || `[Linked: ${c.data.url}]`,
-      images: [],
-      videos: [],
-      date: new Date(c.data.created_utc * 1000).toISOString().split('T')[0],
-      url: `https://www.reddit.com${c.data.permalink}`,
-      likes: c.data.score,
-    }));
-  } catch {
-    return [];
-  }
+  const results = await searchDuckDuckGo(`site:reddit.com ${keyword}`, limit);
+  return results.map((r) => ({
+    platform: 'reddit' as const,
+    author: 'unknown',
+    authorHandle: 'u/unknown',
+    title: r.title,
+    text: r.snippet || `[Linked: ${r.url}]`,
+    images: [],
+    videos: [],
+    date: new Date().toISOString().split('T')[0],
+    url: r.url,
+  }));
 }
 
 /**
@@ -165,24 +138,13 @@ export async function webSearch(query: string, limit = 5): Promise<SearchResult[
   return searchDuckDuckGoCamoufox(query, limit);
 }
 
-/** Fetch full article via Jina Reader; returns '' on failure. */
+/** Fetch full article content without external API relay; returns '' on failure. */
 export async function fetchJinaContent(url: string): Promise<string> {
   try {
-    const { JINA_REMOVE_SELECTORS } = await import('../extractors/web-extractor.js');
-    const res = await fetchWithTimeout(`https://r.jina.ai/${url}`, 15_000, {
-      headers: {
-        Accept: 'text/markdown, text/plain, */*',
-        'X-Return-Format': 'markdown',
-        'X-Remove-Selector': JINA_REMOVE_SELECTORS,
-      },
-    });
-    if (!res.ok) return '';
-    const md = await res.text();
-    const BAD = ['Warning: Target URL returned error', 'Access denied', 'Please log in', 'Sign in to'];
-    if (md.length < 100 || BAD.some(s => md.includes(s))) return '';
-    const lines = md.split('\n');
-    let i = 0;
-    while (i < lines.length && (/^(Title:|URL Source:|Published Time:)/.test(lines[i].trim()) || !lines[i].trim())) i++;
-    return lines.slice(i).join('\n').trim().replace(/!\[.*?\]\(blob:[^)]+\)/g, '').slice(0, 5000);
-  } catch { return ''; }
+    const { webExtractor } = await import('../extractors/web-extractor.js');
+    const content = await webExtractor.extract(url);
+    return content.text.slice(0, 5000);
+  } catch {
+    return '';
+  }
 }

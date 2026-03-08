@@ -1,12 +1,12 @@
-/**
- * TikTok extractor — uses yt-dlp for video/metadata/subtitles,
+﻿/**
+ * TikTok extractor ??uses yt-dlp for video/metadata/subtitles,
  * ffmpeg for keyframe screenshots, whisper.cpp as STT fallback.
  */
 import { execFile } from 'node:child_process';
 import { logger } from '../core/logger.js';
 import { promisify } from 'node:util';
-import { mkdir, readFile, rm, readdir } from 'node:fs/promises';
-import { join, extname } from 'node:path';
+import { access, mkdir, readFile, rename, rm, readdir, stat, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { ExtractedContent, Extractor } from './types.js';
 
@@ -15,6 +15,7 @@ const execFileAsync = promisify(execFile);
 const TIKTOK_VIDEO = /tiktok\.com\/@[\w.]+\/video\/(\d+)/i;
 const TIKTOK_SHORT_VT = /vt\.tiktok\.com\/([\w]+)/i;
 const TIKTOK_SHORT_VM = /vm\.tiktok\.com\/([\w]+)/i;
+const TIKTOK_CACHE_DIR = join(process.cwd(), 'data', 'cache', 'tiktok');
 
 interface TikTokMeta {
   id: string;
@@ -36,6 +37,24 @@ interface TikTokMeta {
 function formatDate(uploadDate?: string): string {
   if (!uploadDate || uploadDate.length !== 8) return new Date().toISOString().split('T')[0];
   return `${uploadDate.slice(0, 4)}-${uploadDate.slice(4, 6)}-${uploadDate.slice(6, 8)}`;
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function isUsableFile(path: string): Promise<boolean> {
+  try {
+    const st = await stat(path);
+    return st.isFile() && st.size > 0;
+  } catch {
+    return false;
+  }
 }
 
 /** Parse WebVTT subtitle file into plain text (deduplicated lines) */
@@ -86,7 +105,7 @@ async function whisperTranscribe(videoPath: string, tmpDir: string): Promise<str
     return null;
   }
 
-  // Try whisper-cli (whisper.cpp) — local binary first, then PATH
+  // Try whisper-cli (whisper.cpp) ??local binary first, then PATH
   const localWhisper = join(process.cwd(), 'tools', 'whisper', 'Release', 'whisper-cli.exe');
   for (const cmd of [localWhisper, 'whisper-cli', 'whisper']) {
     try {
@@ -126,7 +145,7 @@ async function getTranscript(
   return whisperTranscribe(videoPath, tmpDir);
 }
 
-/** Build clean display text from metadata (no transcript — that goes to AI enricher) */
+/** Build clean display text from metadata (no transcript ??that goes to AI enricher) */
 function buildText(meta: TikTokMeta): string {
   const lines: string[] = [];
   if (meta.duration) {
@@ -172,7 +191,7 @@ export const tiktokExtractor: Extractor = {
     let meta: TikTokMeta;
     try {
       const { stdout } = await execFileAsync('yt-dlp', [
-        '--dump-json', '--no-playlist', '--no-warnings', url,
+        '--dump-json', '--encoding', 'utf-8', '--no-playlist', '--no-warnings', url,
       ], { maxBuffer: 10 * 1024 * 1024, timeout: 30_000 });
       meta = JSON.parse(stdout);
     } catch (err) {
@@ -184,42 +203,59 @@ export const tiktokExtractor: Extractor = {
     // 2. Prepare temp directory
     const tmpDir = join(tmpdir(), `getthreads-tiktok-${meta.id}`);
     await mkdir(tmpDir, { recursive: true });
-    const videoPath = join(tmpDir, 'video.mp4');
+    await mkdir(TIKTOK_CACHE_DIR, { recursive: true });
+    const cacheVideoPath = join(TIKTOK_CACHE_DIR, `${meta.id}.mp4`);
+    const cacheTranscriptPath = join(TIKTOK_CACHE_DIR, `${meta.id}.transcript.txt`);
+    const downloadPath = join(tmpDir, 'video.mp4');
 
     try {
-      // 3. Download video + subtitles
-      await execFileAsync('yt-dlp', [
-        '-f', 'best[ext=mp4]/best',
-        '--write-subs', '--all-subs', '--sub-format', 'vtt',
-        '-o', videoPath,
-        '--no-playlist', '--no-warnings', url,
-      ], { maxBuffer: 10 * 1024 * 1024, timeout: 120_000 });
+      // 3. Download video only when cache miss
+      const cacheHit = await isUsableFile(cacheVideoPath);
+      if (!cacheHit) {
+        await execFileAsync('yt-dlp', [
+          '-f', 'best[ext=mp4]/best',
+          '--write-subs', '--all-subs', '--sub-format', 'vtt',
+          '-o', downloadPath,
+          '--no-playlist', '--encoding', 'utf-8', '--no-warnings', url,
+        ], { maxBuffer: 10 * 1024 * 1024, timeout: 120_000 });
 
-      // 3b. Transcode H.265→H.264 if needed (Obsidian/Chromium can't play HEVC)
-      const h264Path = join(tmpDir, 'video-h264.mp4');
-      try {
-        const { stdout: probeOut } = await execFileAsync('ffprobe', [
-          '-v', 'quiet', '-select_streams', 'v:0',
-          '-show_entries', 'stream=codec_name', '-of', 'csv=p=0', videoPath,
-        ], { timeout: 10_000 });
-        if (probeOut.trim() === 'hevc' || probeOut.trim() === 'h265') {
-          logger.info('tiktok', 'Transcoding H.265 -> H.264');
-          await execFileAsync('ffmpeg', [
-            '-y', '-i', videoPath,
-            '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-            '-c:a', 'aac', '-movflags', '+faststart', h264Path,
-          ], { timeout: 120_000 });
-          await rm(videoPath, { force: true });
-          const { rename } = await import('node:fs/promises');
-          await rename(h264Path, videoPath);
+        // 3b. Transcode only when source codec is HEVC/H265
+        const h264Path = join(tmpDir, 'video-h264.mp4');
+        try {
+          const { stdout: probeOut } = await execFileAsync('ffprobe', [
+            '-v', 'quiet', '-select_streams', 'v:0',
+            '-show_entries', 'stream=codec_name', '-of', 'csv=p=0', downloadPath,
+          ], { timeout: 10_000 });
+          if (probeOut.trim() === 'hevc' || probeOut.trim() === 'h265') {
+            logger.info('tiktok', 'Transcoding H.265 -> H.264');
+            await execFileAsync('ffmpeg', [
+              '-y', '-i', downloadPath,
+              '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+              '-c:a', 'aac', '-movflags', '+faststart', h264Path,
+            ], { timeout: 120_000 });
+            await rm(downloadPath, { force: true });
+            await rename(h264Path, downloadPath);
+          }
+        } catch (err) {
+          logger.warn('tiktok', 'H.264 transcode failed; keeping original', { message: (err as Error).message });
+          await rm(h264Path, { force: true }).catch(() => {});
         }
-      } catch (err) {
-        logger.warn('tiktok', 'H.264 transcode failed; keeping original', { message: (err as Error).message });
-        await rm(h264Path, { force: true }).catch(() => {});
+
+        await rename(downloadPath, cacheVideoPath);
+      } else {
+        logger.info('tiktok', `cache hit for ${meta.id}`);
       }
 
       // 4. Get transcript
-      const transcript = await getTranscript(meta, tmpDir, videoPath);
+      let transcript: string | null = null;
+      if (await fileExists(cacheTranscriptPath)) {
+        transcript = (await readFile(cacheTranscriptPath, 'utf-8')).trim() || null;
+      } else {
+        transcript = await getTranscript(meta, tmpDir, cacheVideoPath);
+        if (transcript) {
+          await writeFile(cacheTranscriptPath, transcript, 'utf-8').catch(() => {});
+        }
+      }
 
       // 5. Clean up temp files (keep video for vault saving)
       await rm(join(tmpDir, 'audio.wav'), { force: true }).catch(() => {});
@@ -233,7 +269,7 @@ export const tiktokExtractor: Extractor = {
         title: meta.title || meta.description?.split('\n')[0]?.slice(0, 80) || 'TikTok Video',
         text: buildText(meta),
         images: meta.thumbnail ? [meta.thumbnail] : [],
-        videos: [{ url: meta.webpage_url ?? url, type: 'video' as const, localPath: videoPath }],
+        videos: [{ url: meta.webpage_url ?? url, type: 'video' as const, localPath: cacheVideoPath }],
         date: formatDate(meta.upload_date),
         url: meta.webpage_url ?? url,
         likes: meta.like_count,
@@ -248,3 +284,5 @@ export const tiktokExtractor: Extractor = {
     }
   },
 };
+
+

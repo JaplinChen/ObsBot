@@ -1,103 +1,84 @@
-/** Optional Claude API enrichment for keywords and summary generation. */
+/** Local LLM enrichment for keywords/summary/title/category generation. */
 
-const VALID_CATEGORIES = new Set([
-  'AI/Claude Code', 'AI/OpenClaw', 'AI/工具', 'AI/學習', 'AI/提示詞', 'AI/模型', 'AI/應用', 'AI',
-  '科技', '程式設計', '投資理財', '創業商業', '設計', '行銷', '生產力', '新聞時事', '生活', '其他',
-]);
+import { runLocalLlmPrompt } from '../utils/local-llm.js';
 
 interface EnrichResult {
   keywords: string[] | null;
   summary: string | null;
+  analysis: string | null;
+  keyPoints: string[] | null;
   title?: string;
   category?: string;
 }
 
-interface AnthropicResponse {
-  content: Array<{ type: string; text: string }>;
+function normalizeCategory(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const v = raw.trim();
+  if (!v) return undefined;
+  return v.slice(0, 40);
 }
 
 /**
- * Enrich content with AI-generated keywords and summary.
- * Falls back silently to { keywords: null, summary: null } on any error.
- *
- * @param title         Content title
- * @param text          Content body
- * @param categoryHints Top keywords from vault for the target category (few-shot context)
- * @param apiKey        Anthropic API key
+ * Enrich content with local LLM-generated metadata.
+ * Falls back silently to null fields on any error.
  */
 export async function enrichContent(
   title: string,
   text: string,
   categoryHints: string[],
-  apiKey: string,
+  _apiKey?: string,
 ): Promise<EnrichResult> {
-  const textPreview = text.slice(0, 800).replace(/\n/g, ' ');
-  const hintLine = categoryHints.length > 0
-    ? `此分類常見關鍵詞參考：${categoryHints.slice(0, 5).join('、')}`
-    : '';
+  const textPreview = text.slice(0, 1200).replace(/\n/g, ' ');
+  const hints = categoryHints.slice(0, 8).join(', ');
 
-  const userMsg = [hintLine, `標題: "${title}"`, `內容: "${textPreview}"`]
-    .filter(Boolean)
-    .join('\n');
-
-  const ac = new AbortController();
-  const timeout = setTimeout(() => ac.abort(), 10_000);
+  const prompt = [
+    'You are a strict JSON generator for content enrichment.',
+    'Return ONLY valid JSON with keys: keywords, summary, analysis, keyPoints, title, category.',
+    'keywords: array of up to 5 concise keywords.',
+    'All text output MUST be Traditional Chinese (zh-TW).',
+    'summary: <= 120字，必須點出影片核心主題與受眾價值，不可只重述數據。',
+    'analysis: 2-4句，必須引用內容中的具體做法/觀點/步驟，避免空泛建議。',
+    'keyPoints: 3-5條，每條<=24字，必須可執行或可驗證，不可出現泛用模板語。',
+    'title: <= 50字，語意清楚，不要作者前綴。',
+    'If content is insufficient, state what is missing briefly instead of inventing.',
+    hints ? `Category hints: ${hints}` : '',
+    `Original title: ${title}`,
+    `Content: ${textPreview}`,
+  ].filter(Boolean).join('\n');
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        system: `請從內容提取5個繁體中文關鍵詞、1句摘要（50字內）、1個精準標題（50字內）以及1個分類。
-只輸出 JSON，格式如下：
-{"keywords":["k1","k2"],"summary":"...","title":"標題","category":"分類"}
+    const responseText = await runLocalLlmPrompt(prompt, { timeoutMs: 30_000 });
+    if (!responseText) {
+      return { keywords: null, summary: null, analysis: null, keyPoints: null };
+    }
 
-title 規則：
-- 描述內容核心主題，≤50字
-- 社群媒體貼文請從內容提取關鍵洞察，不要用「Author on X」格式
-
-category 規則（必須完全匹配以下清單其中一個）：
-AI/Claude Code, AI/OpenClaw, AI/工具, AI/學習, AI/提示詞, AI/模型, AI/應用, AI, 科技, 程式設計, 投資理財, 創業商業, 設計, 行銷, 生產力, 新聞時事, 生活, 其他`,
-        messages: [{ role: 'user', content: userMsg }],
-      }),
-      signal: ac.signal,
-    });
-
-    if (!res.ok) return { keywords: null, summary: null };
-
-    const data = await res.json() as AnthropicResponse;
-    const responseText = data.content?.[0]?.text ?? '';
     const match = responseText.match(/\{[\s\S]*\}/);
-    if (!match) return { keywords: null, summary: null };
+    if (!match) {
+      return { keywords: null, summary: null, analysis: null, keyPoints: null };
+    }
 
     const parsed = JSON.parse(match[0]) as {
       keywords?: unknown;
       summary?: unknown;
+      analysis?: unknown;
+      keyPoints?: unknown;
       title?: unknown;
       category?: unknown;
     };
 
-    const rawCategory = typeof parsed.category === 'string' ? parsed.category : undefined;
-
     return {
       keywords: Array.isArray(parsed.keywords)
-        ? (parsed.keywords as string[]).slice(0, 5)
+        ? (parsed.keywords.filter((v): v is string => typeof v === 'string').slice(0, 5))
         : null,
       summary: typeof parsed.summary === 'string' ? parsed.summary : null,
-      title: typeof parsed.title === 'string' ? parsed.title : undefined,
-      category: rawCategory !== undefined && VALID_CATEGORIES.has(rawCategory)
-        ? rawCategory
-        : undefined,
+      analysis: typeof parsed.analysis === 'string' ? parsed.analysis : null,
+      keyPoints: Array.isArray(parsed.keyPoints)
+        ? (parsed.keyPoints.filter((v): v is string => typeof v === 'string').slice(0, 5))
+        : null,
+      title: typeof parsed.title === 'string' ? parsed.title.slice(0, 50) : undefined,
+      category: normalizeCategory(parsed.category),
     };
   } catch {
-    return { keywords: null, summary: null };
-  } finally {
-    clearTimeout(timeout);
+    return { keywords: null, summary: null, analysis: null, keyPoints: null };
   }
 }

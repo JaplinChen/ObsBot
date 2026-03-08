@@ -1,4 +1,4 @@
-/** Supported platform identifiers — add new platforms here */
+/** Supported platform identifiers ??add new platforms here */
 export type Platform =
   | 'x' | 'threads' | 'youtube' | 'github' | 'reddit' | 'web'
   | 'weibo' | 'xiaohongshu' | 'bilibili' | 'douyin' | 'tiktok';
@@ -17,7 +17,7 @@ export interface ThreadComment {
 export interface VideoInfo {
   url: string;
   thumbnailUrl?: string;
-  /** Local file path for downloaded video (e.g. TikTok mp4) — copied to vault by saver */
+  /** Local file path for downloaded video (e.g. TikTok mp4) ??copied to vault by saver */
   localPath?: string;
   type?: 'video' | 'gif';
 }
@@ -42,6 +42,10 @@ export interface ExtractedContent {
   enrichedKeywords?: string[];
   /** AI-enriched summary (overrides text truncation in formatter) */
   enrichedSummary?: string;
+  /** AI-enriched deeper analysis text */
+  enrichedAnalysis?: string;
+  /** AI-enriched key takeaway bullets */
+  enrichedKeyPoints?: string[];
   /** Extra tags from platform metadata (e.g. GitHub topics) */
   extraTags?: string[];
   /** Star/engagement count (e.g. GitHub stargazers) */
@@ -56,7 +60,7 @@ export interface ExtractedContent {
   linkedContent?: LinkedContentMeta[];
   /** Translation to Traditional Chinese when source is non-zh-TW (post-processing) */
   translation?: TranslationResult;
-  /** Video transcript (subtitles / STT) — used for AI summary, not rendered in note */
+  /** Video transcript (subtitles / STT) ??used for AI summary, not rendered in note */
   transcript?: string;
   /** Temp directory to clean up after saving (used by TikTok extractor for local screenshots) */
   tempDir?: string;
@@ -96,3 +100,5 @@ export interface Extractor {
 export interface ExtractorWithComments extends Extractor {
   extractComments(url: string, limit?: number): Promise<ThreadComment[]>;
 }
+
+

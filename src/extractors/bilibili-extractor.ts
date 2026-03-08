@@ -1,46 +1,51 @@
-/**
- * Bilibili extractor — uses Bilibili's public web API (no authentication required).
- * Supports BV video pages and short links (b23.tv).
- */
+﻿import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import type { ExtractedContent, Extractor, ThreadComment } from './types.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+
+const execFileAsync = promisify(execFile);
 
 const BV_PATTERN = /bilibili\.com\/video\/(BV[\w]+)/i;
 const B23_PATTERN = /b23\.tv\/([\w]+)/i;
 
-interface BilibiliApiResponse {
-  code: number;
-  message: string;
-  data: {
-    aid: number;
-    bvid: string;
-    title: string;
-    desc: string;
-    owner: { name: string; mid: number };
-    stat: { view: number; like: number; coin: number; favorite: number; reply: number };
-    pic: string;
-    pubdate: number;
-    pages: Array<{ cid: number; duration: number }>;
-  };
-}
-
-interface BilibiliCommentReply {
-  member: { uname: string };
-  content: { message: string };
-  ctime: number;
-  like: number;
-}
-
-interface BilibiliCommentResponse {
-  code: number;
-  data: {
-    replies?: BilibiliCommentReply[];
-    page?: { count: number };
-  };
+interface YtDlpOutput {
+  id: string;
+  title: string;
+  description?: string;
+  uploader?: string;
+  uploader_id?: string;
+  upload_date?: string;
+  thumbnail?: string;
+  duration?: number;
+  view_count?: number;
+  like_count?: number;
+  comment_count?: number;
+  webpage_url: string;
 }
 
 function parseBvid(url: string): string | null {
   return url.match(BV_PATTERN)?.[1] ?? null;
+}
+
+function formatDate(uploadDate?: string): string {
+  if (!uploadDate || uploadDate.length !== 8) return new Date().toISOString().split('T')[0];
+  return `${uploadDate.slice(0, 4)}-${uploadDate.slice(4, 6)}-${uploadDate.slice(6, 8)}`;
+}
+
+function buildText(meta: YtDlpOutput): string {
+  const duration = meta.duration ?? 0;
+  const durationStr = duration > 0
+    ? `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`
+    : 'n/a';
+
+  const stats = [
+    `Views: ${(meta.view_count ?? 0).toLocaleString()}`,
+    `Likes: ${(meta.like_count ?? 0).toLocaleString()}`,
+    `Comments: ${(meta.comment_count ?? 0).toLocaleString()}`,
+    `Duration: ${durationStr}`,
+  ].join(' | ');
+
+  return [stats, '', meta.description?.slice(0, 3000) || '[No description]'].join('\n');
 }
 
 export const bilibiliExtractor: Extractor & {
@@ -58,8 +63,6 @@ export const bilibiliExtractor: Extractor & {
 
   async extract(url: string): Promise<ExtractedContent> {
     let resolvedUrl = url;
-
-    // Resolve b23.tv short URL
     if (B23_PATTERN.test(url) && !BV_PATTERN.test(url)) {
       const r = await fetchWithTimeout(url, 15_000, { redirect: 'follow' });
       resolvedUrl = r.url;
@@ -68,88 +71,35 @@ export const bilibiliExtractor: Extractor & {
     const bvid = parseBvid(resolvedUrl);
     if (!bvid) throw new Error(`Invalid Bilibili URL: ${url}`);
 
-    const apiUrl = `https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`;
-    const res = await fetchWithTimeout(apiUrl, 30_000, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        Referer: 'https://www.bilibili.com',
-      },
-    });
-
-    if (!res.ok) throw new Error(`Bilibili API error: ${res.status}`);
-
-    const json = (await res.json()) as BilibiliApiResponse;
-    if (json.code !== 0) throw new Error(`Bilibili API: ${json.message}`);
-
-    const { data } = json;
-    const duration = data.pages[0]?.duration ?? 0;
-    const durationStr = duration > 0
-      ? ` | ⏱ ${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`
-      : '';
-
-    const stats = [
-      `👁 ${data.stat.view.toLocaleString()}`,
-      `👍 ${data.stat.like.toLocaleString()}`,
-      `⭐ ${data.stat.favorite.toLocaleString()}`,
-      `💬 ${data.stat.reply.toLocaleString()}`,
-    ].join(' | ');
-
-    const text = [
-      stats + durationStr,
-      '',
-      data.desc || '（無簡介）',
-    ].join('\n');
+    let data: YtDlpOutput;
+    try {
+      const { stdout } = await execFileAsync('yt-dlp', [
+        '--dump-json', '--no-playlist', '--no-warnings', resolvedUrl,
+      ], { maxBuffer: 10 * 1024 * 1024, timeout: 120_000 });
+      data = JSON.parse(stdout) as YtDlpOutput;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('ENOENT')) throw new Error('yt-dlp is not installed');
+      throw new Error(`Bilibili extraction failed: ${msg.slice(0, 200)}`);
+    }
 
     return {
       platform: 'bilibili',
-      author: data.owner.name,
-      authorHandle: `uid:${data.owner.mid}`,
+      author: data.uploader ?? 'Unknown',
+      authorHandle: data.uploader_id ? `uid:${data.uploader_id}` : (data.uploader ?? 'Unknown'),
       title: data.title,
-      text,
-      images: [data.pic],
-      videos: [{ url: resolvedUrl, thumbnailUrl: data.pic, type: 'video' }],
-      date: new Date(data.pubdate * 1000).toISOString().split('T')[0],
+      text: buildText(data),
+      images: data.thumbnail ? [data.thumbnail] : [],
+      videos: [{ url: data.webpage_url ?? resolvedUrl, thumbnailUrl: data.thumbnail, type: 'video' }],
+      date: formatDate(data.upload_date),
       url,
-      likes: data.stat.like,
-      commentCount: data.stat.reply,
+      likes: data.like_count,
+      commentCount: data.comment_count,
     };
   },
 
-  async extractComments(url: string, limit = 20): Promise<ThreadComment[]> {
-    let resolvedUrl = url;
-    if (B23_PATTERN.test(url) && !BV_PATTERN.test(url)) {
-      const r = await fetchWithTimeout(url, 15_000, { redirect: 'follow' });
-      resolvedUrl = r.url;
-    }
-
-    const bvid = parseBvid(resolvedUrl);
-    if (!bvid) throw new Error(`Invalid Bilibili URL for comments: ${url}`);
-
-    // Get oid (cid) from video info first
-    const infoRes = await fetchWithTimeout(
-      `https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`, 30_000,
-      { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://www.bilibili.com' } },
-    );
-    const infoJson = (await infoRes.json()) as BilibiliApiResponse;
-    if (infoJson.code !== 0 || !infoJson.data?.aid) {
-      throw new Error(`Bilibili API: ${infoJson.message ?? '無法取得影片資訊'}`);
-    }
-    // Comments API requires numeric aid, not BV id or cid
-    const aid = String(infoJson.data.aid);
-
-    const commentUrl = `https://api.bilibili.com/x/v2/reply?type=1&oid=${aid}&pn=1&ps=${limit}&sort=2`;
-    const res = await fetchWithTimeout(commentUrl, 30_000, {
-      headers: { 'User-Agent': 'Mozilla/5.0', Referer: `https://www.bilibili.com/video/${bvid}` },
-    });
-    if (!res.ok) throw new Error(`Bilibili comments API error: ${res.status}`);
-
-    const json = (await res.json()) as BilibiliCommentResponse;
-    return (json.data?.replies ?? []).map(r => ({
-      author: r.member.uname,
-      authorHandle: r.member.uname,
-      text: r.content.message,
-      date: new Date(r.ctime * 1000).toISOString().split('T')[0],
-      likes: r.like,
-    }));
+  async extractComments(_url: string, _limit = 20): Promise<ThreadComment[]> {
+    // Keep extractor API-free: comments are not fetched via Bilibili API.
+    return [];
   },
 };

@@ -20,7 +20,6 @@
   "dependencies": {
     "camoufox-js": "^0.9.1",
     "dotenv": "^17.3.1",
-    "google-translate-api-x": "^10.7.2",
     "opencc-js": "^1.0.5",
     "playwright-core": "^1.58.2",
     "telegraf": "^4.16.3"

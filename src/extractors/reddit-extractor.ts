@@ -1,100 +1,21 @@
-/**
- * Reddit extractor — uses Reddit's public JSON API (no authentication required).
- * Based on Agent-Reach's RedditChannel: https://github.com/Panniantong/Agent-Reach
- * Supports post pages: reddit.com/r/{sub}/comments/{id}/...
- */
-import type { ExtractedContent, Extractor, ExtractorWithComments, ThreadComment } from './types.js';
-import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+﻿import type { ExtractedContent, ExtractorWithComments, ThreadComment } from './types.js';
+import { camoufoxPool } from '../utils/camoufox-pool.js';
 
 const REDDIT_PATTERN = /reddit\.com\/r\/([\w]+)\/comments\/([\w]+)/i;
 const REDDIT_SHORT_PATTERN = /reddit\.com\/r\/[\w]+\/s\/([\w]+)/i;
 
-interface RedditPost {
-  title: string;
-  selftext: string;
-  author: string;
-  subreddit: string;
-  score: number;
-  upvote_ratio: number;
-  num_comments: number;
-  created_utc: number;
-  url: string;
-  permalink: string;
-  is_self: boolean;
-  link_flair_text: string | null;
-  thumbnail?: string;
-  preview?: {
-    images?: Array<{ source: { url: string } }>;
-  };
+function normalizeDate(iso?: string | null): string {
+  if (!iso) return new Date().toISOString().split('T')[0];
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+  return d.toISOString().split('T')[0];
 }
 
-interface RedditApiResponse {
-  data: {
-    children: Array<{
-      data: RedditPost;
-    }>;
-  };
-}
-
-interface RedditCommentData {
-  author: string;
-  body: string;
-  created_utc: number;
-  score: number;
-  replies?: {
-    data?: {
-      children?: Array<{ kind: string; data?: RedditCommentData }>;
-    };
-  };
-}
-
-/** Recursively parse Reddit comment tree (max depth 2) */
-function parseRedditComment(raw: RedditCommentData, depth = 0): ThreadComment {
-  const replies: ThreadComment[] = [];
-  if (depth < 2 && raw.replies?.data?.children) {
-    for (const child of raw.replies.data.children) {
-      if (child.kind === 't1' && child.data) {
-        replies.push(parseRedditComment(child.data, depth + 1));
-      }
-    }
+function firstNonEmpty(values: Array<string | null | undefined>): string {
+  for (const v of values) {
+    if (v && v.trim()) return v.trim();
   }
-  return {
-    author: raw.author,
-    authorHandle: `u/${raw.author}`,
-    text: raw.body,
-    date: new Date(raw.created_utc * 1000).toISOString().split('T')[0],
-    likes: raw.score,
-    ...(replies.length > 0 ? { replies } : {}),
-  };
-}
-
-/** Build Markdown text from a Reddit post */
-function buildText(post: RedditPost): string {
-  const lines: string[] = [];
-
-  lines.push(`**r/${post.subreddit}**`);
-
-  const stats = [
-    `⬆️ Score: ${post.score.toLocaleString()}`,
-    `💬 Comments: ${post.num_comments.toLocaleString()}`,
-    `Upvote ratio: ${(post.upvote_ratio * 100).toFixed(0)}%`,
-  ];
-  lines.push(stats.join(' | '), '');
-
-  if (post.link_flair_text) {
-    lines.push(`**Flair:** ${post.link_flair_text}`, '');
-  }
-
-  if (post.selftext && post.selftext.trim()) {
-    const body = post.selftext.length > 3000
-      ? post.selftext.slice(0, 3000) + '\n...'
-      : post.selftext;
-    lines.push(body);
-  } else if (!post.is_self) {
-    lines.push(`[Linked content](${post.url})`);
-  }
-
-  return lines.join('\n');
+  return '';
 }
 
 export const redditExtractor: ExtractorWithComments = {
@@ -109,91 +30,109 @@ export const redditExtractor: ExtractorWithComments = {
   },
 
   async extract(url: string): Promise<ExtractedContent> {
-    // Resolve short URLs by following redirects
-    let resolvedUrl = url;
-    if (REDDIT_SHORT_PATTERN.test(url) && !REDDIT_PATTERN.test(url)) {
-      try {
-        const headRes = await fetchWithTimeout(url, 15_000, {
-          method: 'GET',
-          redirect: 'follow',
-          headers: { 'User-Agent': 'GetThreads-Bot/1.0' },
-        });
-        resolvedUrl = headRes.url;
-      } catch {
-        throw new Error(`無法解析 Reddit 短連結：${url}`);
+    const { page, release } = await camoufoxPool.acquire();
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      await page.waitForTimeout(1500);
+
+      const currentUrl = page.url();
+      if (!REDDIT_PATTERN.test(currentUrl)) {
+        throw new Error(`Invalid or redirected Reddit URL: ${url}`);
       }
+
+      const title = await page.locator('h1').first().innerText().catch(() => '');
+      if (!title.trim()) throw new Error('Reddit post title not found');
+
+      const author = firstNonEmpty([
+        await page.locator('a[href*="/user/"]').first().innerText().catch(() => ''),
+        await page.locator('[data-testid="post_author_link"]').first().innerText().catch(() => ''),
+      ]) || 'unknown';
+
+      const subreddit = firstNonEmpty([
+        await page.locator('a[href^="/r/"]').first().innerText().catch(() => ''),
+      ]).replace(/^r\//, '');
+
+      const body = firstNonEmpty([
+        await page.locator('[data-click-id="text"]').first().innerText().catch(() => ''),
+        await page.locator('[data-post-click-location="text-body"]').first().innerText().catch(() => ''),
+      ]);
+
+      const text = [
+        subreddit ? `**r/${subreddit}**` : '**Reddit**',
+        '',
+        body || '[No body text]',
+      ].join('\n');
+
+      const images = await page.locator('img').evaluateAll((els) =>
+        els
+          .map((el) => (el as HTMLImageElement).src)
+          .filter((src) => src && (src.includes('preview.redd.it') || src.includes('i.redd.it'))),
+      );
+
+      const dateIso = await page.locator('time').first().getAttribute('datetime').catch(() => null);
+      const date = normalizeDate(dateIso);
+
+      const commentCountText = await page.locator('a[href$="#comments"], [data-testid="comments-page-link-num-comments"]').first().innerText().catch(() => '');
+      const commentCount = Number(commentCountText.replace(/[^\d]/g, '')) || undefined;
+
+      return {
+        platform: 'reddit',
+        author: author.replace(/^u\//, ''),
+        authorHandle: author.startsWith('u/') ? author : `u/${author}`,
+        title: title.trim(),
+        text,
+        images: [...new Set(images)],
+        videos: [],
+        date,
+        url,
+        commentCount,
+      };
+    } finally {
+      await release();
     }
-
-    const m = resolvedUrl.match(REDDIT_PATTERN);
-    if (!m) throw new Error(`Invalid Reddit URL: ${url}`);
-
-    // Normalize URL and append .json
-    const cleanUrl = resolvedUrl.split('?')[0].replace(/\/$/, '');
-    const jsonUrl = `${cleanUrl}.json?limit=1`;
-
-    const res = await fetchWithTimeout(jsonUrl, 30_000, {
-      headers: {
-        'User-Agent': 'GetThreads-Bot/1.0',
-        Accept: 'application/json',
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Reddit API error: ${res.status} ${res.statusText}`);
-    }
-
-    const json = (await res.json()) as RedditApiResponse[];
-    const post = json[0]?.data?.children?.[0]?.data;
-
-    if (!post) {
-      throw new Error('Reddit API returned no post data');
-    }
-
-    // Extract preview image if available
-    const images: string[] = [];
-    const preview = post.preview?.images?.[0]?.source?.url;
-    if (preview) {
-      images.push(preview.replace(/&amp;/g, '&'));
-    }
-
-    const date = new Date(post.created_utc * 1000).toISOString().split('T')[0];
-
-    return {
-      platform: 'reddit',
-      author: post.author,
-      authorHandle: `u/${post.author}`,
-      title: post.title,
-      text: buildText(post),
-      images,
-      videos: [],
-      date,
-      url,
-      likes: post.score,
-      commentCount: post.num_comments,
-    };
   },
 
   async extractComments(url: string, limit = 20): Promise<ThreadComment[]> {
-    let resolvedUrl = url;
-    if (REDDIT_SHORT_PATTERN.test(url) && !REDDIT_PATTERN.test(url)) {
-      const r = await fetchWithTimeout(url, 15_000, {
-        headers: { 'User-Agent': 'GetThreads-Bot/1.0' },
-        redirect: 'follow',
-      });
-      resolvedUrl = r.url;
-    }
-    const cleanUrl = resolvedUrl.split('?')[0].replace(/\/$/, '');
-    const jsonUrl = `${cleanUrl}.json?limit=${limit}&depth=2`;
-    const res = await fetchWithTimeout(jsonUrl, 30_000, {
-      headers: { 'User-Agent': 'GetThreads-Bot/1.0', Accept: 'application/json' },
-    });
-    if (!res.ok) throw new Error(`Reddit comments API error: ${res.status}`);
+    const { page, release } = await camoufoxPool.acquire();
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      await page.waitForTimeout(1500);
 
-    const json = (await res.json()) as Array<{ data: { children: Array<{ kind: string; data?: RedditCommentData }> } }>;
-    const commentChildren = json[1]?.data?.children ?? [];
-    return commentChildren
-      .filter(c => c.kind === 't1' && c.data)
-      .map(c => parseRedditComment(c.data!))
-      .slice(0, limit);
+      for (let i = 0; i < 3; i++) {
+        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+        await page.waitForTimeout(800);
+      }
+
+      const nodes = await page.locator('shreddit-comment, [data-testid="comment"]').all();
+      const comments: ThreadComment[] = [];
+
+      for (const node of nodes) {
+        if (comments.length >= limit) break;
+
+        const text = firstNonEmpty([
+          await node.locator('[slot="comment"] p').allInnerTexts().then((arr) => arr.join('\n')).catch(() => ''),
+          await node.innerText().catch(() => ''),
+        ]);
+        if (!text || text.length < 3) continue;
+
+        const author = firstNonEmpty([
+          await node.locator('a[href*="/user/"]').first().innerText().catch(() => ''),
+          await node.getAttribute('author').catch(() => ''),
+        ]) || 'unknown';
+
+        const timeIso = await node.locator('time').first().getAttribute('datetime').catch(() => null);
+
+        comments.push({
+          author: author.replace(/^u\//, ''),
+          authorHandle: author.startsWith('u/') ? author : `u/${author}`,
+          text: text.trim().slice(0, 3000),
+          date: normalizeDate(timeIso),
+        });
+      }
+
+      return comments;
+    } finally {
+      await release();
+    }
   },
 };
