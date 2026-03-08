@@ -10,7 +10,7 @@ export interface FormatBodyResult {
 /** Each platform implements this to customise Markdown output */
 export interface PlatformFormatter {
   /** Format the main body text (handle inline images, linkify, etc.) */
-  formatBody(text: string, imageUrlMap?: Map<string, string>): FormatBodyResult;
+  formatBody(text: string, imageUrlMap?: Map<string, string>, localVideoPaths?: string[]): FormatBodyResult;
 
   /** Render the videos section lines */
   formatVideos(videos: VideoInfo[], localVideoPaths: string[]): string[];

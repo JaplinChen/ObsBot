@@ -88,7 +88,7 @@ export function buildFrontmatter(
     `tags: [${allTags.join(', ')}]`,
     `category: ${category}`,
     `keywords: [${(content.enrichedKeywords ?? extractKeywords(displayTitle, displayText)).join(', ')}]`,
-    `summary: "${escape(stripMarkdown(content.enrichedSummary ?? displayText).slice(0, 150)).replace(/\n/g, ' ')}"`,
+    `summary: "${escape(stripMarkdown(content.enrichedSummary ?? displayText).replace(/\{\{VIDEO:\d+\}\}/g, '').slice(0, 150)).replace(/\n/g, ' ')}"`,
   ];
   if (content.stars != null) lines.push(`stars: ${content.stars}`);
   lines.push('---');
@@ -115,9 +115,8 @@ export function buildLinkedContent(linkedContent?: LinkedContentMeta[]): string[
 }
 
 /** Build engagement stats line */
-export function buildStats(likes?: number, reposts?: number): string[] {
+export function buildStats(reposts?: number): string[] {
   const stats: string[] = [];
-  if (likes != null) stats.push(`Likes: ${likes}`);
   if (reposts != null) stats.push(`Reposts: ${reposts}`);
   if (stats.length === 0) return [];
   return ['---', '', stats.join(' | '), ''];
