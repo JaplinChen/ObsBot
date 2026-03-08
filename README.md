@@ -6,7 +6,8 @@
 
 ---
 
-## 為什麼需要 GetThreads？
+<details>
+<summary><strong>為什麼需要 GetThreads？</strong></summary>
 
 你在 Twitter 看到一篇好文、Reddit 上有精彩討論、Threads 上有值得收藏的串文——
 但你知道這些內容遲早會消失在時間線裡。
@@ -14,9 +15,10 @@
 GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 Obsidian 裡了**。
 不只文章本體，連底下的評論討論也一起收。
 
----
+</details>
 
-## 亮點功能
+<details open>
+<summary><strong>亮點功能</strong></summary>
 
 - **丟連結就存檔** — 支援 10+ 平台，評論自動一起抓
 - **智慧分類** — 自動歸檔到對的 Obsidian 資料夾，支援 20+ 分類
@@ -27,9 +29,10 @@ GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 
 - **AI 增強**（選配）— Claude 自動產生摘要與關鍵詞
 - **批次翻譯** — 英文/簡中筆記自動翻譯為繁體中文
 
----
+</details>
 
-## 支援平台
+<details>
+<summary><strong>支援平台</strong></summary>
 
 ### 完整支援
 
@@ -58,9 +61,10 @@ GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 
 
 > 需登入的平台使用 [Camoufox](https://camoufox.com/)（反偵測瀏覽器），首次使用需執行 `npx camoufox-js fetch`。
 
----
+</details>
 
-## 快速開始
+<details>
+<summary><strong>快速開始</strong></summary>
 
 ### 1. 申請 Telegram Bot Token
 
@@ -98,9 +102,10 @@ npx camoufox-js fetch
 
 雙擊 `啟動.bat`（或 `start-dev.bat`），保持視窗開啟即可。
 
----
+</details>
 
-## 指令速查
+<details>
+<summary><strong>指令速查</strong></summary>
 
 | 指令 | 用途 |
 |------|------|
@@ -124,9 +129,10 @@ npx camoufox-js fetch
 
 > 需要參數的指令（如 `/search`、`/recommend`）從選單點選後會自動引導輸入。知識類指令還會顯示熱門主題按鈕供快速選擇。
 
----
+</details>
 
-## 常見問題
+<details>
+<summary><strong>常見問題</strong></summary>
 
 **Bot 沒有回應？**
 關掉 `啟動.bat` 視窗，重新雙擊啟動。
@@ -140,7 +146,7 @@ npx camoufox-js fetch
 **想修改設定？**
 編輯 `.env` 檔案，或重新執行 `setup.bat`。
 
----
+</details>
 
 <details>
 <summary><strong>開發資訊</strong></summary>
