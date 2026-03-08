@@ -5,6 +5,7 @@ import { ProcessGuardian } from './process-guardian.js';
 import { initDynamicClassifier, refreshFromPatterns } from './learning/dynamic-classifier.js';
 import { runVaultLearner } from './learning/vault-learner.js';
 import { RULES_PATH } from './learning/learn-command.js';
+import { loadKnowledge } from './knowledge/knowledge-store.js';
 
 const config = loadConfig();
 registerAllExtractors();
@@ -15,8 +16,9 @@ bot.catch((err: unknown) => {
   console.error('[Bot error]', err);
 });
 
-// Load existing rules immediately (fast, from disk)
+// Load existing rules and knowledge immediately (fast, from disk)
 initDynamicClassifier(RULES_PATH).catch(() => {});
+loadKnowledge().catch(() => {});
 
 // Re-scan vault in background to update rules (slow, but non-blocking)
 runVaultLearner(config.vaultPath, RULES_PATH)

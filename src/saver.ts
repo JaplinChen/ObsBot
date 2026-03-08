@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import type { ExtractedContent, Platform } from './extractors/types.js';
 import { formatAsMarkdown } from './formatter.js';
 import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
+import { analyzeNewNote } from './commands/knowledge-command.js';
 
 // In-memory URL index: normalizedUrl → filePath (built on first use)
 let urlIndex: Map<string, string> | null = null;
@@ -243,6 +244,17 @@ export async function saveToVault(
 
     // Update in-memory index
     if (urlIndex) urlIndex.set(normUrl, mdPath);
+
+    // Fire-and-forget: deep knowledge analysis for the new note
+    if (!opts?.forceOverwrite) {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (apiKey) {
+        analyzeNewNote(
+          content.url, mdPath, content.title,
+          content.text, content.category ?? '其他', apiKey,
+        ).catch(err => console.warn('[knowledge] 增量分析失敗:', (err as Error).message));
+      }
+    }
 
     return { mdPath, imageCount: localImagePaths.length, videoCount: content.videos.length };
   } finally {
