@@ -1,4 +1,4 @@
-# Dependencies
+﻿# Dependencies
 node_modules/
 
 # Build output
@@ -7,29 +7,24 @@ dist/
 # Environment variables
 .env
 
-# Data / runtime
+# Runtime / local data
 data/
 .bot.pid
+bot.log
 nul
 
-# Whisper.cpp binary & models
+# Local helper scripts (not part of runtime build)
+scripts/
+test.ts
+
+# External tools and local models
 tools/
 models/
 
-# Learning / diagnostic scripts
-src/learning/
-
-# Test & migration scripts
-test.ts
-scripts/
-
-# Claude Code
+# Claude Code local config
 .claude/
 
-# OS
+# OS junk
 Thumbs.db
 Desktop.ini
 .DS_Store
-
-# Runtime logs
-bot.log

@@ -23,17 +23,19 @@ If one fails, fix it before opening PR/commit.
 
 ## Architecture guidelines
 
-- `src/core/errors.ts`: shared error classification and user-facing error messages.
+- Read `docs/architecture.md` before changing module boundaries.
+- `src/core/errors.ts`: shared error classification and user-facing messages.
 - `src/core/logger.ts`: shared structured logging entrypoint.
 - `src/commands/command-runner.ts`: shared async command wrapper.
-- `src/commands/register-commands.ts`: command wiring and command/action dispatcher.
+- `src/messages/services/*`: message processing business logic.
+- `src/commands/register-commands.ts`: command/action orchestration only.
 
 When adding new commands:
 
 1. Implement handler logic in `src/commands/*`.
-2. Register via `registerAsyncCommand` or `registerAsyncAction` in `register-commands.ts`.
+2. Register via `registerAsyncCommand` / `registerAsyncAction` in `register-commands.ts`.
 3. Route errors through `runCommandTask` + `formatErrorMessage`.
-4. Use `logger` instead of raw scattered `console.*` where possible.
+4. Use `logger` instead of scattered `console.*`.
 
 ## URL and dedup policy
 
@@ -53,10 +55,13 @@ When adding new commands:
   - `src/utils/url-canonicalizer.test.ts`
 - Callback token/payload mapping changes:
   - `src/commands/knowledge-query-command.test.ts`
+- Message pipeline/formatting changes:
+  - `src/messages/*.test.ts`
+  - `src/messages/services/*.test.ts`
 
 ## Suggested workflow for AI coding tools
 
-1. Read this file and relevant module before editing.
+1. Read this file and relevant modules before editing.
 2. Make minimal scoped changes.
 3. Run lint/test/build.
 4. Summarize changed files and behavior impact.
