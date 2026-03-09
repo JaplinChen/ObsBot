@@ -15,6 +15,7 @@ const CATEGORIES: Array<{ name: string; keywords: string[] }> = [
     name: 'AI/OpenClaw',
     keywords: [
       'openclaw', 'open claw', 'openclaws', 'clawbot',
+      '龍蝦', '龙虾',
     ],
   },
   {
@@ -26,6 +27,14 @@ const CATEGORIES: Array<{ name: string; keywords: string[] }> = [
       'perplexity', 'midjourney', 'stable diffusion', 'comfyui',
       'n8n', 'make.com', 'telegram bot', 'obsidian plugin',
       'skill清单', 'skill 清單',
+    ],
+  },
+  {
+    // 生產力工具（排在 AI/學習 前，避免 Obsidian/Notion 教程被誤分為 AI 學習）
+    name: '生產力',
+    keywords: [
+      'obsidian', 'notion', 'pkm', 'zettelkasten',
+      '第二大腦', '第二大脑', '筆記軟體', '笔记软件', '筆記工具', '笔记工具',
     ],
   },
   {
@@ -139,9 +148,8 @@ const CATEGORIES: Array<{ name: string; keywords: string[] }> = [
   {
     name: '生產力',
     keywords: [
-      'productivity', 'workflow', 'obsidian', 'notion', 'pkm',
-      'zettelkasten', 'habit', 'focus', '生產力', '工作流', '筆記',
-      '效率', 'automation', '自動化', 'tool', '工具',
+      'productivity', 'workflow', 'habit', 'focus', '生產力', '工作流',
+      '效率', 'automation', '自動化', 'tool', '工具', '筆記',
     ],
   },
   {
