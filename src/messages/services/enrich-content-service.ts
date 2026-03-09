@@ -26,7 +26,7 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
   if (enriched.analysis) content.enrichedAnalysis = enriched.analysis;
   if (enriched.keyPoints?.length) content.enrichedKeyPoints = enriched.keyPoints;
   if (enriched.title) content.title = enriched.title;
-  if (enriched.category) content.category = enriched.category;
+  // 不用 enricher 的 category — classifier 的關鍵字匹配更可靠
 
   try {
     await postProcess(content, {

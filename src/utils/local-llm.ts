@@ -1,6 +1,9 @@
+/**
+ * LLM prompt runner.
+ * Priority: DDG AI Chat (Camoufox, free) → local CLI fallback.
+ */
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import Anthropic from '@anthropic-ai/sdk';
 import { runViaDdgChat } from './ddg-chat.js';
 
 const execFileAsync = promisify(execFile);
@@ -9,41 +12,6 @@ export type LocalLlmProvider = 'claude' | 'codex' | 'opencode';
 
 interface RunOptions {
   timeoutMs?: number;
-}
-
-/* ── Claude API provider ─────────────────────────────────────────────── */
-
-let _client: Anthropic | null = null;
-
-function getApiClient(): Anthropic | null {
-  if (_client) return _client;
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return null;
-  _client = new Anthropic({ apiKey: key });
-  return _client;
-}
-
-async function runViaApi(prompt: string, timeoutMs: number): Promise<string | null> {
-  const client = getApiClient();
-  if (!client) return null;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }],
-    }, { signal: controller.signal });
-
-    const block = res.content[0];
-    return block.type === 'text' ? block.text.trim() : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 /* ── Local CLI provider ──────────────────────────────────────────────── */
@@ -82,21 +50,17 @@ function isRecoverableCliError(err: unknown): boolean {
 
 /**
  * Run a prompt against LLM providers.
- * Priority: Claude API → DDG AI Chat (Camoufox) → local CLI tools.
+ * Priority: DDG AI Chat (Camoufox) → local CLI tools.
  * Returns null when no provider succeeds.
  */
 export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}): Promise<string | null> {
   const timeoutMs = options.timeoutMs ?? 30_000;
 
-  // 1) Try Claude API first (fastest, needs ANTHROPIC_API_KEY + credits)
-  const apiResult = await runViaApi(prompt, timeoutMs);
-  if (apiResult) return apiResult;
-
-  // 2) Try DuckDuckGo AI Chat via Camoufox (free, no login)
+  // 1) Try DuckDuckGo AI Chat via Camoufox (free, no login)
   const ddgResult = await runViaDdgChat(prompt, timeoutMs);
   if (ddgResult) return ddgResult;
 
-  // 3) Fallback to local CLI providers
+  // 2) Fallback to local CLI providers
   const providers = configuredProviders();
   for (const provider of providers) {
     const { cmd, args } = providerArgs(provider, prompt);

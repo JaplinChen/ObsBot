@@ -12,19 +12,37 @@ import { camoufoxPool } from '../utils/camoufox-pool.js';
 const THREADS_URL_PATTERN =
   /(?:threads\.net|threads\.com)\/@([\w.]+)\/post\/([\w-]+)/i;
 
+/** Check if text looks like a relative timestamp (e.g. "1d", "7h", "21h", "3w") */
+function looksLikeTimestamp(text: string): boolean {
+  const t = text.trim();
+  return /^\d{1,3}[smhdw]$/.test(t) || /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(t);
+}
+
 /** Extract post text from spans inside a [data-pressable-container].
- *  Span layout: [0]=username, [1]=timestamp, [2]=post text, [3+]=counts.
- *  Strips trailing "  Translate" suffix added by Threads UI.
+ *  Instead of relying on a fixed span index, finds the longest text span
+ *  that isn't a username or timestamp — robust against DOM structure changes.
  */
 async function extractSpanText(
   container: import('playwright-core').Locator,
 ): Promise<string> {
   try {
     const spans = await container.locator('span[dir="auto"]').all();
-    if (spans.length < 3) return '';
-    // span[0] = username, span[1] = relative time, span[2] = post body
-    const raw = await spans[2].innerText().catch(() => '');
-    return raw.replace(/\s{2,}Translate\s*$/, '').trim();
+    if (spans.length < 2) return '';
+
+    // Collect all span texts (skip span[0] which is username)
+    const candidates: { idx: number; text: string }[] = [];
+    for (let i = 1; i < spans.length; i++) {
+      const raw = await spans[i].innerText().catch(() => '');
+      const cleaned = raw.replace(/\s{2,}Translate\s*$/, '').trim();
+      if (cleaned && !looksLikeTimestamp(cleaned)) {
+        candidates.push({ idx: i, text: cleaned });
+      }
+    }
+
+    // Pick the longest candidate as the body text
+    if (candidates.length === 0) return '';
+    candidates.sort((a, b) => b.text.length - a.text.length);
+    return candidates[0].text;
   } catch {
     return '';
   }

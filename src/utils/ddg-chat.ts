@@ -31,27 +31,36 @@ async function acceptTerms(page: Page): Promise<void> {
   }
 }
 
-/** Switch to Claude model if not already selected. */
-async function selectClaude(page: Page): Promise<void> {
-  // Check current model button text
-  const modelBtns = await page.locator('button').all();
-  for (const btn of modelBtns) {
-    const text = await btn.textContent().catch(() => '');
-    if (text && (text.includes('4o-mini') || text.includes('GPT') || text.includes('Llama') || text.includes('Mistral'))) {
-      // Not Claude — click to open model selector
-      await btn.click();
+/**
+ * Best-effort: try to switch to Claude via DDG model selector.
+ * DDG model options may not be standard <button> elements, so this can fail silently.
+ * Enricher applies opencc-js s2tw regardless, so GPT-4o mini output is also acceptable.
+ */
+async function trySelectClaude(page: Page): Promise<void> {
+  try {
+    const modelBtn = page.locator('button:has-text("4o-mini")').first();
+    if (!await modelBtn.isVisible({ timeout: 1000 }).catch(() => false)) return;
+
+    await modelBtn.click();
+    await page.waitForTimeout(600);
+
+    // Model options may be divs, spans, or other non-button elements
+    const claudeOpt = page.locator('text=Claude Haiku').first();
+    if (await claudeOpt.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await claudeOpt.click();
       await page.waitForTimeout(500);
-      // Select Claude
-      const claudeBtn = page.locator('button:has-text("Claude")').first();
-      if (await claudeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await claudeBtn.click();
-        await page.waitForTimeout(500);
+
+      const startBtn = page.locator('button:has-text("Start New Chat")');
+      if (await startBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await startBtn.click();
+        await page.waitForTimeout(1000);
       }
-      return;
+    } else {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
     }
-    if (text && text.includes('Claude')) {
-      return; // Already Claude
-    }
+  } catch {
+    // Best-effort — enricher has s2tw fallback
   }
 }
 
@@ -82,8 +91,8 @@ export async function runViaDdgChat(prompt: string, timeoutMs = 30_000): Promise
     // 2. Accept terms if shown
     await acceptTerms(page);
 
-    // 3. Select Claude model
-    await selectClaude(page);
+    // 3. Best-effort: try to use Claude model
+    await trySelectClaude(page);
 
     // 4. Snapshot text before sending (for diffing later)
     const beforeText = await getBodyText(page);
