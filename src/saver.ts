@@ -28,7 +28,7 @@ function extractPostId(url: string, platform: Platform): string {
       case 'reddit':
         return u.pathname.split('/').filter(Boolean)[3] ?? 'unknown';
       case 'tiktok':
-        return u.pathname.match(/\/video\/(\d+)/)?.[1] ?? createHash('md5').update(url).digest('hex').slice(0, 8);
+        return u.pathname.match(/\/(?:video|photo)\/(\d+)/)?.[1] ?? createHash('md5').update(url).digest('hex').slice(0, 8);
       default:
         return createHash('md5').update(url).digest('hex').slice(0, 8);
     }

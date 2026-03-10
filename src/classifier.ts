@@ -1,6 +1,70 @@
 /** Keyword-based content classifier — returns a Traditional Chinese category label */
 import { classifyWithLearnedRules } from './learning/dynamic-classifier.js';
 
+// ── AI 子分類精煉：當通用 AI 命中時，用寬鬆關鍵詞嘗試歸入更精確的子分類 ──
+const AI_SUBCATEGORY_REFINEMENT: Array<{ name: string; keywords: string[] }> = [
+  {
+    name: 'AI/Claude Code',
+    keywords: ['claude code', 'cowork', 'claude cowork'],
+  },
+  {
+    name: 'AI/OpenClaw',
+    keywords: ['openclaw', 'open claw', 'clawbot', '龍蝦'],
+  },
+  {
+    name: 'AI/工具',
+    keywords: [
+      '工具', 'tool', 'tools', '助手', 'assistant', 'bot',
+      '自動化', 'automation', '圖片生成', '圖片放大', 'image generat',
+      'image enhance', '會議記錄', '摘要', '放大',
+      'open-sable', 'autoglm', 'fine grain', 'desk mate', 'luna desk',
+    ],
+  },
+  {
+    name: 'AI/Agent',
+    keywords: [
+      'agent', 'multi-agent', 'agent orchestration', 'agent 軍團',
+      'agent 架構', 'agent monitoring',
+    ],
+  },
+  {
+    name: 'AI/應用',
+    keywords: [
+      '應用', '賺錢', '情報', '模板', 'template', 'workflow',
+    ],
+  },
+  {
+    name: 'AI/學習',
+    keywords: [
+      'api範例', 'api 範例', 'api教學', 'api 教學', 'api tutorial',
+      '貢獻榜', '開源貢獻',
+    ],
+  },
+  {
+    name: 'AI/提示詞',
+    keywords: [
+      '優化技巧', '細節優化', '生成技巧',
+    ],
+  },
+  {
+    name: 'AI/模型',
+    keywords: [
+      '大模型', '模型api', '模型 api', 'api聚合', 'api 聚合',
+    ],
+  },
+];
+
+/** 當初次分類命中通用 AI 時，用 title+body 合併文本精煉到子分類 */
+function refineAISubcategory(title: string, body: string): string | null {
+  const haystack = `${title} ${body}`.toLowerCase();
+  for (const sub of AI_SUBCATEGORY_REFINEMENT) {
+    if (sub.keywords.some((kw) => haystack.includes(kw.toLowerCase()))) {
+      return sub.name;
+    }
+  }
+  return null;
+}
+
 const CATEGORIES: Array<{ name: string; keywords: string[] }> = [
   // ── AI 子分類（必須排在通用 AI 之前，越精確的越前面）──────────────────────
   {
@@ -30,11 +94,12 @@ const CATEGORIES: Array<{ name: string; keywords: string[] }> = [
     ],
   },
   {
-    // 生產力工具（排在 AI/學習 前，避免 Obsidian/Notion 教程被誤分為 AI 學習）
-    name: '生產力',
+    // Obsidian 知識管理（排在通用生產力之前，攔截 Obsidian 專屬內容）
+    name: '生產力/Obsidian',
     keywords: [
-      'obsidian', 'notion', 'pkm', 'zettelkasten',
+      'obsidian', 'pkm', 'zettelkasten',
       '第二大腦', '第二大脑', '筆記軟體', '笔记软件', '筆記工具', '笔记工具',
+      '雙向連結', '雙向鏈結', '知識圖譜', '知識網路', '知識網絡',
     ],
   },
   {
@@ -68,10 +133,18 @@ const CATEGORIES: Array<{ name: string; keywords: string[] }> = [
     ],
   },
   {
-    // Agent 工程、架構、最佳實踐、RAG
+    // AI Agent 工程、框架、多代理系統
+    name: 'AI/Agent',
+    keywords: [
+      'ai agent', 'agentic engineer', 'agent工程', 'agent engineer',
+      'multi-agent', 'agent orchestration', 'agent 軍團', 'agent 架構',
+      'agent framework', 'agent monitoring',
+    ],
+  },
+  {
+    // 應用場景、最佳實踐、RAG
     name: 'AI/應用',
     keywords: [
-      'agentic engineer', 'agent工程', 'agent engineer', 'multi-agent',
       'best practices', '最佳实践', '最佳實踐', '工程指南',
       'rag', 'retrieval', 'vector database', 'embedding',
       'langchain', 'langgraph', '数据抓取', '資料抓取',
@@ -150,6 +223,7 @@ const CATEGORIES: Array<{ name: string; keywords: string[] }> = [
     keywords: [
       'productivity', 'workflow', 'habit', 'focus', '生產力', '工作流',
       '效率', 'automation', '自動化', 'tool', '工具', '筆記',
+      'notion',
     ],
   },
   {
@@ -179,6 +253,11 @@ export function classifyContent(title: string, text: string): string {
   // Pass 1：標題優先（精準信號）
   for (const cat of CATEGORIES) {
     if (cat.keywords.some((kw) => titleHaystack.includes(kw.toLowerCase()))) {
+      // 通用 AI 命中 → 嘗試精煉到子分類
+      if (cat.name === 'AI') {
+        const refined = refineAISubcategory(titleHaystack, bodyHaystack);
+        if (refined) return refined;
+      }
       return cat.name;
     }
   }
@@ -186,6 +265,10 @@ export function classifyContent(title: string, text: string): string {
   // Pass 2：本文 fallback（標題無命中時）
   for (const cat of CATEGORIES) {
     if (cat.keywords.some((kw) => bodyHaystack.includes(kw.toLowerCase()))) {
+      if (cat.name === 'AI') {
+        const refined = refineAISubcategory(titleHaystack, bodyHaystack);
+        if (refined) return refined;
+      }
       return cat.name;
     }
   }

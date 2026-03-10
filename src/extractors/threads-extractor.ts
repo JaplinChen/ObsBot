@@ -39,10 +39,14 @@ async function extractSpanText(
       }
     }
 
-    // Pick the longest candidate as the body text
     if (candidates.length === 0) return '';
-    candidates.sort((a, b) => b.text.length - a.text.length);
-    return candidates[0].text;
+    // Filter out engagement counts, noise labels, and very short spans
+    const NOISE = /^(\d+|Author|Verified|Translate|翻譯|·|原創|作者)$/i;
+    const meaningful = candidates.filter(c => c.text.length > 2 && !NOISE.test(c.text));
+    if (meaningful.length === 0) return candidates.sort((a, b) => b.text.length - a.text.length)[0].text;
+    // Combine all meaningful text spans (title + body) in DOM order
+    meaningful.sort((a, b) => a.idx - b.idx);
+    return meaningful.map(c => c.text).join('\n');
   } catch {
     return '';
   }
@@ -207,12 +211,12 @@ export const threadsExtractor: ExtractorWithComments = {
         if (comments.length >= limit) break;
         try {
           const spans = await container.locator('span[dir="auto"]').all();
-          if (spans.length < 3) continue;
+          if (spans.length < 2) continue;
 
           const commentAuthor = await spans[0].innerText().catch(() => '');
-          const text = await spans[2].innerText()
-            .catch(() => '')
-            .then(t => t.replace(/\s{2,}Translate\s*$/, '').trim());
+          // Use extractSpanText (longest non-timestamp span) instead of fixed index
+          // because self-thread replies have "·" and "Author" labels before the text
+          const text = await extractSpanText(container);
 
           if (text) {
             // Get handle from link
