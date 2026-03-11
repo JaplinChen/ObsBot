@@ -47,8 +47,8 @@ GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 
 
 | 平台 | 內容 | 備註 |
 |------|:----:|------|
-| YouTube | ✅ | yt-dlp，影片下載 + 播放清單 |
-| TikTok | ✅ | yt-dlp + whisper.cpp STT 逐字稿 |
+| YouTube | ✅ | yt-dlp，字幕擷取 + 播放清單（影片預設不存，連結回原始 URL） |
+| TikTok | ✅ | yt-dlp + whisper.cpp STT 逐字稿（影片預設不存） |
 | GitHub | ✅ | Repo / Issue / PR |
 | 通用網頁 | ✅ | Jina Reader fallback |
 
@@ -93,6 +93,7 @@ VAULT_PATH=C:/Users/yourname/ObsidianVault
 ALLOWED_USER_IDS=123456,789012      # 限制使用者（逗號分隔 Telegram user ID）
 ENABLE_TRANSLATION=true             # 啟用簡轉繁翻譯
 MAX_LINKED_URLS=5                   # 單則貼文最多抓取的外部連結數
+SAVE_VIDEOS=false                   # 影片存入 Vault（預設 false，僅保留原始連結）
 LLM_PROVIDER=opencode                # LLM CLI（預設 OpenCode + MiniMax M2.5 Free，DDG Chat 為備援）
 ```
 
@@ -183,6 +184,7 @@ npx tsc --noEmit # 型別檢查
 - LLM enrichment 來源：OpenCode CLI + MiniMax M2.5 Free（免費）→ DDG AI Chat（免費備援）
 - Enrichment 輸出過濾廢話與廣告語，保持中性專業語氣
 - 外部呼叫必須有 timeout（HTTP 30s / yt-dlp 120s / Obsidian 10s）
+- **輕量 Vault** — 影片預設不存入 Vault（`SAVE_VIDEOS=false`），僅保留原始 URL 連結
 
 ### 專案結構
 
