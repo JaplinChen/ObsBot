@@ -125,6 +125,8 @@ npx camoufox-js fetch
 | `/compare <A> vs <B>` | 實體對比分析 |
 | `/gaps` | 知識缺口分析 |
 | `/skills` | 高密度主題 Skill 建議 |
+| `/preferences` | 用戶偏好模型（來源、分類、關鍵字統計） |
+| `/distill` | 知識蒸餾（核心原則 + 歸檔候選） |
 | `/recent` | 本次啟動已儲存的內容 |
 | `/status` | Bot 運行狀態與統計 |
 | `/learn` | 重新掃描 Vault 更新分類規則 |

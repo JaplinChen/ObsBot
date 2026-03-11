@@ -7,6 +7,7 @@ import type { AppConfig } from '../utils/config.js';
 import { handleTimeline } from './timeline-command.js';
 import { handleMonitor, handleSearch } from './monitor-command.js';
 import { handleAnalyze, handleKnowledge, handleGaps, handleSkills } from './knowledge-command.js';
+import { handlePreferences, handleDistill } from './distill-command.js';
 import {
   handleRecommend,
   handleBrief,
@@ -75,6 +76,8 @@ export function registerCommands(
   registerAsyncCommand(bot, 'compare', 'compare', config, handleCompare);
   registerAsyncCommand(bot, 'gaps', 'gaps', config, handleGaps);
   registerAsyncCommand(bot, 'skills', 'skills', config, handleSkills);
+  registerAsyncCommand(bot, 'preferences', 'preferences', config, handlePreferences);
+  registerAsyncCommand(bot, 'distill', 'distill', config, handleDistill);
 
   // --- InlineKeyboard callback handlers ---
   registerAsyncAction(bot, /^(recommend|brief):(.+)$/, 'knowledge-action', async (ctx) => {
