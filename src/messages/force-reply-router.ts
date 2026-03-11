@@ -10,7 +10,11 @@ export function registerForceReplyRouter(bot: Telegraf): void {
     const cmd = parseForceReplyTag(replyTo.text);
     if (!cmd) return next();
 
-    (ctx.message as unknown as Record<string, unknown>).text = `/${cmd} ${ctx.message.text}`;
+    const newText = `/${cmd} ${ctx.message.text}`;
+    const msg = ctx.message as unknown as Record<string, unknown>;
+    msg.text = newText;
+    // Inject bot_command entity so Telegraf's command middleware matches
+    msg.entities = [{ type: 'bot_command', offset: 0, length: cmd.length + 1 }];
     return next();
   });
 }

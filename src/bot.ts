@@ -3,6 +3,7 @@ import { logger } from './core/logger.js';
 import type { AppConfig } from './utils/config.js';
 import { registerCommands } from './commands/register-commands.js';
 import { registerMessageHandlers } from './messages/url-message-handler.js';
+import { registerForceReplyRouter } from './messages/force-reply-router.js';
 import type { BotStats } from './messages/types.js';
 
 const startTime = Date.now();
@@ -27,6 +28,9 @@ export function createBot(config: AppConfig): Telegraf {
     }
     return next();
   });
+
+  // ForceReplyRouter must run before commands so rewritten text triggers bot.command().
+  registerForceReplyRouter(bot);
 
   // Register all /commands and message pipeline.
   registerCommands(bot, config, stats, startTime);
