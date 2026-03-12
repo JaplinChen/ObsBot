@@ -55,7 +55,7 @@ export async function handleSuggest(ctx: Context, config: AppConfig): Promise<vo
     '',
     `📊 ${allSuggestions.size} 篇筆記有推薦`,
     `✅ ${written} 篇已寫入連結`,
-    `📋 索引: ${indexPath.split('GetThreads')[1] ?? indexPath}`,
+    `📋 索引: GetThreads${(indexPath.split('GetThreads')[1] ?? '').replace(/\.\w+$/, '')}`,
   ];
 
   logger.info('suggest', '完成', { total: allSuggestions.size, written });

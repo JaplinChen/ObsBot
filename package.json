@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
+    "restart": "tsx scripts/restart-bot.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint \"src/**/*.ts\"",

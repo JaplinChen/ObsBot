@@ -95,9 +95,11 @@ export async function writeIndexNote(
   for (const [category, entries] of sorted) {
     lines.push(`## ${category}（${entries.length} 篇）`, '');
     for (const { note, suggestions } of entries.slice(0, 50)) {
-      const top3 = suggestions.slice(0, 3);
-      const links = top3.map(s => `[[${noteBasename(s.filePath)}]]`).join(', ');
-      lines.push(`- **[[${note}]]** → ${links}`);
+      lines.push(`- **[[${note}]]**`);
+      for (const s of suggestions.slice(0, 3)) {
+        const shared = s.sharedKeywords.slice(0, 3).join(', ');
+        lines.push(`  - [[${noteBasename(s.filePath)}]]（${shared}）`);
+      }
     }
     lines.push('');
   }

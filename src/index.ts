@@ -69,4 +69,5 @@ loadRadarConfig()
   })
   .catch((e) => logger.warn('radar', '載入雷達失敗', { message: (e as Error).message }));
 
-new ProcessGuardian(bot).launch();
+const forceMode = process.argv.includes('--force');
+new ProcessGuardian(bot, forceMode).launch();

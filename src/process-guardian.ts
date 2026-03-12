@@ -1,4 +1,5 @@
-﻿import { Telegraf } from 'telegraf';
+import { Telegraf } from 'telegraf';
+import { execSync } from 'node:child_process';
 import { logger } from './core/logger.js';
 import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'fs';
 
@@ -9,7 +10,10 @@ const BASE_DELAY_MS = 2_000;
 export class ProcessGuardian {
   private retries = 0;
 
-  constructor(private bot: Telegraf) {}
+  constructor(
+    private bot: Telegraf,
+    private force = false,
+  ) {}
 
   private writePid(): void {
     writeFileSync(PID_FILE, String(process.pid));
@@ -30,6 +34,35 @@ export class ProcessGuardian {
     } catch (err) {
       return (err as NodeJS.ErrnoException).code === 'EPERM';
     }
+  }
+
+  /** Force mode: kill existing bot process referenced in PID file */
+  private forceKillExisting(): void {
+    if (!existsSync(PID_FILE)) return;
+
+    try {
+      const pidText = readFileSync(PID_FILE, 'utf8').trim();
+      if (!/^\d+$/.test(pidText)) {
+        this.clearPid();
+        return;
+      }
+
+      const pid = Number(pidText);
+      if (pid === process.pid) return;
+
+      if (this.isProcessAlive(pid)) {
+        logger.info('guardian', 'force killing existing process', { pid });
+        try {
+          execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+        } catch {
+          try { process.kill(pid, 'SIGKILL'); } catch { /* ignore */ }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
+    this.clearPid();
   }
 
   private clearStalePidIfDead(): void {
@@ -68,27 +101,35 @@ export class ProcessGuardian {
   }
 
   private attempt(): void {
-    this.bot.launch({ dropPendingUpdates: true }).catch(async (err: unknown) => {
-      if (this.is409(err) && this.retries < MAX_RETRIES) {
-        this.retries++;
-        const delay = Math.min(BASE_DELAY_MS * 2 ** this.retries, 60_000);
-        logger.error('guardian', `409 conflict retry ${this.retries}/${MAX_RETRIES}`, { delaySeconds: delay / 1000 });
-        await this.sleep(delay);
-        this.attempt();
-      } else if (this.retries >= MAX_RETRIES) {
-        logger.error('guardian', 'max retries exceeded; run /stopbot then /startbot');
-        this.clearPid();
-        process.exit(1);
-      } else {
-        logger.error('guardian', 'fatal error', err);
-        this.clearPid();
-        process.exit(1);
-      }
-    });
+    this.bot.launch({ dropPendingUpdates: true })
+      .then(() => {
+        logger.info('guardian', '✅ bot launched', { pid: process.pid });
+      })
+      .catch(async (err: unknown) => {
+        if (this.is409(err) && this.retries < MAX_RETRIES) {
+          this.retries++;
+          const delay = Math.min(BASE_DELAY_MS * 2 ** this.retries, 60_000);
+          logger.error('guardian', `409 conflict retry ${this.retries}/${MAX_RETRIES}`, { delaySeconds: delay / 1000 });
+          await this.sleep(delay);
+          this.attempt();
+        } else if (this.retries >= MAX_RETRIES) {
+          logger.error('guardian', 'max retries exceeded; run: npm run restart');
+          this.clearPid();
+          process.exit(1);
+        } else {
+          logger.error('guardian', 'fatal error', err);
+          this.clearPid();
+          process.exit(1);
+        }
+      });
   }
 
   launch(): void {
-    this.clearStalePidIfDead();
+    if (this.force) {
+      this.forceKillExisting();
+    } else {
+      this.clearStalePidIfDead();
+    }
     this.writePid();
 
     process.once('SIGINT', () => {
@@ -100,7 +141,7 @@ export class ProcessGuardian {
       this.bot.stop('SIGTERM');
     });
 
+    logger.info('guardian', 'bot launching', { force: this.force, maxRetries: MAX_RETRIES });
     this.attempt();
-    logger.info('guardian', 'bot launching (auto-retry on 409, max 5x)');
   }
 }
