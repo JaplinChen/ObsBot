@@ -21,13 +21,16 @@ GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 
 <summary><strong>亮點功能</strong></summary>
 
 - **丟連結就存檔** — 支援 10+ 平台，評論自動一起抓
+- **PDF 文件收集** — 直接傳 PDF 到 Telegram，自動擷取文字、分類、存入 Vault
 - **智慧分類** — 自動歸檔到對的 Obsidian 資料夾，支援 20+ 分類
 - **跨平台搜尋** — 在 Telegram 裡搜 DuckDuckGo + Reddit
+- **GitHub 探索** — `/discover` 搜尋專案、`/trending` 每日熱門掃描
+- **知識問答** — `/ask` 用 Vault 知識回答問題，AI 結合筆記上下文
 - **時間軸抓取** — 一次撈回某人最近的所有貼文
 - **知識系統** — 深度分析 Vault 筆記，萃取實體、洞察與關係圖譜，自動生成用戶偏好模型與知識蒸餾報告
 - **記憶整合** — 自動發現跨筆記知識關聯，LLM 語義合成洞察，每週自動生成整合報告
 - **互動式指令** — 缺參數時自動引導輸入，知識類指令提供快捷按鈕
-- **AI 增強** — OpenCode + MiniMax M2.5 Free 自動產生摘要與關鍵詞（DDG AI Chat 為免費備援）
+- **多模型智慧路由** — 依內容複雜度自動選擇 flash / standard / deep 免費模型，兼顧速度與品質
 - **批次翻譯** — 英文/簡中筆記自動翻譯為繁體中文
 - **跨裝置同步** — 搭配 [Remotely Save](https://github.com/remotely-save/remotely-save) + [InfiniCLOUD](https://infini-cloud.net/) 免費 WebDAV，Windows / Mac / iPhone 三端同步
 
@@ -53,6 +56,7 @@ GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 
 | TikTok | ✅ | yt-dlp + whisper.cpp STT 逐字稿（影片預設不存） |
 | GitHub | ✅ | Repo / Issue / PR |
 | 通用網頁 | ✅ | Jina Reader fallback |
+| PDF 文件 | ✅ | 直接傳檔到 Telegram，自動擷取文字 |
 
 ### 需登入平台
 
@@ -116,9 +120,13 @@ npx camoufox-js fetch
 | 指令 | 用途 |
 |------|------|
 | 傳送 URL | 自動擷取內容與評論，分類後存到 Vault |
+| 傳送 PDF | 自動擷取文字、AI 摘要、分類存入 Vault |
 | `/search <查詢>` | 網頁搜尋（DuckDuckGo，`/google` 為別名） |
 | `/monitor <關鍵字>` | 跨平台搜尋提及（Reddit + DuckDuckGo） |
 | `/timeline @用戶 [數量]` | 抓取用戶最近貼文（支援 Threads） |
+| `/ask <問題>` | 用 Vault 知識回答問題（AI 結合筆記上下文） |
+| `/discover <關鍵字>` | GitHub 專案探索 |
+| `/trending` | 每日熱門專案掃描（依關注領域） |
 | `/analyze` | 深度分析 Vault 知識 |
 | `/knowledge` | 查看知識庫摘要 |
 | `/recommend <主題>` | 推薦相關筆記 |
@@ -191,7 +199,7 @@ npx tsc --noEmit # 型別檢查
 - **Telegraf** — Telegram Bot API（ForceReply + InlineKeyboard 互動式指令）
 - **Camoufox** — 反偵測瀏覽器（Firefox 基底），處理需 JS 渲染的平台
 - **ProcessGuardian** — 防止 409 polling 衝突，指數退避自動重試
-- **OpenCode CLI** + MiniMax M2.5 Free — AI 摘要與關鍵字增強（免費），DDG AI Chat 為備援
+- **OpenCode CLI** + 多模型路由 — 依複雜度自動選 flash（MIMO v2）/ standard（MiniMax M2.5）/ deep（Nemotron 3 Super），全免費
 - **知識系統** — 實體萃取、知識圖譜、缺口分析、Skill 自動生成、用戶偏好萃取、知識蒸餾、記憶整合
 - 所有長任務（timeline / monitor / learn / reclassify）採 fire-and-forget：先回覆「處理中」→ 背景執行 → 完成通知
 - 評論自動篩選：過濾純 emoji 和過短反應，只保留有意義的討論
@@ -202,7 +210,7 @@ npx tsc --noEmit # 型別檢查
 
 - 所有 TypeScript 檔案 **≤ 300 行**
 - **不使用任何 API SDK**（無 Anthropic SDK、無 OpenAI SDK）
-- LLM enrichment 來源：OpenCode CLI + MiniMax M2.5 Free（免費）→ DDG AI Chat（免費備援）
+- LLM enrichment 來源：OpenCode CLI 多模型路由（flash / standard / deep，全免費）→ DDG AI Chat（免費備援）
 - Enrichment 輸出過濾廢話與廣告語，保持中性專業語氣
 - 外部呼叫必須有 timeout（HTTP 30s / yt-dlp 120s / Obsidian 10s）
 - **輕量 Vault** — 影片預設不存入 Vault（`SAVE_VIDEOS=false`），僅保留原始 URL 連結
@@ -222,7 +230,9 @@ src/
 │   ├── monitor-command.ts      # /monitor + /search
 │   ├── knowledge-command.ts    # /analyze + /knowledge + /gaps + /skills
 │   ├── knowledge-query-command.ts # /recommend + /brief + /compare
-│   └── consolidate-command.ts  # /consolidate 記憶整合
+│   ├── consolidate-command.ts  # /consolidate 記憶整合
+│   ├── ask-command.ts          # /ask Vault 知識問答
+│   └── discover-command.ts     # /discover + /trending GitHub 探索
 ├── extractors/                 # 各平台內容擷取器
 │   ├── x-extractor.ts          # Twitter/X（fxTweet API）
 │   ├── threads-extractor.ts    # Threads（Camoufox，topic tag 偵測）
@@ -269,7 +279,8 @@ src/
     ├── fetch-with-timeout.ts   # 帶超時的 HTTP 請求
     ├── search-service.ts       # 搜尋服務（DDG + Camoufox）
     ├── ddg-chat.ts             # DuckDuckGo AI Chat 介面
-    ├── local-llm.ts            # LLM 統一入口（OpenCode → DDG Chat）
+    ├── local-llm.ts            # LLM 統一入口（多模型路由 → DDG Chat 備援）
+    ├── vision-llm.ts           # 圖片辨識（OpenCode gpt-5-nano）
     ├── url-canonicalizer.ts    # URL 正規化（去重用）
     └── camoufox-pool.ts        # 反偵測瀏覽器池（max 2, idle 10min）
 ```
