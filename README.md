@@ -24,7 +24,7 @@ GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 
 - **PDF 文件收集** — 直接傳 PDF 到 Telegram，自動擷取文字、分類、存入 Vault
 - **智慧分類** — 自動歸檔到對的 Obsidian 資料夾，支援 20+ 分類
 - **跨平台搜尋** — 在 Telegram 裡搜 DuckDuckGo + Reddit
-- **GitHub 探索** — `/discover` 搜尋專案、`/trending` 每日熱門掃描
+- **GitHub 探索** — `/discover` 搜尋專案或瀏覽每日熱門
 - **知識問答** — `/ask` 用 Vault 知識回答問題，AI 結合筆記上下文
 - **時間軸抓取** — 一次撈回某人最近的所有貼文
 - **知識系統** — 深度分析 Vault 筆記，萃取實體、洞察與關係圖譜，自動生成用戶偏好模型與知識蒸餾報告
@@ -121,30 +121,23 @@ npx camoufox-js fetch
 |------|------|
 | 傳送 URL | 自動擷取內容與評論，分類後存到 Vault |
 | 傳送 PDF | 自動擷取文字、AI 摘要、分類存入 Vault |
-| `/search <查詢>` | 網頁搜尋（DuckDuckGo，`/google` 為別名） |
+| `/search <查詢>` | 網頁搜尋（DuckDuckGo） |
 | `/monitor <關鍵字>` | 跨平台搜尋提及（Reddit + DuckDuckGo） |
 | `/timeline @用戶 [數量]` | 抓取用戶最近貼文（支援 Threads） |
 | `/ask <問題>` | 用 Vault 知識回答問題（AI 結合筆記上下文） |
-| `/discover <關鍵字>` | GitHub 專案探索 |
-| `/trending` | 每日熱門專案掃描（依關注領域） |
-| `/analyze` | 深度分析 Vault 知識 |
-| `/knowledge` | 查看知識庫摘要 |
-| `/recommend <主題>` | 推薦相關筆記 |
-| `/brief <主題>` | 主題知識簡報 |
-| `/compare <A> vs <B>` | 實體對比分析 |
-| `/gaps` | 知識缺口分析 |
-| `/skills` | 高密度主題 Skill 建議 |
-| `/preferences` | 用戶偏好模型（來源、分類、關鍵字統計） |
-| `/distill` | 知識蒸餾（核心原則 + 歸檔候選） |
-| `/consolidate` | 整合近期知識，發現跨筆記洞察 |
-| `/recent` | 本次啟動已儲存的內容 |
-| `/status` | Bot 運行狀態與統計 |
-| `/learn` | 重新掃描 Vault 更新分類規則 |
-| `/reclassify` | 重新分類所有 Vault 筆記 |
-| `/translate` | 批次翻譯英文/簡中筆記為繁體中文 |
+| `/knowledge` | 知識庫總覽（含缺口/技能/偏好/分析子按鈕） |
+| `/explore <主題>` | 知識探索（推薦筆記/簡報/對比，InlineKeyboard 選模式） |
+| `/digest` | 知識報告（精華摘要/蒸餾/跨筆記洞察，InlineKeyboard 選模式） |
+| `/discover <關鍵字>` | GitHub 專案探索（無參數=每日熱門掃描） |
+| `/learn` | Vault 學習（更新分類規則/重新分類/批次翻譯，InlineKeyboard 選操作） |
+| `/reprocess <路徑>` | 重新 AI 豐富現有筆記 |
+| `/retry` | 重試失敗的連結 |
+| `/subscribe @用戶` | 訂閱自動追蹤新內容 |
+| `/quality` | Vault 品質報告 |
+| `/status` | Bot 運行狀態與本次儲存統計 |
 | `/help` | 顯示說明 |
 
-> 需要參數的指令（如 `/search`、`/recommend`）從選單點選後會自動引導輸入。知識類指令還會顯示熱門主題按鈕供快速選擇。
+> 需要參數的指令（如 `/search`、`/explore`）從選單點選後會自動引導輸入。合併指令使用 InlineKeyboard 按鈕選擇子功能。
 
 </details>
 
@@ -228,11 +221,11 @@ src/
 │   ├── register-commands.ts    # 統一指令註冊 + InlineKeyboard callback
 │   ├── timeline-command.ts     # /timeline
 │   ├── monitor-command.ts      # /monitor + /search
-│   ├── knowledge-command.ts    # /analyze + /knowledge + /gaps + /skills
-│   ├── knowledge-query-command.ts # /recommend + /brief + /compare
-│   ├── consolidate-command.ts  # /consolidate 記憶整合
+│   ├── knowledge-command.ts    # /knowledge（含 gaps/skills/preferences/analyze 子按鈕）
+│   ├── knowledge-query-command.ts # /explore（推薦/簡報/對比）
+│   ├── digest-command.ts       # /digest（精華/蒸餾/整合）
 │   ├── ask-command.ts          # /ask Vault 知識問答
-│   └── discover-command.ts     # /discover + /trending GitHub 探索
+│   └── discover-command.ts     # /discover GitHub 探索（含熱門掃描）
 ├── extractors/                 # 各平台內容擷取器
 │   ├── x-extractor.ts          # Twitter/X（fxTweet API）
 │   ├── threads-extractor.ts    # Threads（Camoufox，topic tag 偵測）
@@ -268,8 +261,8 @@ src/
 │   ├── vault-learner.ts        # Vault 掃描學習
 │   ├── learn-command.ts        # /learn 指令
 │   ├── ai-enricher.ts          # OpenCode + MiniMax AI 摘要
-│   ├── reclassify-command.ts   # /reclassify 指令
-│   └── batch-translator.ts     # /translate 批次翻譯
+│   ├── reclassify-command.ts   # 重新分類（由 /learn 按鈕觸發）
+│   └── batch-translator.ts     # 批次翻譯（由 /learn 按鈕觸發）
 ├── vault/                      # Vault 維護工具
 │   └── reprocess-helpers.ts    # 重處理輔助（備份、進度追蹤、fallback 重分類）
 └── utils/
