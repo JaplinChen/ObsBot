@@ -4,7 +4,7 @@ import { classifyWithLearnedRules } from './learning/dynamic-classifier.js';
 // ── AI 子分類精煉：當通用 AI 命中時，用寬鬆關鍵詞嘗試歸入更精確的子分類 ──
 const AI_SUBCATEGORY_REFINEMENT: Array<{ name: string; keywords: string[] }> = [
   {
-    name: 'AI/Claude Code',
+    name: 'AI/Claude',
     keywords: ['claude code', 'cowork', 'claude cowork'],
   },
   {
@@ -87,7 +87,7 @@ function refineAISubcategory(title: string, body: string): string | null {
 const CATEGORIES: Array<{ name: string; keywords: string[] }> = [
   // ── AI 子分類（越精確越前面，通用 AI 排最後）──
   {
-    name: 'AI/Claude Code',
+    name: 'AI/Claude',
     keywords: [
       'claude code', 'cowork', 'claude cowork',
     ],
