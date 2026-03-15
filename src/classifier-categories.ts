@@ -11,12 +11,20 @@ export const CATEGORIES: CategoryRule[] = [
   // 越精確的排越前面
   // ══════════════════════════════════════════════════════
 
+  // ── 0. 辦公協作（claude cowork 比 claude 更精確，必須排前面）──
+  {
+    name: 'AI/辦公協作',
+    keywords: [
+      'claude cowork', 'cowork', 'openwork', '辦公協作', '協作辦公',
+      'feishu', '飛書',
+    ],
+  },
+
   // ── 1. 研究對話：具體工具 ──
   {
     name: 'AI/研究對話/Claude',
     keywords: [
-      'claude code', 'claude', 'anthropic', 'claude cowork',
-      'cowork', '辦公協作',
+      'claude code', 'claude', 'anthropic',
     ],
   },
   {
