@@ -27,10 +27,10 @@ function extractMeta(html: string, key: string): string {
   return '';
 }
 
-function extractReadmeMarkdown(html: string): string {
+function extractReadmeMarkdown(html: string, baseUrl?: string): string {
   const m = html.match(/<article[^>]*class=["'][^"']*markdown-body[^"']*["'][^>]*>([\s\S]*?)<\/article>/i);
   if (!m?.[1]) return '';
-  return htmlFragmentToMarkdown(m[1]);
+  return htmlFragmentToMarkdown(m[1], baseUrl);
 }
 
 function extractDefaultBranch(html: string): string {
@@ -102,7 +102,7 @@ export const githubExtractor: Extractor = {
       const kind = isPR ? 'PR' : 'Issue';
       title = `[${kind} #${number}] ${title}`;
     } else {
-      let readme = extractReadmeMarkdown(html);
+      let readme = extractReadmeMarkdown(html, url);
       if (readme) {
         const twFile = findTraditionalChineseReadme(readme);
         if (twFile) {

@@ -48,7 +48,7 @@ async function translateEnglishWithLocalLlm(
   title: string,
   text: string,
 ): Promise<TranslationResult | null> {
-  const textToTranslate = text.length > 3000 ? text.slice(0, 3000) : text;
+  const textToTranslate = text.length > 6000 ? text.slice(0, 6000) : text;
   const prompt = [
     'Translate the following English content to Traditional Chinese (zh-TW).',
     'Return ONLY valid JSON with keys: translatedTitle, translatedText.',
@@ -85,4 +85,18 @@ export async function translateIfNeeded(
   if (lang === 'zh-CN') return convertSimplifiedToTraditional(title, text);
   if (lang === 'en') return translateEnglishWithLocalLlm(title, text);
   return null;
+}
+
+/**
+ * Translate body content (e.g. GitHub README) to Traditional Chinese.
+ * Returns translated string or null if already zh-TW or translation fails.
+ */
+export async function translateBodyIfNeeded(body: string): Promise<string | null> {
+  const lang = detectLanguage(body.slice(0, 500));
+  if (lang === 'zh-TW' || lang === 'other') return null;
+  if (lang === 'zh-CN') return s2tw(body);
+
+  // English → zh-TW via LLM
+  const result = await translateEnglishWithLocalLlm('', body);
+  return result?.translatedText ?? null;
 }

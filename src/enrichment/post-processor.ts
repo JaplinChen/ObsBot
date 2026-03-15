@@ -7,7 +7,7 @@
 import type { ExtractedContent } from '../extractors/types.js';
 import { logger } from '../core/logger.js';
 import { extractUrlsFromText, enrichLinkedUrls, type UrlEntry } from './link-enricher.js';
-import { translateIfNeeded } from './translator.js';
+import { translateIfNeeded, translateBodyIfNeeded } from './translator.js';
 import { canonicalizeUrl } from '../utils/url-canonicalizer.js';
 
 export interface PostProcessOptions {
@@ -71,12 +71,15 @@ export async function postProcess(
       }),
     ]);
 
-  const [linkedResult, translationResult] = await Promise.allSettled([
+  const [linkedResult, translationResult, bodyTranslationResult] = await Promise.allSettled([
     urlEntries.length > 0
       ? withTimeout(enrichLinkedUrls(urlEntries), 18_000, '連結補充')
       : Promise.resolve(null),
     shouldTranslate
       ? withTimeout(translateIfNeeded(content.title, content.text), 15_000, '翻譯')
+      : Promise.resolve(null),
+    shouldTranslate && content.body
+      ? withTimeout(translateBodyIfNeeded(content.body), 15_000, 'Body 翻譯')
       : Promise.resolve(null),
   ]);
 
@@ -88,5 +91,10 @@ export async function postProcess(
   if (translationResult.status === 'fulfilled' && translationResult.value) {
     content.translation = translationResult.value;
     logger.info('post-process', '翻譯完成', { language: translationResult.value.detectedLanguage });
+  }
+
+  if (bodyTranslationResult.status === 'fulfilled' && bodyTranslationResult.value) {
+    content.body = bodyTranslationResult.value;
+    logger.info('post-process', 'Body 翻譯完成');
   }
 }
