@@ -31,6 +31,11 @@ GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 
 - **記憶整合** — 自動發現跨筆記知識關聯，LLM 語義合成洞察，每週自動生成整合報告
 - **相關筆記推薦** — 兩層演算法（實體圖譜 → 關鍵字比對）自動在筆記底部附加 `[[wikilink]]` 連結 + 生成索引
 - **內容雷達** — 根據 Vault 高頻關鍵字自動搜尋新內容，定期存入 Vault 並推送 Telegram 通知
+- **主動推理** — 每日自動生成知識摘要 + 趨勢關鍵字警報 + 久未更新分類提醒，推送到 Telegram
+- **自我修復** — 排程掃描 Vault 自動修復 HTML 殘留/壞路徑，Extractor 健康探測 + 降級告警
+- **品質基準** — enrichment 品質自動評分、平台成功率追蹤、`/benchmark` 查看品質報告
+- **OCR 文字辨識** — 截圖類圖片自動 OCR 提取文字，提升 AI 分析品質（需安裝 tesseract.js）
+- **分類回饋學習** — 用戶手動重分類時自動記錄校正，強化動態分類器準確度
 - **互動式指令** — 缺參數時自動引導輸入，知識類指令提供快捷按鈕
 - **多模型智慧路由** — 依內容複雜度自動選擇 flash / standard / deep 免費模型，兼顧速度與品質
 - **批次翻譯** — 英文/簡中筆記自動翻譯為繁體中文
@@ -136,6 +141,7 @@ npx camoufox-js fetch
 | `/retry` | 重試失敗的連結 |
 | `/subscribe @用戶` | 訂閱自動追蹤新內容 |
 | `/quality` | Vault 品質報告 |
+| `/benchmark` | enrichment 品質基準報告（評分趨勢/平台成功率） |
 | `/suggest` | 相關筆記推薦（自動連結，寫入筆記底部 + 索引） |
 | `/radar` | 內容雷達（自動搜尋+存入，on/off/auto/run/add/remove） |
 | `/status` | Bot 運行狀態與本次儲存統計 |
@@ -288,6 +294,18 @@ src/
 │   ├── radar-types.ts          # 型別定義
 │   ├── radar-store.ts          # 設定持久化 + 自動查詢生成
 │   └── radar-service.ts        # 背景排程引擎（DDG 搜尋 → Vault）
+├── proactive/                  # 主動推理（排程摘要 + 趨勢警報）
+│   ├── proactive-service.ts    # 排程推送 digest + 趨勢通知
+│   ├── trend-detector.ts       # 關鍵字頻率突增偵測 + 分類缺口
+│   ├── proactive-store.ts      # 設定持久化
+│   └── proactive-types.ts      # 型別定義
+├── monitoring/                 # 自我修復 + 品質基準
+│   ├── vault-healer.ts         # Vault 自動修復（HTML/路徑/空行）
+│   ├── extractor-probe.ts      # Extractor 健康探測
+│   ├── monitor-service.ts      # 排程監控服務
+│   ├── benchmark-scorer.ts     # enrichment 品質評分
+│   ├── benchmark-store.ts      # 品質資料持久化 + 報告生成
+│   └── health-types.ts         # 型別定義
 ├── vault/                      # Vault 維護工具
 │   ├── frontmatter-utils.ts    # 共用 frontmatter 解析
 │   ├── link-suggester.ts       # 相關筆記推薦（兩層 fallback）
