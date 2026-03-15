@@ -4,7 +4,7 @@
  */
 import { execSync, spawn } from 'node:child_process';
 
-const WAIT_SECONDS = 30;
+const WAIT_SECONDS = 8;
 const skipWait = process.argv.includes('--skip-wait');
 
 function log(msg: string): void {
