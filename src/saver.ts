@@ -174,7 +174,7 @@ export async function saveToVault(
     const rawCategory = content.category ?? '其他';
     const categoryParts = rawCategory
       .split('/')
-      .slice(0, 2)
+      .slice(0, 3)
       .map(p => p.replace(/[^a-zA-Z0-9\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\-_ ]/g, '').trim())
       .filter(p => p.length > 0);
     const folderPath = categoryParts.join('/') || '其他';

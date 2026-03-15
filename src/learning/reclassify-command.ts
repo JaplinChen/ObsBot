@@ -75,20 +75,20 @@ export async function executeReclassify(config: AppConfig): Promise<ReclassifyRe
     // Reclassify using title only (text passed as empty string)
     const newCategory = classifyContent(title, '');
 
-    const oldTop = storedCategory.split('/')[0];
-    const newTop = newCategory.split('/')[0];
+    if (storedCategory === newCategory) continue;
 
-    if (oldTop === newTop) continue;
-
-    // Compute the new directory: replace the current top-level folder name with new top
-    // e.g. baseDir/AI/工具/foo.md → baseDir/科技/工具/foo.md  (top only matters)
-    // Strategy: replace only the first segment after baseDir
+    // Compute the new path based on full category path
+    // e.g. baseDir/AI/工具/foo.md → baseDir/AI/研究對話/Claude/foo.md
     const relativeTail = filePath.slice(baseDir.length).replace(/\\/g, '/');
-    // relativeTail = /OldTop/…/file.md  or  /OldTop/file.md
     const segments = relativeTail.split('/').filter(Boolean);
-    // Replace first segment (old top-level category dir) with newTop
-    segments[0] = newTop;
-    const newFilePath = join(baseDir, ...segments);
+    const fileName = segments[segments.length - 1];
+    // Build new path from new category parts + original filename
+    const newCategoryParts = newCategory
+      .split('/')
+      .slice(0, 3)
+      .map(p => p.replace(/[^a-zA-Z0-9\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\-_ ]/g, '').trim())
+      .filter(p => p.length > 0);
+    const newFilePath = join(baseDir, ...newCategoryParts, fileName);
     const newDir = dirname(newFilePath);
 
     // Update frontmatter category
