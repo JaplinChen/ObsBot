@@ -6,7 +6,7 @@ import type { Context, Telegraf } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
 import { handleTimeline } from './timeline-command.js';
 import { handleMonitor, handleSearch } from './monitor-command.js';
-import { handleKnowledge, handleGaps, handleSkills, handleAnalyze } from './knowledge-command.js';
+import { handleKnowledge, handleGaps, handleSkills, handleAnalyze, handleDashboard } from './knowledge-command.js';
 import { handlePreferences, handleDistill } from './distill-command.js';
 import { handleConsolidate } from './consolidate-command.js';
 import { handleAsk } from './ask-command.js';
@@ -102,6 +102,7 @@ export function registerCommands(
       gaps: handleGaps,
       skills: handleSkills,
       preferences: handlePreferences,
+      dashboard: handleDashboard,
       analyze: handleAnalyze,
     };
     const handler = handlers[mode];

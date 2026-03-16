@@ -12,6 +12,7 @@ import { loadKnowledge } from '../knowledge/knowledge-store.js';
 import { aggregateKnowledge, formatKnowledgeSummary } from '../knowledge/knowledge-aggregator.js';
 import { detectKnowledgeGaps, formatGapsSummary } from '../knowledge/knowledge-graph.js';
 import { detectHighDensityTopics, formatTopicsSummary } from '../knowledge/skill-generator.js';
+import { buildToolDashboard, formatToolDashboard } from '../knowledge/tool-dashboard.js';
 
 /** /knowledge — show summary + sub-function buttons */
 export async function handleKnowledge(ctx: Context, _config: AppConfig): Promise<void> {
@@ -31,6 +32,9 @@ export async function handleKnowledge(ctx: Context, _config: AppConfig): Promise
     ],
     [
       Markup.button.callback('📊 偏好模型', 'kb:preferences'),
+      Markup.button.callback('🛠 工具儀表板', 'kb:dashboard'),
+    ],
+    [
       Markup.button.callback('🔍 深度分析', 'kb:analyze'),
     ],
   ]));
@@ -58,6 +62,18 @@ export async function handleSkills(ctx: Context, _config: AppConfig): Promise<vo
   aggregateKnowledge(knowledge);
   const topics = detectHighDensityTopics(knowledge);
   await ctx.reply(formatTopicsSummary(topics));
+}
+
+/** kb:dashboard callback — tool usage dashboard */
+export async function handleDashboard(ctx: Context, _config: AppConfig): Promise<void> {
+  const knowledge = await loadKnowledge();
+  if (Object.keys(knowledge.notes).length === 0) {
+    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    return;
+  }
+  aggregateKnowledge(knowledge);
+  const dashboard = buildToolDashboard(knowledge);
+  await ctx.reply(formatToolDashboard(dashboard).slice(0, 4000));
 }
 
 /** kb:analyze callback — guide to Claude Code */
