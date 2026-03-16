@@ -22,7 +22,7 @@ GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 
 
 - **丟連結就存檔** — 支援 10+ 平台，評論自動一起抓
 - **PDF 文件收集** — 直接傳 PDF 到 Telegram，自動擷取文字、分類、存入 Vault
-- **智慧分類** — 自動歸檔到對的 Obsidian 資料夾，支援 20+ 分類
+- **智慧分類** — 計分制分類器，自動歸檔到對的 Obsidian 資料夾，支援 20+ 分類 + exclude 防誤判
 - **跨平台搜尋** — 在 Telegram 裡搜 DuckDuckGo + Reddit
 - **GitHub 探索** — `/discover` 搜尋專案或瀏覽每日熱門
 - **知識問答** — `/ask` 用 Vault 知識回答問題，AI 結合筆記上下文
@@ -30,7 +30,7 @@ GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 
 - **知識系統** — 深度分析 Vault 筆記，萃取實體、洞察與關係圖譜，自動生成用戶偏好模型與知識蒸餾報告
 - **記憶整合** — 自動發現跨筆記知識關聯，LLM 語義合成洞察，每週自動生成整合報告
 - **相關筆記推薦** — 兩層演算法（實體圖譜 → 關鍵字比對）自動在筆記底部附加 `[[wikilink]]` 連結 + 生成索引
-- **內容雷達** — 根據 Vault 高頻關鍵字自動搜尋新內容，定期存入 Vault 並推送 Telegram 通知
+- **內容雷達** — 根據 Vault 高頻關鍵字自動搜尋新內容（DDG + GitHub Trending + RSS），定期存入 Vault 並推送 Telegram 通知
 - **主動推理** — 每日自動生成知識摘要 + 趨勢關鍵字警報 + 久未更新分類提醒，推送到 Telegram
 - **自我修復** — 排程掃描 Vault 自動修復 HTML 殘留/壞路徑，Extractor 健康探測 + 降級告警
 - **品質基準** — enrichment 品質自動評分、平台成功率追蹤、`/benchmark` 查看品質報告
@@ -158,7 +158,7 @@ npx camoufox-js fetch
 關掉 `啟動.bat` 視窗，重新雙擊啟動。
 
 **顯示「409 Conflict」？**
-上次 Bot 未正確關閉。關閉所有命令列視窗，等 10 秒再重新啟動。程式內建 ProcessGuardian 會自動重試。
+上次 Bot 未正確關閉。程式內建 ProcessGuardian 三段式自癒會自動處理：指數退避重試 → 自動 logOut + 冷卻 → 退出提示。通常無需人工介入。
 
 **抓取超時或失敗？**
 所有外部請求皆有超時保護（HTTP 30s / 影片 120s / 存檔 10s）。如果 DuckDuckGo 被限流，搜尋會自動降級到 Camoufox。
@@ -201,7 +201,7 @@ npx tsc --noEmit # 型別檢查
 - **TypeScript** + ESM（`tsx` 執行）
 - **Telegraf** — Telegram Bot API（ForceReply + InlineKeyboard 互動式指令）
 - **Camoufox** — 反偵測瀏覽器（Firefox 基底），處理需 JS 渲染的平台
-- **ProcessGuardian** — 防止 409 polling 衝突，指數退避自動重試
+- **ProcessGuardian** — 三段式 409 自癒（指數退避 → 自動 logOut + 冷卻 → 退出）+ 殭屍進程自動清理
 - **OpenCode CLI** + 多模型路由 — 依複雜度自動選 flash（MIMO v2）/ standard（MiniMax M2.5）/ deep（Nemotron 3 Super），全免費
 - **知識系統** — 實體萃取、知識圖譜、缺口分析、Skill 自動生成、用戶偏好萃取、知識蒸餾、記憶整合
 - 所有長任務（timeline / monitor / learn / reclassify）採 fire-and-forget：先回覆「處理中」→ 背景執行 → 完成通知
@@ -241,7 +241,7 @@ src/
 ├── bot.ts                      # Telegram Bot（ForceReply 攔截 + URL 處理）
 ├── classifier.ts               # 內容智慧分類（20+ 分類）
 ├── saver.ts                    # Obsidian 存檔 + 去重快取
-├── process-guardian.ts         # 409 衝突自動重試 + PID lockfile
+├── process-guardian.ts         # 三段式 409 自癒 + 殭屍清理 + PID lockfile
 ├── commands/
 │   ├── register-commands.ts    # 統一指令註冊 + InlineKeyboard callback
 │   ├── timeline-command.ts     # /timeline
@@ -293,7 +293,8 @@ src/
 ├── radar/                      # 內容雷達（自動搜尋+存入）
 │   ├── radar-types.ts          # 型別定義
 │   ├── radar-store.ts          # 設定持久化 + 自動查詢生成
-│   └── radar-service.ts        # 背景排程引擎（DDG 搜尋 → Vault）
+│   ├── radar-service.ts        # 背景排程引擎（多來源 → Vault）
+│   └── sources/                # 可擴展來源（DDG、GitHub Trending、RSS）
 ├── proactive/                  # 主動推理（排程摘要 + 趨勢警報）
 │   ├── proactive-service.ts    # 排程推送 digest + 趨勢通知
 │   ├── trend-detector.ts       # 關鍵字頻率突增偵測 + 分類缺口
