@@ -15,6 +15,10 @@ import { logger } from '../core/logger.js';
 import { githubTrendingSource } from './sources/github-trending.js';
 import { rssSource } from './sources/rss-source.js';
 import type { RadarSourceResult } from './sources/source-types.js';
+import type { ToolEntry } from './wall-types.js';
+import { buildToolIndex, matchNewTool } from './wall-index.js';
+import { loadWallConfig, addPendingMatch } from './wall-service.js';
+import { loadKnowledge } from '../knowledge/knowledge-store.js';
 
 /** Fetch candidates depending on query type. */
 async function fetchCandidates(
@@ -40,6 +44,7 @@ async function runQuery(
   query: RadarConfig['queries'][0],
   config: AppConfig,
   maxResults: number,
+  wallToolIndex?: ToolEntry[] | null,
 ): Promise<RadarResult> {
   const result: RadarResult = { query, saved: 0, skipped: 0, errors: 0 };
 
@@ -69,6 +74,17 @@ async function runQuery(
           result.skipped++;
         } else {
           result.saved++;
+
+          // Wall: match new tool against existing index
+          if (wallToolIndex && wallToolIndex.length > 0) {
+            try {
+              const kw = content.enrichedKeywords ?? [];
+              const match = matchNewTool(
+                content.title, kw, content.category ?? '', sr.url, wallToolIndex,
+              );
+              if (match) await addPendingMatch(match);
+            } catch { /* best-effort */ }
+          }
         }
       } catch (err) {
         result.errors++;
@@ -129,6 +145,16 @@ export async function runRadarCycle(
 ): Promise<RadarResult[]> {
   if (radarConfig.queries.length === 0) return [];
 
+  // Lazy-load tool index for wall matching
+  let toolIndex: ToolEntry[] | null = null;
+  try {
+    const wallConfig = await loadWallConfig();
+    if (wallConfig.enabled) {
+      const knowledge = await loadKnowledge();
+      toolIndex = buildToolIndex(knowledge);
+    }
+  } catch { /* wall matching is best-effort */ }
+
   logger.info('radar', '開始掃描', { queries: radarConfig.queries.length });
   const results: RadarResult[] = [];
   let totalSaved = 0;
@@ -138,7 +164,7 @@ export async function runRadarCycle(
 
     const remaining = radarConfig.maxTotalPerCycle - totalSaved;
     const maxResults = Math.min(radarConfig.maxResultsPerQuery, remaining);
-    const result = await runQuery(query, config, maxResults);
+    const result = await runQuery(query, config, maxResults, toolIndex);
     results.push(result);
     totalSaved += result.saved;
   }

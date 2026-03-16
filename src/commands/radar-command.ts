@@ -13,12 +13,20 @@ import type { AppConfig } from '../utils/config.js';
 import type { RadarQueryType } from '../radar/radar-types.js';
 import { loadRadarConfig, saveRadarConfig, addQuery, removeQuery, autoGenerateQueries } from '../radar/radar-store.js';
 import { runRadarCycle } from '../radar/radar-service.js';
+import { handleWall } from '../radar/wall-command.js';
 import { logger } from '../core/logger.js';
 
 export async function handleRadar(ctx: Context, config: AppConfig): Promise<void> {
   const text = (ctx.message && 'text' in ctx.message ? ctx.message.text : '') ?? '';
   const arg = text.replace(/^\/radar\s*/, '').trim();
   const radarConfig = await loadRadarConfig();
+
+  // /radar wall [subcommand]
+  if (arg.startsWith('wall')) {
+    const subArg = arg.slice(4).trim();
+    await handleWall(ctx, config, subArg);
+    return;
+  }
 
   // /radar (no args) → show status with inline keyboard
   if (!arg) {
@@ -51,6 +59,7 @@ export async function handleRadar(ctx: Context, config: AppConfig): Promise<void
       ],
       [
         Markup.button.callback('▶️ 立即執行', 'radar:run'),
+        Markup.button.callback('🧱 情報牆', 'radar:wall'),
       ],
     ];
 
@@ -162,7 +171,9 @@ export async function handleRadar(ctx: Context, config: AppConfig): Promise<void
     '/radar add rss <URL> — 新增 RSS 來源\n' +
     '/radar remove <id> — 移除查詢\n' +
     '/radar auto — 從 Vault 自動生成\n' +
-    '/radar run — 立即執行',
+    '/radar run — 立即執行\n' +
+    '/radar wall — 工具情報牆\n' +
+    '/radar wall active|dormant|match — 篩選檢視',
   );
 }
 
@@ -183,6 +194,11 @@ export async function handleRadarAction(ctx: Context, action: string, config: Ap
     await saveRadarConfig(radarConfig);
     const lines = added.map(q => `• ${q.keywords.join(' ')}`);
     await ctx.reply(`已生成 ${added.length} 個查詢\n${lines.join('\n')}`);
+    return;
+  }
+
+  if (action === 'wall') {
+    await handleWall(ctx, config, '');
     return;
   }
 

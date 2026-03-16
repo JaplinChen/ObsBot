@@ -15,6 +15,7 @@ import { loadRadarConfig } from './radar/radar-store.js';
 import { startRadarChecker } from './radar/radar-service.js';
 import { startProactiveService } from './proactive/proactive-service.js';
 import { startMonitorService } from './monitoring/monitor-service.js';
+import { startWallService } from './radar/wall-service.js';
 
 const config = loadConfig();
 registerAllExtractors();
@@ -78,6 +79,10 @@ startProactiveService(bot, config)
 // Start self-healing monitoring service
 startMonitorService(bot, config)
   .catch((e) => logger.warn('monitor', '啟動監控服務失敗', { message: (e as Error).message }));
+
+// Start tool wall intelligence service
+startWallService(bot, config)
+  .catch((e) => logger.warn('wall', '啟動情報牆失敗', { message: (e as Error).message }));
 
 const forceMode = process.argv.includes('--force');
 new ProcessGuardian(bot, forceMode).launch();

@@ -10,6 +10,8 @@ import { analyzeVaultTrends } from './trend-detector.js';
 import { loadProactiveConfig, saveProactiveConfig } from './proactive-store.js';
 import { loadRadarConfig } from '../radar/radar-store.js';
 import type { RadarCycleSummary } from '../radar/radar-types.js';
+import { loadWallConfig } from '../radar/wall-service.js';
+import { formatWallSummaryForDigest } from '../radar/wall-service.js';
 import { logger } from '../core/logger.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 
@@ -28,13 +30,18 @@ function formatRadarSection(summary: RadarCycleSummary | undefined): string[] {
 }
 
 /** Build formatted digest message for Telegram */
-function formatDigestMessage(digest: ProactiveDigest, radarSummary?: RadarCycleSummary): string {
+function formatDigestMessage(
+  digest: ProactiveDigest, radarSummary?: RadarCycleSummary, wallLines?: string[],
+): string {
   const lines: string[] = ['📊 每日知識摘要', ''];
   lines.push(`📅 ${digest.period} | 共 ${digest.totalNotes} 篇新筆記`);
   lines.push('');
 
   // Radar auto-discovery section
   lines.push(...formatRadarSection(radarSummary));
+
+  // Wall tool matches section
+  if (wallLines && wallLines.length > 0) lines.push(...wallLines);
 
   // Category breakdown
   if (digest.categoryBreakdown.length > 0) {
@@ -163,7 +170,14 @@ async function runDigestCycle(
     const radarConfig = await loadRadarConfig();
     const radarSummary = radarConfig.lastCycleResults;
 
-    const message = formatDigestMessage(digest, radarSummary);
+    // Load wall config for tool match section
+    let wallLines: string[] = [];
+    try {
+      const wallConfig = await loadWallConfig();
+      wallLines = formatWallSummaryForDigest(wallConfig);
+    } catch { /* best-effort */ }
+
+    const message = formatDigestMessage(digest, radarSummary, wallLines);
     const userId = config.allowedUserIds?.values().next().value;
     if (userId) {
       await bot.telegram.sendMessage(userId, message.slice(0, 4000));
