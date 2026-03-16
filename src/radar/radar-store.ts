@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { logger } from '../core/logger.js';
 import { scanVaultNotes } from '../learning/vault-learner.js';
 import { computeFormattingPatterns } from '../learning/vault-learner.js';
-import type { RadarConfig, RadarQuery } from './radar-types.js';
+import type { RadarConfig, RadarQuery, RadarQueryType } from './radar-types.js';
 import { createEmptyConfig } from './radar-types.js';
 
 const STORE_PATH = join(process.cwd(), 'data', 'radar-config.json');
@@ -34,9 +34,15 @@ export async function saveRadarConfig(config: RadarConfig): Promise<void> {
   logger.info('radar', '已儲存設定', { queries: config.queries.length });
 }
 
-export function addQuery(config: RadarConfig, keywords: string[], source: 'auto' | 'manual' = 'manual'): RadarQuery {
+export function addQuery(
+  config: RadarConfig,
+  keywords: string[],
+  source: 'auto' | 'manual' = 'manual',
+  type: RadarQueryType = 'search',
+): RadarQuery {
   const query: RadarQuery = {
     id: randomUUID().slice(0, 8),
+    type,
     keywords,
     source,
     addedAt: new Date().toISOString(),
@@ -71,7 +77,7 @@ export async function autoGenerateQueries(
 
     if (meaningful.length < 2) continue;
 
-    const query = addQuery(config, meaningful, 'auto');
+    const query = addQuery(config, meaningful, 'auto', 'search');
     added.push(query);
 
     // Limit total auto queries

@@ -8,14 +8,33 @@ import type { ProactiveConfig, ProactiveDigest } from './proactive-types.js';
 import { DEFAULT_PROACTIVE_CONFIG } from './proactive-types.js';
 import { analyzeVaultTrends } from './trend-detector.js';
 import { loadProactiveConfig, saveProactiveConfig } from './proactive-store.js';
+import { loadRadarConfig } from '../radar/radar-store.js';
+import type { RadarCycleSummary } from '../radar/radar-types.js';
 import { logger } from '../core/logger.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 
+/** Format radar cycle summary for digest. */
+function formatRadarSection(summary: RadarCycleSummary | undefined): string[] {
+  if (!summary || summary.totalSaved === 0) return [];
+
+  const lines: string[] = ['📡 【雷達自動發現】'];
+  const parts: string[] = [];
+  if (summary.byType.search > 0) parts.push(`搜尋 ${summary.byType.search} 篇`);
+  if (summary.byType.github > 0) parts.push(`GitHub ${summary.byType.github} 篇`);
+  if (summary.byType.rss > 0) parts.push(`RSS ${summary.byType.rss} 篇`);
+  lines.push(`  共 ${summary.totalSaved} 篇：${parts.join('、')}`);
+  lines.push('');
+  return lines;
+}
+
 /** Build formatted digest message for Telegram */
-function formatDigestMessage(digest: ProactiveDigest): string {
+function formatDigestMessage(digest: ProactiveDigest, radarSummary?: RadarCycleSummary): string {
   const lines: string[] = ['📊 每日知識摘要', ''];
   lines.push(`📅 ${digest.period} | 共 ${digest.totalNotes} 篇新筆記`);
   lines.push('');
+
+  // Radar auto-discovery section
+  lines.push(...formatRadarSection(radarSummary));
 
   // Category breakdown
   if (digest.categoryBreakdown.length > 0) {
@@ -140,7 +159,11 @@ async function runDigestCycle(
     // Best-effort AI insight
     digest.summary = await generateDigestInsight(digest);
 
-    const message = formatDigestMessage(digest);
+    // Load radar cycle summary for integrated report
+    const radarConfig = await loadRadarConfig();
+    const radarSummary = radarConfig.lastCycleResults;
+
+    const message = formatDigestMessage(digest, radarSummary);
     const userId = config.allowedUserIds?.values().next().value;
     if (userId) {
       await bot.telegram.sendMessage(userId, message.slice(0, 4000));

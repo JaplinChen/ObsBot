@@ -17,12 +17,39 @@ function killAllNode(): number {
     const list = execSync('tasklist /FI "IMAGENAME eq node.exe" /FO CSV', {
       encoding: 'utf-8',
     });
-    // Count node processes (excluding header and current process)
     const lines = list.split('\n').filter((l) => l.includes('node.exe'));
     if (lines.length === 0) return 0;
 
     execSync('taskkill /F /IM node.exe', { stdio: 'ignore' });
     return lines.length;
+  } catch {
+    return 0;
+  }
+}
+
+function cleanOrphanNodeProcesses(): number {
+  try {
+    const csv = execSync(
+      'wmic process where "name=\'node.exe\'" get ProcessId,ParentProcessId /format:csv',
+      { encoding: 'utf-8', timeout: 5_000 },
+    );
+    let killed = 0;
+    for (const line of csv.split('\n')) {
+      const parts = line.trim().split(',');
+      if (parts.length < 3) continue;
+      const parentPid = Number(parts[1]);
+      const pid = Number(parts[2]);
+      if (!pid || pid === process.pid) continue;
+
+      // Check if parent is dead
+      try { process.kill(parentPid, 0); } catch {
+        try {
+          execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+          killed++;
+        } catch { /* ignore */ }
+      }
+    }
+    return killed;
   } catch {
     return 0;
   }
@@ -67,6 +94,10 @@ function sleep(seconds: number): Promise<void> {
 
 async function main(): Promise<void> {
   log('🔄 GetThreads 重啟開始');
+
+  // Step 0: Clean orphan processes
+  const orphans = cleanOrphanNodeProcesses();
+  if (orphans > 0) log(`🧹 清除 ${orphans} 個殭屍 node 進程`);
 
   // Step 1: Kill
   const killed = killAllNode();

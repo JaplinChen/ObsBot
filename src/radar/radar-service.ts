@@ -1,19 +1,41 @@
 /**
  * Content radar background service — periodically searches for new content
  * based on vault keywords and auto-saves to Obsidian vault.
- * Pattern: mirrors subscription-checker.ts
+ * Supports multiple source types: DDG search, GitHub trending, RSS feeds.
  */
 import type { Telegraf } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
-import type { RadarConfig, RadarResult } from './radar-types.js';
+import type { RadarConfig, RadarResult, RadarCycleSummary, RadarQueryType } from './radar-types.js';
 import { saveRadarConfig } from './radar-store.js';
 import { webSearch } from '../utils/search-service.js';
 import { findExtractor } from '../utils/url-parser.js';
 import { classifyContent } from '../classifier.js';
 import { saveToVault, isDuplicateUrl } from '../saver.js';
 import { logger } from '../core/logger.js';
+import { githubTrendingSource } from './sources/github-trending.js';
+import { rssSource } from './sources/rss-source.js';
+import type { RadarSourceResult } from './sources/source-types.js';
 
-/** Run a single radar query: search → extract → classify → save */
+/** Fetch candidates depending on query type. */
+async function fetchCandidates(
+  type: RadarQueryType,
+  keywords: string[],
+  maxResults: number,
+): Promise<RadarSourceResult[]> {
+  switch (type) {
+    case 'github':
+      return githubTrendingSource.fetch(keywords, maxResults);
+    case 'rss':
+      return rssSource.fetch(keywords, maxResults);
+    case 'search':
+    default:
+      return (await webSearch(keywords.join(' '), maxResults)).map(r => ({
+        url: r.url, title: r.title, snippet: r.snippet,
+      }));
+  }
+}
+
+/** Run a single radar query: fetch → extract → classify → save */
 async function runQuery(
   query: RadarConfig['queries'][0],
   config: AppConfig,
@@ -22,10 +44,10 @@ async function runQuery(
   const result: RadarResult = { query, saved: 0, skipped: 0, errors: 0 };
 
   try {
-    const searchResults = await webSearch(query.keywords.join(' '), maxResults);
-    if (searchResults.length === 0) return result;
+    const candidates = await fetchCandidates(query.type ?? 'search', query.keywords, maxResults);
+    if (candidates.length === 0) return result;
 
-    for (const sr of searchResults) {
+    for (const sr of candidates) {
       try {
         // Dedup check
         const existing = await isDuplicateUrl(sr.url, config.vaultPath);
@@ -68,6 +90,39 @@ async function runQuery(
   return result;
 }
 
+/** Build cycle summary for proactive digest integration. */
+function buildCycleSummary(results: RadarResult[]): RadarCycleSummary {
+  const byType: Record<RadarQueryType, number> = { search: 0, github: 0, rss: 0 };
+  let totalSaved = 0;
+  let totalSkipped = 0;
+  let totalErrors = 0;
+
+  for (const r of results) {
+    const qType = r.query.type ?? 'search';
+    byType[qType] = (byType[qType] ?? 0) + r.saved;
+    totalSaved += r.saved;
+    totalSkipped += r.skipped;
+    totalErrors += r.errors;
+  }
+
+  return {
+    timestamp: new Date().toISOString(),
+    totalSaved,
+    totalSkipped,
+    totalErrors,
+    byType,
+  };
+}
+
+/** Format source type label for display. */
+function sourceLabel(type: RadarQueryType): string {
+  switch (type) {
+    case 'github': return 'GitHub';
+    case 'rss': return 'RSS';
+    default: return '搜尋';
+  }
+}
+
 /** Run a full radar cycle across all queries */
 export async function runRadarCycle(
   bot: Telegraf, config: AppConfig, radarConfig: RadarConfig,
@@ -88,6 +143,8 @@ export async function runRadarCycle(
     totalSaved += result.saved;
   }
 
+  // Save cycle summary for proactive digest
+  radarConfig.lastCycleResults = buildCycleSummary(results);
   radarConfig.lastRunAt = new Date().toISOString();
   await saveRadarConfig(radarConfig);
 
@@ -98,7 +155,11 @@ export async function runRadarCycle(
       const lines = [`🔍 內容雷達：發現 ${totalSaved} 篇新內容`, ''];
       for (const r of results) {
         if (r.saved > 0) {
-          lines.push(`• ${r.saved} 篇 — 搜尋「${r.query.keywords.join(' ')}」`);
+          const label = sourceLabel(r.query.type ?? 'search');
+          const desc = r.query.type === 'rss'
+            ? r.query.keywords[0]
+            : r.query.keywords.join(' ');
+          lines.push(`• [${label}] ${r.saved} 篇 — ${desc}`);
         }
       }
       const totalSkipped = results.reduce((s, r) => s + r.skipped, 0);

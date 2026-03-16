@@ -10,6 +10,7 @@
 import type { Context } from 'telegraf';
 import { Markup } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
+import type { RadarQueryType } from '../radar/radar-types.js';
 import { loadRadarConfig, saveRadarConfig, addQuery, removeQuery, autoGenerateQueries } from '../radar/radar-store.js';
 import { runRadarCycle } from '../radar/radar-service.js';
 import { logger } from '../core/logger.js';
@@ -37,7 +38,9 @@ export async function handleRadar(ctx: Context, config: AppConfig): Promise<void
       lines.push('', '查詢列表：');
       for (const q of radarConfig.queries) {
         const src = q.source === 'auto' ? '🤖' : '✍️';
-        lines.push(`${src} [${q.id}] ${q.keywords.join(' ')}`);
+        const typeTag = q.type === 'github' ? '🐙' : q.type === 'rss' ? '📡' : '🔍';
+        const desc = q.type === 'rss' ? q.keywords[0] : q.keywords.join(' ');
+        lines.push(`${src}${typeTag} [${q.id}] ${desc}`);
       }
     }
 
@@ -101,6 +104,30 @@ export async function handleRadar(ctx: Context, config: AppConfig): Promise<void
     return;
   }
 
+  // /radar add github <language?>
+  if (arg.startsWith('add github')) {
+    const lang = arg.slice(10).trim() || '';
+    const keywords = lang ? [lang] : [];
+    const query = addQuery(radarConfig, keywords, 'manual', 'github');
+    await saveRadarConfig(radarConfig);
+    const desc = lang || '所有語言';
+    await ctx.reply(`✅ 已新增 GitHub Trending [${query.id}]: ${desc}`);
+    return;
+  }
+
+  // /radar add rss <url>
+  if (arg.startsWith('add rss ')) {
+    const feedUrl = arg.slice(8).trim();
+    if (!feedUrl.startsWith('http')) {
+      await ctx.reply('用法: /radar add rss https://example.com/feed.xml');
+      return;
+    }
+    const query = addQuery(radarConfig, [feedUrl], 'manual', 'rss');
+    await saveRadarConfig(radarConfig);
+    await ctx.reply(`✅ 已新增 RSS 來源 [${query.id}]: ${feedUrl}`);
+    return;
+  }
+
   // /radar add <keywords>
   if (arg.startsWith('add ')) {
     const keywords = arg.slice(4).trim().split(/\s+/);
@@ -108,7 +135,7 @@ export async function handleRadar(ctx: Context, config: AppConfig): Promise<void
       await ctx.reply('用法: /radar add <關鍵字1> <關鍵字2> ...');
       return;
     }
-    const query = addQuery(radarConfig, keywords, 'manual');
+    const query = addQuery(radarConfig, keywords, 'manual', 'search');
     await saveRadarConfig(radarConfig);
     await ctx.reply(`✅ 已新增查詢 [${query.id}]: ${keywords.join(' ')}`);
     return;
@@ -126,7 +153,17 @@ export async function handleRadar(ctx: Context, config: AppConfig): Promise<void
     return;
   }
 
-  await ctx.reply('用法: /radar [on|off|auto|run|add <關鍵字>|remove <id>]');
+  await ctx.reply(
+    '用法:\n' +
+    '/radar — 查看狀態\n' +
+    '/radar on|off — 啟用/停用\n' +
+    '/radar add <關鍵字> — 新增搜尋查詢\n' +
+    '/radar add github [語言] — 新增 GitHub Trending\n' +
+    '/radar add rss <URL> — 新增 RSS 來源\n' +
+    '/radar remove <id> — 移除查詢\n' +
+    '/radar auto — 從 Vault 自動生成\n' +
+    '/radar run — 立即執行',
+  );
 }
 
 /** Handle InlineKeyboard callbacks for radar */
