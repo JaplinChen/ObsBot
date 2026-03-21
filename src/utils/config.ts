@@ -3,6 +3,13 @@ import { config as dotenvConfig } from 'dotenv';
 
 dotenvConfig({ override: true });
 
+function warnNoAuth(): void {
+  console.warn(
+    '[WARN] ALLOWED_USER_IDS 未設定，任何 Telegram 用戶皆可使用此 Bot。' +
+    '如需限制存取，請在 .env 中設定 ALLOWED_USER_IDS=你的用戶ID',
+  );
+}
+
 export interface AppConfig {
   botToken: string;
   vaultPath: string;
@@ -41,6 +48,8 @@ export function loadConfig(): AppConfig {
       )
     : undefined;
 
+  if (!allowedUserIds) warnNoAuth();
+
   return {
     botToken,
     vaultPath,
@@ -49,4 +58,9 @@ export function loadConfig(): AppConfig {
     maxLinkedUrls: parseInt(process.env.MAX_LINKED_URLS ?? '5', 10) || 5,
     saveVideos: process.env.SAVE_VIDEOS === 'true',
   };
+}
+
+/** Get the primary (first) owner user ID for sending notifications. */
+export function getOwnerUserId(config: AppConfig): number | undefined {
+  return config.allowedUserIds?.values().next().value;
 }

@@ -88,7 +88,7 @@ export function registerDocumentHandler(
       // Build content and run through pipeline
       const content = buildContent(fileName, text);
       await enrichExtractedContent(content, config);
-      const result = await saveExtractedContent(content, config.vaultPath);
+      const result = await saveExtractedContent(content, config.vaultPath, { saveVideos: config.saveVideos });
 
       stats.saved++;
       if (stats.recent.length >= 50) stats.recent.shift();

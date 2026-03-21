@@ -27,7 +27,7 @@ async function processUrl(
   try {
     const content = await extractContentWithComments(url, extractor as ExtractorWithComments);
     await enrichExtractedContent(content, config);
-    const result = await saveExtractedContent(content, config.vaultPath);
+    const result = await saveExtractedContent(content, config.vaultPath, { saveVideos: config.saveVideos });
 
     if (!result.duplicate) {
       stats.saved++;

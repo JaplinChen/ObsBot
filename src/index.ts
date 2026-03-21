@@ -1,4 +1,4 @@
-import { loadConfig } from './utils/config.js';
+import { loadConfig, getOwnerUserId } from './utils/config.js';
 import { logger } from './core/logger.js';
 import { registerAllExtractors } from './extractors/index.js';
 import { createBot } from './bot.js';
@@ -16,6 +16,7 @@ import { startRadarChecker } from './radar/radar-service.js';
 import { startProactiveService } from './proactive/proactive-service.js';
 import { startMonitorService } from './monitoring/monitor-service.js';
 import { startWallService } from './radar/wall-service.js';
+import { registerTimers } from './core/service-registry.js';
 
 const config = loadConfig();
 registerAllExtractors();
@@ -27,7 +28,7 @@ bot.catch((err: unknown) => {
 });
 
 // Load existing rules and knowledge immediately (fast, from disk)
-initDynamicClassifier(RULES_PATH).catch(() => {});
+initDynamicClassifier(RULES_PATH).catch((e) => logger.warn('classify', '分類器初始化失敗', { message: (e as Error).message }));
 loadKnowledge()
   .then(async (knowledge) => {
     if (!shouldAutoConsolidate(knowledge)) return;
@@ -39,7 +40,7 @@ loadKnowledge()
         await saveConsolidationNote(config.vaultPath, report);
         await saveKnowledge(knowledge);
         const text = formatConsolidationReport(report);
-        const userId = config.allowedUserIds?.values().next().value;
+        const userId = getOwnerUserId(config);
         if (userId) {
           await bot.telegram.sendMessage(userId, `🧠 自動知識整合完成\n\n${text.slice(0, 3900)}`);
         }
@@ -49,7 +50,7 @@ loadKnowledge()
       logger.warn('consolidate', '自動整合失敗', { message: (e as Error).message });
     }
   })
-  .catch(() => {});
+  .catch((e) => logger.warn('knowledge', '知識庫載入失敗', { message: (e as Error).message }));
 
 // Re-scan vault in background to update rules (slow, but non-blocking)
 runVaultLearner(config.vaultPath, RULES_PATH)
@@ -59,7 +60,9 @@ runVaultLearner(config.vaultPath, RULES_PATH)
 // Start subscription checker in background
 loadSubscriptions()
   .then((store) => {
-    if (store.subscriptions.length > 0) startSubscriptionChecker(bot, config, store);
+    if (store.subscriptions.length > 0) {
+      registerTimers(startSubscriptionChecker(bot, config, store));
+    }
   })
   .catch((e) => logger.warn('subscribe', '載入訂閱失敗', { message: (e as Error).message }));
 
@@ -67,21 +70,24 @@ loadSubscriptions()
 loadRadarConfig()
   .then((radarConfig) => {
     if (radarConfig.enabled && radarConfig.queries.length > 0) {
-      startRadarChecker(bot, config, radarConfig);
+      registerTimers(startRadarChecker(bot, config, radarConfig));
     }
   })
   .catch((e) => logger.warn('radar', '載入雷達失敗', { message: (e as Error).message }));
 
 // Start proactive intelligence service
 startProactiveService(bot, config)
+  .then((ts) => registerTimers(...ts))
   .catch((e) => logger.warn('proactive', '啟動主動推理失敗', { message: (e as Error).message }));
 
 // Start self-healing monitoring service
 startMonitorService(bot, config)
+  .then((ts) => registerTimers(...ts))
   .catch((e) => logger.warn('monitor', '啟動監控服務失敗', { message: (e as Error).message }));
 
 // Start tool wall intelligence service
 startWallService(bot, config)
+  .then((ts) => registerTimers(...ts))
   .catch((e) => logger.warn('wall', '啟動情報牆失敗', { message: (e as Error).message }));
 
 const forceMode = process.argv.includes('--force');

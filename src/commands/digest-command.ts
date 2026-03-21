@@ -7,11 +7,12 @@
  */
 import type { Context } from 'telegraf';
 import { Markup } from 'telegraf';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { AppConfig } from '../utils/config.js';
 import { logger } from '../core/logger.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
+import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 
 interface NoteSummary {
   title: string;
@@ -34,45 +35,30 @@ async function collectRecentNotes(
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dayLimit);
   const results: NoteSummary[] = [];
+  const files = await getAllMdFiles(rootDir);
 
-  async function scanDir(dir: string): Promise<void> {
-    let entries: import('node:fs').Dirent<string>[];
+  for (const fullPath of files) {
     try {
-      entries = await readdir(dir, { withFileTypes: true, encoding: 'utf-8' });
-    } catch { return; }
+      const raw = await readFile(fullPath, 'utf-8');
+      const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      if (!fmMatch) continue;
 
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === 'attachments' || entry.name === '知識整合') continue;
-        await scanDir(fullPath);
-        continue;
-      }
-      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+      const frontmatter = fmMatch[1];
+      const dateStr = fm(frontmatter, 'date');
+      if (!dateStr) continue;
 
-      try {
-        const raw = await readFile(fullPath, 'utf-8');
-        const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-        if (!fmMatch) continue;
+      const noteDate = new Date(dateStr);
+      if (isNaN(noteDate.getTime()) || noteDate < cutoff) continue;
 
-        const frontmatter = fmMatch[1];
-        const dateStr = fm(frontmatter, 'date');
-        if (!dateStr) continue;
+      const title = fm(frontmatter, 'title');
+      const category = fm(frontmatter, 'category') || '其他';
+      const summary = fm(frontmatter, 'summary');
+      if (!title) continue;
 
-        const noteDate = new Date(dateStr);
-        if (isNaN(noteDate.getTime()) || noteDate < cutoff) continue;
-
-        const title = fm(frontmatter, 'title');
-        const category = fm(frontmatter, 'category') || '其他';
-        const summary = fm(frontmatter, 'summary');
-        if (!title) continue;
-
-        results.push({ title, category, summary, date: dateStr.slice(0, 10) });
-      } catch { /* skip */ }
-    }
+      results.push({ title, category, summary, date: dateStr.slice(0, 10) });
+    } catch { /* skip */ }
   }
 
-  await scanDir(rootDir);
   return results;
 }
 

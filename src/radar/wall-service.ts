@@ -3,7 +3,7 @@
  * Generates reports on tool activity, dormant tools, and new tool matches.
  */
 import type { Telegraf } from 'telegraf';
-import type { AppConfig } from '../utils/config.js';
+import { type AppConfig, getOwnerUserId } from '../utils/config.js';
 import type { WallConfig, WallReport, ToolActivity, ToolMatchResult } from './wall-types.js';
 import { DEFAULT_WALL_CONFIG } from './wall-types.js';
 import { buildToolIndex, computeToolActivity, matchNewTool } from './wall-index.js';
@@ -180,7 +180,7 @@ async function runWallPushCycle(
     const report = await generateWallReport(wallConfig);
     report.summary = await generateWallInsight(report);
 
-    const userId = config.allowedUserIds?.values().next().value;
+    const userId = getOwnerUserId(config);
     if (userId && report.totalTools > 0) {
       const msg = formatWallMessage(report);
       await bot.telegram.sendMessage(userId, msg.slice(0, 4000));
@@ -216,10 +216,11 @@ export async function startWallService(
   return [timer];
 }
 
-/** Add a match result to pending (called from radar-service) */
-export async function addPendingMatch(match: ToolMatchResult): Promise<void> {
+/** Add match results to pending in batch (called from radar-service) */
+export async function addPendingMatches(matches: ToolMatchResult[]): Promise<void> {
+  if (matches.length === 0) return;
   const wallConfig = await loadWallConfig();
-  wallConfig.pendingMatches.push(match);
+  wallConfig.pendingMatches.push(...matches);
   if (wallConfig.pendingMatches.length > MAX_PENDING_MATCHES) {
     wallConfig.pendingMatches = wallConfig.pendingMatches.slice(-MAX_PENDING_MATCHES);
   }

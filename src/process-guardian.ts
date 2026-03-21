@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { execSync } from 'node:child_process';
 import { logger } from './core/logger.js';
+import { clearAllTimers } from './core/service-registry.js';
 import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'fs';
 
 const PID_FILE = '.bot.pid';
@@ -212,10 +213,12 @@ export class ProcessGuardian {
     this.writePid();
 
     process.once('SIGINT', () => {
+      clearAllTimers();
       this.clearPid();
       this.bot.stop('SIGINT');
     });
     process.once('SIGTERM', () => {
+      clearAllTimers();
       this.clearPid();
       this.bot.stop('SIGTERM');
     });

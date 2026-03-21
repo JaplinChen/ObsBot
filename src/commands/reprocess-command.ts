@@ -42,7 +42,7 @@ async function reprocessSingle(
 
     const content = parsedNoteToExtractedContent(parsed);
     await enrichExtractedContent(content, config);
-    await saveToVault(content, config.vaultPath, { forceOverwrite: true });
+    await saveToVault(content, config.vaultPath, { forceOverwrite: true, saveVideos: config.saveVideos });
 
     return { success: true, title: content.title };
   } catch (err) {

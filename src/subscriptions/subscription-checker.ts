@@ -3,7 +3,7 @@
  * timelines and auto-saves new posts.
  */
 import type { Telegraf } from 'telegraf';
-import type { AppConfig } from '../utils/config.js';
+import { type AppConfig, getOwnerUserId } from '../utils/config.js';
 import type { SubscriptionStore, Subscription } from './types.js';
 import { saveSubscriptions } from './subscription-store.js';
 import { scrapeThreadsTimeline } from '../commands/timeline-command.js';
@@ -65,7 +65,7 @@ async function runCheckCycle(
   await saveSubscriptions(store);
 
   if (totalNew > 0) {
-    const userId = config.allowedUserIds?.values().next().value;
+    const userId = getOwnerUserId(config);
     if (userId) {
       const lines = [`訂閱更新：發現 ${totalNew} 篇新貼文`];
       for (const sub of store.subscriptions) {

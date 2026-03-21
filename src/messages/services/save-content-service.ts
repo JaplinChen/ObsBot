@@ -3,8 +3,12 @@ import { logger } from '../../core/logger.js';
 import type { ExtractedContent } from '../../extractors/types.js';
 import { saveToVault, type SaveResult } from '../../saver.js';
 
-export async function saveExtractedContent(content: ExtractedContent, vaultPath: string): Promise<SaveResult> {
-  const result = await saveToVault(content, vaultPath);
+export async function saveExtractedContent(
+  content: ExtractedContent,
+  vaultPath: string,
+  opts?: { saveVideos?: boolean },
+): Promise<SaveResult> {
+  const result = await saveToVault(content, vaultPath, opts);
   if (content.tempDir) {
     rm(content.tempDir, { recursive: true, force: true }).catch(() => {});
   }

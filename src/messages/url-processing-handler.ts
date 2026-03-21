@@ -6,6 +6,7 @@ import type { ExtractorWithComments, ExtractorWithSeries } from '../extractors/t
 import type { AppConfig } from '../utils/config.js';
 import { extractUrls, findExtractor } from '../utils/url-parser.js';
 import {
+  STAGE,
   formatDuplicateMessage,
   formatProcessingMessage,
   formatSavedSummary,
@@ -70,14 +71,24 @@ export function registerUrlProcessingHandler(
         continue;
       }
 
-      // Standard single-URL processing
-      const processing = await ctx.reply(formatProcessingMessage(extractor.platform));
+      // Standard single-URL processing with progress streaming
+      const processing = await ctx.reply(formatProcessingMessage(extractor.platform, 'extracting'));
+      const chatId = processing.chat.id;
+      const msgId = processing.message_id;
+
+      /** Update the progress message in-place (fire-and-forget, best-effort) */
+      const updateProgress = (stage: keyof typeof STAGE) => {
+        ctx.telegram.editMessageText(chatId, msgId, undefined, formatProcessingMessage(extractor.platform, stage)).catch(() => {});
+      };
 
       try {
         const content = await extractContentWithComments(url, extractor as ExtractorWithComments);
+
+        updateProgress('enriching');
         await enrichExtractedContent(content, config);
 
-        const result = await saveExtractedContent(content, config.vaultPath);
+        updateProgress('saving');
+        const result = await saveExtractedContent(content, config.vaultPath, { saveVideos: config.saveVideos });
 
         if (result.duplicate) {
           await ctx.reply(formatDuplicateMessage(result.mdPath));
@@ -103,7 +114,7 @@ export function registerUrlProcessingHandler(
       }
 
       try {
-        await ctx.deleteMessage(processing.message_id);
+        await ctx.deleteMessage(msgId);
       } catch {
         // ignore
       }

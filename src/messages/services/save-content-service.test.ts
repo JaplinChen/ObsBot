@@ -47,7 +47,7 @@ describe('save-content-service', () => {
 
     const result = await saveExtractedContent(content, '/vault');
 
-    expect(mockSaveToVault).toHaveBeenCalledWith(content, '/vault');
+    expect(mockSaveToVault).toHaveBeenCalledWith(content, '/vault', undefined);
     expect(result.mdPath).toBe('/vault/a.md');
   });
 

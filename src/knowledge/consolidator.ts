@@ -59,15 +59,13 @@ function daysAgoStr(days: number): string {
 /* ── Auto-consolidation check ─────────────────────────────── */
 
 export function shouldAutoConsolidate(knowledge: VaultKnowledge): boolean {
-  const last = (knowledge as VaultKnowledge & { lastConsolidatedAt?: string }).lastConsolidatedAt;
-  if (!last) return true;
-  const daysSince = (Date.now() - new Date(last).getTime()) / 86_400_000;
+  if (!knowledge.lastConsolidatedAt) return true;
+  const daysSince = (Date.now() - new Date(knowledge.lastConsolidatedAt).getTime()) / 86_400_000;
   return daysSince >= 7;
 }
 
 function stampConsolidation(knowledge: VaultKnowledge): void {
-  (knowledge as VaultKnowledge & { lastConsolidatedAt?: string }).lastConsolidatedAt =
-    new Date().toISOString();
+  knowledge.lastConsolidatedAt = new Date().toISOString();
 }
 
 /* ── Filter recent notes ──────────────────────────────────── */

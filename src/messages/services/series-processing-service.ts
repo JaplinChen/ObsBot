@@ -53,7 +53,7 @@ export async function processSeriesBatch(
   // 3. Save index note (with enrichment, NO subfolder — stays in main category)
   const indexContent = await extractor.extract(seriesUrl);
   await enrichExtractedContent(indexContent, config);
-  const indexResult = await saveExtractedContent(indexContent, config.vaultPath);
+  const indexResult = await saveExtractedContent(indexContent, config.vaultPath, { saveVideos: config.saveVideos });
   const indexPath = indexResult.mdPath;
 
   await onProgress(
@@ -74,7 +74,7 @@ export async function processSeriesBatch(
       content.category = classifyContent(content.title, content.text);
       content.subFolder = seriesFolder;
 
-      const result = await saveExtractedContent(content, config.vaultPath);
+      const result = await saveExtractedContent(content, config.vaultPath, { saveVideos: config.saveVideos });
       if (result.duplicate) {
         skipped++;
       } else {

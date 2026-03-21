@@ -82,6 +82,8 @@ export interface VaultKnowledge {
   notes: Record<string, NoteAnalysis>;
   /** Aggregated global entities (merged across notes) */
   globalEntities?: Record<string, KnowledgeEntity>;
+  /** ISO timestamp of last auto-consolidation run */
+  lastConsolidatedAt?: string;
 }
 
 /** Raw JSON structure returned by Claude API for a single note analysis */

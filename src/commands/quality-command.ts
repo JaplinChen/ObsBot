@@ -4,10 +4,11 @@
  * short content, missing category, HTML remnants.
  */
 import type { Context } from 'telegraf';
-import { readFile, readdir, access } from 'node:fs/promises';
-import { join } from 'node:path';
+import { readFile, access } from 'node:fs/promises';
+import { join, basename } from 'node:path';
 import type { AppConfig } from '../utils/config.js';
 import { logger } from '../core/logger.js';
+import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 
 interface QualityIssue {
   file: string;
@@ -24,29 +25,17 @@ interface QualityReport {
 const HTML_TAG_RE = /<(?:div|span|br|p|a|img|table|tr|td|th|ul|ol|li|h[1-6])\b/i;
 const SKIP_FILES = new Set(['知識地圖.md', '知識庫摘要.md']);
 
-async function scanDir(dir: string, results: QualityIssue[]): Promise<number> {
+async function scanAllNotes(rootDir: string, results: QualityIssue[]): Promise<number> {
+  const files = await getAllMdFiles(rootDir);
   let total = 0;
-  let entries: import('node:fs').Dirent<string>[];
-  try {
-    entries = await readdir(dir, { withFileTypes: true, encoding: 'utf-8' });
-  } catch { return 0; }
 
-  for (const entry of entries) {
-    const fullPath = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === 'attachments' || entry.name === '知識整合') continue;
-      total += await scanDir(fullPath, results);
-      continue;
-    }
-    if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
-    if (SKIP_FILES.has(entry.name)) continue;
-
+  for (const fullPath of files) {
+    if (SKIP_FILES.has(basename(fullPath))) continue;
     total++;
     try {
       const raw = await readFile(fullPath, 'utf-8');
       const issues = checkNote(raw);
       if (issues.length > 0) {
-        // Use relative path from GetThreads/
         const relPath = fullPath.replace(/.*GetThreads[\\/]/, '');
         results.push({ file: relPath, issues });
       }
@@ -88,7 +77,7 @@ function checkNote(raw: string): string[] {
 async function generateReport(vaultPath: string): Promise<QualityReport> {
   const rootDir = join(vaultPath, 'GetThreads');
   const issues: QualityIssue[] = [];
-  const totalNotes = await scanDir(rootDir, issues);
+  const totalNotes = await scanAllNotes(rootDir, issues);
 
   // Build breakdown
   const breakdown: Record<string, number> = {};

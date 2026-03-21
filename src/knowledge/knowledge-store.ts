@@ -2,11 +2,12 @@
  * Persistent knowledge store — reads/writes vault-knowledge.json
  * with incremental update support via content hashing.
  */
-import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { logger } from '../core/logger.js';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { canonicalizeUrl } from '../utils/url-canonicalizer.js';
+import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 import type {
   VaultKnowledge, NoteAnalysis, KnowledgeEntity,
   KnowledgeInsight, KnowledgeRelation, AIAnalysisResponse,
@@ -131,41 +132,29 @@ export async function scanVaultNotes(vaultPath: string): Promise<Array<{
   noteId: string; filePath: string; title: string; category: string; rawContent: string;
 }>> {
   const rootDir = join(vaultPath, 'GetThreads');
+  const files = await getAllMdFiles(rootDir);
   const results: Array<{
     noteId: string; filePath: string; title: string; category: string; rawContent: string;
   }> = [];
 
-  async function scanDir(dir: string): Promise<void> {
-    let entries: import('node:fs').Dirent<string>[];
+  for (const fullPath of files) {
     try {
-      entries = await readdir(dir, { withFileTypes: true, encoding: 'utf-8' });
-    } catch { return; }
+      const raw = await readFile(fullPath, 'utf-8');
+      const fm = raw.split('\n').slice(0, 25).join('\n');
+      const urlMatch = fm.match(/^url:\s*["']?(.*?)["']?\s*$/m);
+      const titleMatch = fm.match(/^title:\s*["']?(.*?)["']?\s*$/m);
+      const catMatch = fm.match(/^category:\s*["']?(.*?)["']?\s*$/m);
+      if (!urlMatch) continue;
 
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await scanDir(fullPath);
-      } else if (entry.isFile() && entry.name.endsWith('.md')) {
-        try {
-          const raw = await readFile(fullPath, 'utf-8');
-          const fm = raw.split('\n').slice(0, 25).join('\n');
-          const urlMatch = fm.match(/^url:\s*["']?(.*?)["']?\s*$/m);
-          const titleMatch = fm.match(/^title:\s*["']?(.*?)["']?\s*$/m);
-          const catMatch = fm.match(/^category:\s*["']?(.*?)["']?\s*$/m);
-          if (!urlMatch) continue;
+      const url = urlMatch[1].trim();
+      const noteId = canonicalizeUrl(url);
+      const title = (titleMatch?.[1] ?? '').replace(/^["']|["']$/g, '').trim();
+      const category = (catMatch?.[1] ?? '其他').replace(/^["']|["']$/g, '').trim();
 
-          const url = urlMatch[1].trim();
-          const noteId = canonicalizeUrl(url);
-          const title = (titleMatch?.[1] ?? '').replace(/^["']|["']$/g, '').trim();
-          const category = (catMatch?.[1] ?? '其他').replace(/^["']|["']$/g, '').trim();
-
-          results.push({ noteId, filePath: fullPath, title, category, rawContent: raw });
-        } catch { /* skip */ }
-      }
-    }
+      results.push({ noteId, filePath: fullPath, title, category, rawContent: raw });
+    } catch { /* skip */ }
   }
 
-  await scanDir(rootDir);
   return results;
 }
 

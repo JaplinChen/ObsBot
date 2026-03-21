@@ -1,10 +1,11 @@
-﻿import { mkdir, writeFile, readdir, readFile, copyFile } from 'node:fs/promises';
+﻿import { mkdir, writeFile, readFile, copyFile } from 'node:fs/promises';
 import { join, extname, resolve, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { ExtractedContent, Platform } from './extractors/types.js';
 import { formatAsMarkdown } from './formatter.js';
 import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
 import { canonicalizeUrl } from './utils/url-canonicalizer.js';
+import { getAllMdFiles } from './vault/frontmatter-utils.js';
 
 // In-memory URL index: normalizedUrl → filePath (built on first use)
 let urlIndex: Map<string, string> | null = null;
@@ -98,29 +99,17 @@ export interface SaveResult {
 async function buildUrlIndex(vaultPath: string): Promise<Map<string, string>> {
   const index = new Map<string, string>();
   const rootDir = join(vaultPath, 'GetThreads');
+  const files = await getAllMdFiles(rootDir);
 
-  async function scanDir(dir: string): Promise<void> {
-    let entries: import('node:fs').Dirent<string>[];
+  for (const fullPath of files) {
     try {
-      entries = await readdir(dir, { withFileTypes: true, encoding: 'utf-8' });
-    } catch { return; }
-
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await scanDir(fullPath);
-      } else if (entry.isFile() && entry.name.endsWith('.md')) {
-        try {
-          const raw = await readFile(fullPath, 'utf-8');
-          const first25 = raw.split('\n').slice(0, 25).join('\n');
-          const match = first25.match(/^url:\s*["']?(.*?)["']?\s*$/m);
-          if (match) index.set(canonicalizeUrl(match[1].trim()), fullPath);
-        } catch { /* skip unreadable files */ }
-      }
-    }
+      const raw = await readFile(fullPath, 'utf-8');
+      const first25 = raw.split('\n').slice(0, 25).join('\n');
+      const match = first25.match(/^url:\s*["']?(.*?)["']?\s*$/m);
+      if (match) index.set(canonicalizeUrl(match[1].trim()), fullPath);
+    } catch { /* skip unreadable files */ }
   }
 
-  await scanDir(rootDir);
   return index;
 }
 
@@ -134,7 +123,7 @@ export async function isDuplicateUrl(url: string, vaultPath: string): Promise<st
 export async function saveToVault(
   content: ExtractedContent,
   vaultPath: string,
-  opts?: { forceOverwrite?: boolean },
+  opts?: { forceOverwrite?: boolean; saveVideos?: boolean },
 ): Promise<SaveResult> {
   const normUrl = canonicalizeUrl(content.url);
 
@@ -218,9 +207,9 @@ export async function saveToVault(
       if (r.status === 'fulfilled') localImagePaths.push(r.value);
     }
 
-    // Copy local video files to vault attachments (only when SAVE_VIDEOS=true)
+    // Copy local video files to vault attachments (only when saveVideos enabled)
     const localVideoPaths: string[] = [];
-    if (process.env.SAVE_VIDEOS === 'true') {
+    if (opts?.saveVideos) {
       for (let i = 0; i < content.videos.length; i++) {
         const v = content.videos[i];
         if (v.localPath) {

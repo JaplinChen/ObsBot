@@ -2,35 +2,15 @@
 
 import { classifyContent } from '../classifier.js';
 import type { AppConfig } from '../utils/config.js';
-import { readdir, readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { recordFeedback } from './feedback-tracker.js';
+import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 
 export interface ReclassifyResult {
   total: number;
   moved: number;
   changes: Array<{ file: string; from: string; to: string }>;
-}
-
-/** Recursively collect all .md file paths under a directory. */
-async function collectMarkdownFiles(dir: string): Promise<string[]> {
-  const files: string[] = [];
-  let entries;
-  try {
-    entries = await readdir(dir, { withFileTypes: true });
-  } catch {
-    return files;
-  }
-  for (const entry of entries) {
-    const fullPath = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      const nested = await collectMarkdownFiles(fullPath);
-      files.push(...nested);
-    } else if (entry.isFile() && entry.name.endsWith('.md')) {
-      files.push(fullPath);
-    }
-  }
-  return files;
 }
 
 /**
@@ -55,7 +35,7 @@ function replaceFrontmatterField(content: string, field: string, newValue: strin
  */
 export async function executeReclassify(config: AppConfig): Promise<ReclassifyResult> {
   const baseDir = join(config.vaultPath, 'GetThreads');
-  const allFiles = await collectMarkdownFiles(baseDir);
+  const allFiles = await getAllMdFiles(baseDir);
 
   let moved = 0;
   const changes: Array<{ file: string; from: string; to: string }> = [];

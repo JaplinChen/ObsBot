@@ -21,8 +21,13 @@ export const HELP_TEXT = [
   '/quality — Vault 品質報告',
   '/suggest — 相關筆記推薦（自動連結）',
   '/radar — 內容雷達（自動搜尋+存入）',
+  '/radar wall — AI 工具情報牆（活躍/沉寂/匹配）',
   '/benchmark — 品質基準報告（評分趨勢/平台成功率）',
   '/status — Bot 狀態與本次儲存',
+  '/health — 系統健康報告（記憶體/Extractor/Vault）',
+  '/logs [n] [error] — 查看最近 log',
+  '/restart — 遠端重啟 Bot',
+  '/clear — 清除處理佇列',
   '/help — 顯示此說明',
 ].join('\n');
 
@@ -45,5 +50,9 @@ export const BOT_COMMANDS_MENU = [
   { command: 'radar', description: '內容雷達' },
   { command: 'benchmark', description: '品質基準報告' },
   { command: 'status', description: 'Bot 狀態' },
+  { command: 'health', description: '系統健康報告' },
+  { command: 'logs', description: '查看最近 log' },
+  { command: 'restart', description: '遠端重啟 Bot' },
+  { command: 'clear', description: '清除處理佇列' },
   { command: 'help', description: '顯示說明' },
 ];

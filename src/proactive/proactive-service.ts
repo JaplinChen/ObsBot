@@ -3,7 +3,7 @@
  * Transforms GetThreads from passive collector to active knowledge assistant.
  */
 import type { Telegraf } from 'telegraf';
-import type { AppConfig } from '../utils/config.js';
+import { type AppConfig, getOwnerUserId } from '../utils/config.js';
 import type { ProactiveConfig, ProactiveDigest } from './proactive-types.js';
 import { DEFAULT_PROACTIVE_CONFIG } from './proactive-types.js';
 import { analyzeVaultTrends } from './trend-detector.js';
@@ -178,7 +178,7 @@ async function runDigestCycle(
     } catch { /* best-effort */ }
 
     const message = formatDigestMessage(digest, radarSummary, wallLines);
-    const userId = config.allowedUserIds?.values().next().value;
+    const userId = getOwnerUserId(config);
     if (userId) {
       await bot.telegram.sendMessage(userId, message.slice(0, 4000));
     }
@@ -212,7 +212,7 @@ async function runTrendCycle(
     const significantTrends = trends.filter(t => t.recentCount >= 3 && t.previousCount === 0);
 
     if (significantTrends.length > 0) {
-      const userId = config.allowedUserIds?.values().next().value;
+      const userId = getOwnerUserId(config);
       if (userId) {
         const lines = ['🔔 趨勢提醒', ''];
         for (const t of significantTrends.slice(0, 3)) {

@@ -4,7 +4,7 @@
  * Supports multiple source types: DDG search, GitHub trending, RSS feeds.
  */
 import type { Telegraf } from 'telegraf';
-import type { AppConfig } from '../utils/config.js';
+import { type AppConfig, getOwnerUserId } from '../utils/config.js';
 import type { RadarConfig, RadarResult, RadarCycleSummary, RadarQueryType } from './radar-types.js';
 import { saveRadarConfig } from './radar-store.js';
 import { webSearch } from '../utils/search-service.js';
@@ -15,9 +15,9 @@ import { logger } from '../core/logger.js';
 import { githubTrendingSource } from './sources/github-trending.js';
 import { rssSource } from './sources/rss-source.js';
 import type { RadarSourceResult } from './sources/source-types.js';
-import type { ToolEntry } from './wall-types.js';
+import type { ToolEntry, ToolMatchResult } from './wall-types.js';
 import { buildToolIndex, matchNewTool } from './wall-index.js';
-import { loadWallConfig, addPendingMatch } from './wall-service.js';
+import { loadWallConfig, addPendingMatches } from './wall-service.js';
 import { loadKnowledge } from '../knowledge/knowledge-store.js';
 
 /** Fetch candidates depending on query type. */
@@ -45,12 +45,13 @@ async function runQuery(
   config: AppConfig,
   maxResults: number,
   wallToolIndex?: ToolEntry[] | null,
-): Promise<RadarResult> {
+): Promise<{ result: RadarResult; matches: ToolMatchResult[] }> {
   const result: RadarResult = { query, saved: 0, skipped: 0, errors: 0 };
+  const matches: ToolMatchResult[] = [];
 
   try {
     const candidates = await fetchCandidates(query.type ?? 'search', query.keywords, maxResults);
-    if (candidates.length === 0) return result;
+    if (candidates.length === 0) return { result, matches };
 
     for (const sr of candidates) {
       try {
@@ -75,14 +76,14 @@ async function runQuery(
         } else {
           result.saved++;
 
-          // Wall: match new tool against existing index
+          // Wall: collect match for batch write
           if (wallToolIndex && wallToolIndex.length > 0) {
             try {
               const kw = content.enrichedKeywords ?? [];
               const match = matchNewTool(
                 content.title, kw, content.category ?? '', sr.url, wallToolIndex,
               );
-              if (match) await addPendingMatch(match);
+              if (match) matches.push(match);
             } catch { /* best-effort */ }
           }
         }
@@ -103,7 +104,7 @@ async function runQuery(
     });
   }
 
-  return result;
+  return { result, matches };
 }
 
 /** Build cycle summary for proactive digest integration. */
@@ -157,6 +158,7 @@ export async function runRadarCycle(
 
   logger.info('radar', '開始掃描', { queries: radarConfig.queries.length });
   const results: RadarResult[] = [];
+  const allMatches: ToolMatchResult[] = [];
   let totalSaved = 0;
 
   for (const query of radarConfig.queries) {
@@ -164,10 +166,14 @@ export async function runRadarCycle(
 
     const remaining = radarConfig.maxTotalPerCycle - totalSaved;
     const maxResults = Math.min(radarConfig.maxResultsPerQuery, remaining);
-    const result = await runQuery(query, config, maxResults, toolIndex);
+    const { result, matches } = await runQuery(query, config, maxResults, toolIndex);
     results.push(result);
+    allMatches.push(...matches);
     totalSaved += result.saved;
   }
+
+  // Batch-write wall matches (single disk I/O instead of per-URL)
+  await addPendingMatches(allMatches).catch(() => {});
 
   // Save cycle summary for proactive digest
   radarConfig.lastCycleResults = buildCycleSummary(results);
@@ -176,7 +182,7 @@ export async function runRadarCycle(
 
   // Notify user if any new content found
   if (totalSaved > 0) {
-    const userId = config.allowedUserIds?.values().next().value;
+    const userId = getOwnerUserId(config);
     if (userId) {
       const lines = [`🔍 內容雷達：發現 ${totalSaved} 篇新內容`, ''];
       for (const r of results) {

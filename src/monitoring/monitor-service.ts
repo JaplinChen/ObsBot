@@ -3,7 +3,7 @@
  * and extractor probing with auto-fix and Telegram alerts.
  */
 import type { Telegraf } from 'telegraf';
-import type { AppConfig } from '../utils/config.js';
+import { type AppConfig, getOwnerUserId } from '../utils/config.js';
 import { healVault } from './vault-healer.js';
 import { probeAllExtractors, formatHealthAlert } from './extractor-probe.js';
 import { loadMonitorConfig, saveMonitorConfig } from './monitor-store.js';
@@ -14,7 +14,7 @@ import type { Extractor } from '../extractors/types.js';
 
 /** Send Telegram notification to owner */
 async function notify(bot: Telegraf, config: AppConfig, message: string): Promise<void> {
-  const userId = config.allowedUserIds?.values().next().value;
+  const userId = getOwnerUserId(config);
   if (userId) {
     await bot.telegram.sendMessage(userId, message.slice(0, 4000)).catch(() => {});
   }
@@ -108,7 +108,7 @@ export async function startMonitorService(
   const vaultCheckMs = 4 * 60 * 60 * 1000;
   timers.push(
     setInterval(
-      () => { runVaultHealthCycle(bot, config, monConfig).catch(() => {}); },
+      () => { runVaultHealthCycle(bot, config, monConfig).catch((e) => logger.warn('monitor', 'vault 健康檢查失敗', { message: (e as Error).message })); },
       vaultCheckMs,
     ),
   );
@@ -117,14 +117,14 @@ export async function startMonitorService(
   const extractorCheckMs = 8 * 60 * 60 * 1000;
   timers.push(
     setInterval(
-      () => { runExtractorProbeCycle(bot, config, monConfig).catch(() => {}); },
+      () => { runExtractorProbeCycle(bot, config, monConfig).catch((e) => logger.warn('monitor', 'extractor 探測失敗', { message: (e as Error).message })); },
       extractorCheckMs,
     ),
   );
 
   // Initial vault check after 10 min (non-blocking)
   setTimeout(
-    () => { runVaultHealthCycle(bot, config, monConfig).catch(() => {}); },
+    () => { runVaultHealthCycle(bot, config, monConfig).catch((e) => logger.warn('monitor', 'vault 初始檢查失敗', { message: (e as Error).message })); },
     10 * 60 * 1000,
   );
 

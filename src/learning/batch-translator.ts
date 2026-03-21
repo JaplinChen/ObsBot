@@ -6,8 +6,9 @@
 
 import type { AppConfig } from '../utils/config.js';
 import { detectLanguage, translateIfNeeded } from '../enrichment/translator.js';
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
+import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -29,24 +30,6 @@ export interface BatchTranslateResult {
 const TRANSLATION_HEADING = '## ÁπÅ‰∏≠ÁøªË≠Ø';
 const RATE_LIMIT_DELAY_MS = 1_000;
 
-async function collectMarkdownFiles(dir: string): Promise<string[]> {
-  const files: string[] = [];
-  let entries;
-  try {
-    entries = await readdir(dir, { withFileTypes: true });
-  } catch {
-    return files;
-  }
-  for (const entry of entries) {
-    const fullPath = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...await collectMarkdownFiles(fullPath));
-    } else if (entry.isFile() && entry.name.endsWith('.md')) {
-      files.push(fullPath);
-    }
-  }
-  return files;
-}
 
 /** Extract body text after frontmatter (skip YAML block). */
 function extractBody(raw: string): string {
@@ -63,8 +46,8 @@ function extractTitle(raw: string): string {
 
 /** Build the translation section markdown. */
 function buildTranslationSection(lang: string, translatedTitle: string | undefined, translatedText: string): string {
-  const langLabel = lang === 'en' ? 'English' : lang === 'zh-CN' ? '? ^§§§Â' : lang;
-  const parts = [TRANSLATION_HEADING, `> ?üÊ?Ë™ûË?Ôº?{langLabel}`, ''];
+  const langLabel = lang === 'en' ? 'English' : lang === 'zh-CN' ? '?ÔøΩ^ÔøΩÔøΩÔøΩÔøΩ' : lang;
+  const parts = [TRANSLATION_HEADING, `> ?ÔøΩÔøΩ?Ë™ûÔøΩ?ÔøΩ?{langLabel}`, ''];
   if (translatedTitle) parts.push(`**${translatedTitle}**`, '');
   parts.push(translatedText, '');
   return parts.join('\n');
@@ -72,19 +55,19 @@ function buildTranslationSection(lang: string, translatedTitle: string | undefin
 
 /**
  * Insert translation section at the right position in the markdown.
- * Priority: after "## ?çÈ??òË?" > before "## Ë©ïË?"/"## ?∏È????" > end of file.
+ * Priority: after "## ?ÔøΩÔøΩ??ÔøΩÔøΩ?" > before "## Ë©ïÔøΩ?"/"## ?ÔøΩÔøΩ????" > end of file.
  */
 function insertTranslation(raw: string, section: string): string {
-  // After ?çÈ??òË?
-  const summaryIdx = raw.indexOf('## ?çÈ??òË?');
+  // After ?ÔøΩÔøΩ??ÔøΩÔøΩ?
+  const summaryIdx = raw.indexOf('## ?ÔøΩÔøΩ??ÔøΩÔøΩ?');
   if (summaryIdx >= 0) {
     const nextHeading = raw.indexOf('\n## ', summaryIdx + 10);
     const insertAt = nextHeading >= 0 ? nextHeading : raw.length;
     return raw.slice(0, insertAt) + '\n\n' + section + raw.slice(insertAt);
   }
 
-  // Before Ë©ïË? or ?∏È????
-  for (const heading of ['## Ë©ïË??êÂ?', '## Ë©ïË?', '## ?∏È????']) {
+  // Before Ë©ïÔøΩ? or ?ÔøΩÔøΩ????
+  for (const heading of ['## Ë©ïÔøΩ??ÔøΩÔøΩ?', '## Ë©ïÔøΩ?', '## ?ÔøΩÔøΩ????']) {
     const idx = raw.indexOf(heading);
     if (idx >= 0) return raw.slice(0, idx) + section + '\n' + raw.slice(idx);
   }
@@ -99,7 +82,7 @@ function insertTranslation(raw: string, section: string): string {
 
 export async function executeBatchTranslate(config: AppConfig): Promise<BatchTranslateResult> {
   const baseDir = join(config.vaultPath, 'GetThreads');
-  const allFiles = await collectMarkdownFiles(baseDir);
+  const allFiles = await getAllMdFiles(baseDir);
 
   const result: BatchTranslateResult = {
     total: allFiles.length, skipped: 0, translated: 0, failed: 0, noNeed: 0, details: [],

@@ -35,19 +35,19 @@ export function formatErrorMessage(err: unknown): string {
   const code = classifyError(err);
   switch (code) {
     case 'TIMEOUT':
-      return '抓取超時，請稍後重試。';
+      return '抓取超時，請稍後用 /retry 重試。';
     case 'AUTH_REQUIRED':
-      return '此平台需要登入才能存取，暫不支援。';
+      return '此平台需要登入才能存取。請確認內容是否公開，或嘗試其他連結。';
     case 'FORBIDDEN':
-      return '被平台封鎖，請稍後重試。';
+      return '被平台封鎖，請稍後用 /retry 重試。';
     case 'NOT_FOUND':
       return '找不到此內容，請確認連結是否正確。';
     case 'NETWORK':
-      return '網路連線問題，請檢查網路後重試。';
+      return '網路連線問題，請檢查網路後用 /retry 重試。';
     case 'UNKNOWN':
     default: {
       const msg = err instanceof Error ? err.message : String(err);
-      return `處理失敗：${msg.slice(0, 100)}`;
+      return `處理失敗：${msg.slice(0, 100)}\n可用 /retry 重試。`;
     }
   }
 }
