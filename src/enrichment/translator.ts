@@ -1,11 +1,12 @@
 ﻿/**
  * Language detection + translation for non-Traditional-Chinese content.
  * - zh-CN -> zh-TW: opencc-js (deterministic, local)
- * - en -> zh-TW: local LLM CLI (Claude/Codex/OpenCode)
+ * - en -> zh-TW: oMLX (local, fast) → opencode CLI (remote, fallback)
  */
 
 import type { TranslationResult } from '../extractors/types.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
+import { isOmlxAvailable, omlxChatCompletion } from '../utils/omlx-client.js';
 // @ts-expect-error opencc-js lacks proper TS declarations
 import * as OpenCC from 'opencc-js';
 
@@ -44,24 +45,19 @@ function convertSimplifiedToTraditional(title: string, text: string): Translatio
   };
 }
 
-async function translateEnglishWithLocalLlm(
-  title: string,
-  text: string,
-): Promise<TranslationResult | null> {
+function buildTranslationPrompt(title: string, text: string): string {
   const textToTranslate = text.length > 6000 ? text.slice(0, 6000) : text;
-  const prompt = [
+  return [
     'Translate the following English content to Traditional Chinese (zh-TW).',
     'Return ONLY valid JSON with keys: translatedTitle, translatedText.',
     `Title: ${title}`,
     `Text: ${textToTranslate}`,
   ].join('\n');
+}
 
-  const response = await runLocalLlmPrompt(prompt, { timeoutMs: 30_000 });
-  if (!response) return null;
-
+function parseTranslationResponse(response: string): TranslationResult | null {
   const match = response.match(/\{[\s\S]*\}/);
   if (!match) return null;
-
   try {
     const parsed = JSON.parse(match[0]) as { translatedTitle?: unknown; translatedText?: unknown };
     if (typeof parsed.translatedText !== 'string') return null;
@@ -73,6 +69,27 @@ async function translateEnglishWithLocalLlm(
   } catch {
     return null;
   }
+}
+
+async function translateEnglishWithLocalLlm(
+  title: string,
+  text: string,
+): Promise<TranslationResult | null> {
+  const prompt = buildTranslationPrompt(title, text);
+
+  // 1) Try oMLX (local, ~2-5s for translation)
+  if (await isOmlxAvailable()) {
+    const omlxResponse = await omlxChatCompletion(prompt, { timeoutMs: 30_000 });
+    if (omlxResponse) {
+      const result = parseTranslationResponse(omlxResponse);
+      if (result) return result;
+    }
+  }
+
+  // 2) Fallback to opencode CLI (remote)
+  const response = await runLocalLlmPrompt(prompt, { timeoutMs: 30_000 });
+  if (!response) return null;
+  return parseTranslationResponse(response);
 }
 
 export async function translateIfNeeded(

@@ -1,19 +1,13 @@
 /**
  * LLM prompt runner with multi-model routing.
- * Priority: oMLX (local HTTP) → opencode CLI (remote) → DDG AI Chat.
- * Models: flash (9B) → standard (9B) → deep (27B).
+ * Priority: oMLX (local HTTP, 25s cap) → opencode CLI (remote) → DDG AI Chat.
+ * Translation also calls oMLX directly via translator.ts for guaranteed fast path.
  */
 import { spawn } from 'node:child_process';
 import { runViaDdgChat } from './ddg-chat.js';
 import { isOmlxAvailable, omlxChatCompletion } from './omlx-client.js';
 
 const CLI_TIMEOUT_MS = 90_000;
-
-/**
- * Cap oMLX timeout so long-running tasks (enrichment, 300-word analysis)
- * fail fast and fall back to remote CLI. Translation (~2-5s) succeeds;
- * enrichment (~77s on 9B) times out and falls back gracefully.
- */
 const OMLX_TIMEOUT_CAP_MS = 25_000;
 
 /** Available free models ranked by capability. */
@@ -70,20 +64,18 @@ async function runViaCli(prompt: string, timeoutMs: number, model: string): Prom
 
 /**
  * Run a prompt against LLM providers.
- * Priority: oMLX (local HTTP) → opencode CLI (remote) → DDG AI Chat.
- * Returns null when no provider succeeds.
+ * Priority: oMLX (local, 25s cap) → opencode CLI (remote) → DDG AI Chat.
  */
 export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}): Promise<string | null> {
   const timeoutMs = options.timeoutMs ?? 30_000;
   const tier = options.model ?? 'standard';
   const model = LLM_MODELS[tier];
 
-  // 1) Try oMLX local inference (fastest for short tasks like translation)
+  // 1) Try oMLX local inference (25s cap — short tasks succeed, long tasks fall back)
   if (await isOmlxAvailable()) {
     const omlxTimeout = Math.min(timeoutMs, OMLX_TIMEOUT_CAP_MS);
     const omlxResult = await omlxChatCompletion(prompt, { model: tier, timeoutMs: omlxTimeout });
     if (omlxResult) return omlxResult;
-    console.warn('[llm] oMLX failed, falling back to opencode CLI');
   }
 
   // 2) Try opencode CLI with selected model
