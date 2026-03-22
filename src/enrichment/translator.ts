@@ -77,9 +77,9 @@ async function translateEnglishWithLocalLlm(
 ): Promise<TranslationResult | null> {
   const prompt = buildTranslationPrompt(title, text);
 
-  // 1) Try oMLX (local, ~2-5s for translation)
+  // 1) Try oMLX (local, ~2-5s; 12s cap so CLI fallback fits within 45s post-process timeout)
   if (await isOmlxAvailable()) {
-    const omlxResponse = await omlxChatCompletion(prompt, { timeoutMs: 30_000 });
+    const omlxResponse = await omlxChatCompletion(prompt, { timeoutMs: 12_000 });
     if (omlxResponse) {
       const result = parseTranslationResponse(omlxResponse);
       if (result) return result;
