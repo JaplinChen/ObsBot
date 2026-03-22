@@ -6,9 +6,13 @@
 import { fetchWithTimeout } from './fetch-with-timeout.js';
 import type { ModelTier } from './local-llm.js';
 
-const OMLX_BASE = process.env['OMLX_BASE_URL'] ?? 'http://127.0.0.1:8000';
-const OMLX_API_KEY = process.env['OMLX_API_KEY'] ?? '';
+const OMLX_BASE = 'http://127.0.0.1:8000';
 const AVAILABILITY_CACHE_MS = 30_000;
+
+/** Read API key lazily so dotenv has time to load .env first. */
+function getApiKey(): string {
+  return process.env['OMLX_API_KEY'] ?? '';
+}
 
 /** Map model tiers to oMLX model directory names. */
 const OMLX_MODELS: Record<ModelTier, string> = {
@@ -21,7 +25,8 @@ const OMLX_MODELS: Record<ModelTier, string> = {
 function authHeaders(contentType?: string): Record<string, string> {
   const h: Record<string, string> = {};
   if (contentType) h['Content-Type'] = contentType;
-  if (OMLX_API_KEY) h['Authorization'] = `Bearer ${OMLX_API_KEY}`;
+  const key = getApiKey();
+  if (key) h['Authorization'] = `Bearer ${key}`;
   return h;
 }
 
