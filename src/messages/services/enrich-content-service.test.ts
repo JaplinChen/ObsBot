@@ -17,6 +17,10 @@ vi.mock('../../learning/dynamic-classifier.js', () => ({
   getTopKeywordsForCategory: vi.fn(),
 }));
 
+vi.mock('../../utils/content-cleaner.js', () => ({
+  cleanTitle: vi.fn((t: string) => t),
+}));
+
 import { classifyContent } from '../../classifier.js';
 import { postProcess } from '../../enrichment/post-processor.js';
 import { enrichContent } from '../../learning/ai-enricher.js';

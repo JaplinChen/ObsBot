@@ -118,6 +118,13 @@ export function registerUrlProcessingHandler(
         await enrichExtractedContent(content, config);
         logger.info('perf', 'enrich', { ms: Date.now() - t1 });
 
+        // 寫入 Pipeline 處理日誌
+        content.processingLog = {
+          extractorUsed: wasFallback ? `web (fallback from ${extractor.platform})` : extractor.platform,
+          wasFallback: wasFallback || undefined,
+          processingTimeMs: Date.now() - t0,
+        };
+
         updateProgress('saving');
         const t2 = Date.now();
         const result = await saveExtractedContent(content, config.vaultPath, { saveVideos: config.saveVideos });

@@ -52,6 +52,10 @@ export interface ExtractedContent {
   stars?: number;
   /** Long-form body content separate from short text (e.g. GitHub README) */
   body?: string;
+  /** Primary programming language (e.g. GitHub repos) */
+  language?: string;
+  /** AI-generated deep analysis for GitHub projects (use cases, comparison, pros/cons) */
+  githubAnalysis?: string;
   /** Comments/replies fetched from the post */
   comments?: ThreadComment[];
   /** Total comment count reported by the platform (may exceed fetched) */
@@ -68,6 +72,17 @@ export interface ExtractedContent {
   subFolder?: string;
   /** Temp directory to clean up after saving (used by TikTok extractor for local screenshots) */
   tempDir?: string;
+  /** Pipeline 處理日誌——記錄擷取管線各階段的執行資訊 */
+  processingLog?: ProcessingLog;
+}
+
+/** Pipeline 處理日誌 */
+export interface ProcessingLog {
+  extractorUsed: string;
+  wasFallback?: boolean;
+  classifierConfidence?: number;
+  processingTimeMs?: number;
+  enrichmentScore?: number;
 }
 
 /** Lightweight metadata fetched from a URL found in content or comments */

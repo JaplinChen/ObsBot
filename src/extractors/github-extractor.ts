@@ -38,6 +38,36 @@ function extractDefaultBranch(html: string): string {
   return m?.[1] || 'main';
 }
 
+/** Extract stargazer count from GitHub page HTML */
+function extractStars(html: string): number | undefined {
+  // Try JSON-LD or embedded data first
+  const jsonMatch = html.match(/"stargazerCount"\s*:\s*(\d+)/);
+  if (jsonMatch) return parseInt(jsonMatch[1], 10);
+  // Try aria-label on star button
+  const ariaMatch = html.match(/aria-label="(\d[\d,]*)\s*star/i);
+  if (ariaMatch) return parseInt(ariaMatch[1].replace(/,/g, ''), 10);
+  return undefined;
+}
+
+/** Extract primary programming language */
+function extractLanguage(html: string): string | undefined {
+  const m = html.match(/itemprop="programmingLanguage"[^>]*>([^<]+)</i)
+    ?? html.match(/<span[^>]*class="[^"]*color-fg-default[^"]*"[^>]*>([A-Za-z+#]+)<\/span>/);
+  return m?.[1]?.trim() || undefined;
+}
+
+/** Extract repository topics */
+function extractTopics(html: string): string[] {
+  const topics: string[] = [];
+  const re = /class="topic-tag[^"]*"[^>]*>([^<]+)</gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const topic = m[1].trim();
+    if (topic && !topics.includes(topic)) topics.push(topic);
+  }
+  return topics.slice(0, 10);
+}
+
 /** Scan README for a 繁體中文 link and return the filename (e.g. README_TW.md) */
 function findTraditionalChineseReadme(readme: string): string | null {
   const m = readme.match(/\[繁體中文\]\(([^)]+)\)/);
@@ -115,6 +145,10 @@ export const githubExtractor: Extractor = {
       }
     }
 
+    const stars = extractStars(html);
+    const language = extractLanguage(html);
+    const topics = extractTopics(html);
+
     return {
       platform: 'github',
       author: owner,
@@ -126,6 +160,9 @@ export const githubExtractor: Extractor = {
       videos: [],
       date: new Date().toISOString().split('T')[0],
       url,
+      stars,
+      language,
+      extraTags: topics.length > 0 ? topics : undefined,
     };
   },
 };

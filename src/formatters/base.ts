@@ -6,6 +6,7 @@ import {
   buildStats,
   buildComments,
 } from './shared.js';
+import { cleanAdSpeak } from '../utils/content-cleaner.js';
 
 function toPlainText(input: string): string {
   return input
@@ -146,7 +147,8 @@ export function assembleNote(
     lines.push(`> Translated from: ${langLabel[t.detectedLanguage] ?? 'Other'}`, '');
   }
 
-  const { text: bodyText, usedPaths, inlinedVideoIndices: bodyInlinedVideos } = formatter.formatBody(displayText, imageUrlMap, localVideoPaths, content.videos);
+  const { text: rawBodyText, usedPaths, inlinedVideoIndices: bodyInlinedVideos } = formatter.formatBody(displayText, imageUrlMap, localVideoPaths, content.videos);
+  const bodyText = cleanAdSpeak(rawBodyText);
   lines.push(bodyText, '');
 
   const cleanSummary = content.enrichedSummary

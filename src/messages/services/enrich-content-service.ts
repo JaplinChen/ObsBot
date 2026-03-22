@@ -10,6 +10,7 @@ import { analyzeContentImages } from '../../utils/vision-llm.js';
 import { computeEnrichmentScore } from '../../monitoring/benchmark-scorer.js';
 import { loadBenchmarkData, saveBenchmarkData, recordPlatformAttempt } from '../../monitoring/benchmark-store.js';
 import { ocrContentImages, isLikelyScreenshot } from '../../enrichment/ocr-service.js';
+import { cleanTitle } from '../../utils/content-cleaner.js';
 
 export async function enrichExtractedContent(content: ExtractedContent, config: AppConfig): Promise<void> {
   content.category = classifyContent(content.title, content.text);
@@ -56,10 +57,25 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
     ? `${textForAI}\n\n[圖片視覺描述]\n${imageContext}`
     : textForAI;
 
+  // Pre-clean title before AI enrichment
+  const cleanedTitle = cleanTitle(content.title);
+
+  // Inject GitHub structured metadata into text for AI context
+  let enrichText = finalText;
+  if (content.platform === 'github') {
+    const meta: string[] = [];
+    if (content.stars != null) meta.push(`Stars: ${content.stars}`);
+    if (content.language) meta.push(`Language: ${content.language}`);
+    if (content.extraTags?.length) meta.push(`Topics: ${content.extraTags.join(', ')}`);
+    if (meta.length > 0) {
+      enrichText = `[GitHub Metadata] ${meta.join(' | ')}\n\n${finalText}`;
+    }
+  }
+
   // AI 豐富化 與 postProcess（連結補充 + 翻譯）並行——兩者互不依賴
   const originalTitle = content.title;
   const [enriched] = await Promise.all([
-    enrichContent(content.title, finalText, hints),
+    enrichContent(cleanedTitle, enrichText, hints, content.platform),
     postProcess(content, {
       enrichPostLinks: true,
       enrichCommentLinks: true,
@@ -75,6 +91,7 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
   if (enriched.analysis) content.enrichedAnalysis = enriched.analysis;
   if (enriched.keyPoints?.length) content.enrichedKeyPoints = enriched.keyPoints;
   if (enriched.title) content.title = enriched.title;
+  if (enriched.githubAnalysis) content.githubAnalysis = enriched.githubAnalysis;
   // 不用 enricher 的 category — classifier 的關鍵字匹配更可靠
 
   // Benchmark: score enrichment quality (non-blocking)

@@ -47,6 +47,16 @@
 - 功能有顯著變更時，同步更新 README。
 - 使用 `/ship` 完成標準提交流程。
 
+### Telegram Bot 管理
+- 啟動 Bot 前**必須先檢查現有進程**：`ps aux | grep getthreads`，有舊進程則先 kill。
+- Mac 環境使用 **polling mode**（非 webhook）。
+- 遇到 **409 Conflict** 錯誤，表示有重複 Bot 實例——先 `kill` 舊進程再重啟。
+- 使用 `/launch` skill 管理 Bot 生命週期，不直接跑 `npm run dev &`。
+
+### CLI 模式
+- 開發/測試時優先使用 CLI 模式（`npm run cli:fetch <url>`），避免啟動完整 Bot。
+- CLI 是無狀態的，不會產生 409 衝突。
+
 ### macOS 環境
 - 開發環境為 macOS (Apple Silicon)，不使用 Windows 特定命令。
 - 路徑分隔符：TypeScript 中用 `path.join()`，Shell 中用正斜線。

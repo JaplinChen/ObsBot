@@ -16,7 +16,13 @@
     "format:check": "prettier . --check",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
-    "postinstall": "bash scripts/postinstall.sh"
+    "postinstall": "bash scripts/postinstall.sh",
+    "cli": "tsx src/cli.ts",
+    "cli:fetch": "tsx src/cli.ts fetch",
+    "cli:classify": "tsx src/cli.ts classify",
+    "cli:extract": "tsx src/cli.ts extract",
+    "mcp": "tsx src/mcp-server.ts",
+    "ab-test": "tsx src/cli-ab-test.ts"
   },
   "keywords": [],
   "author": "",

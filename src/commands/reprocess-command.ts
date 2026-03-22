@@ -1,7 +1,8 @@
 /**
  * /reprocess — Re-enrich existing vault notes without re-extracting from source.
  * Single mode:  /reprocess AI/Claude-Code/xxx.md
- * Batch mode:   /reprocess --all --since 7d
+ * Batch mode:   /reprocess --all [--since 7d]
+ * Refetch mode: /reprocess --refetch [--since 7d]  (re-extracts from URL, best for GitHub)
  */
 import type { Context } from 'telegraf';
 import { readFile } from 'node:fs/promises';
@@ -13,34 +14,65 @@ import { enrichExtractedContent } from '../messages/services/enrich-content-serv
 import { saveToVault } from '../saver.js';
 import { scanVaultNotes } from '../knowledge/knowledge-store.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
+import { findExtractor } from '../utils/url-parser.js';
+import type { ExtractorWithComments } from '../extractors/types.js';
 
-/** Parse command arguments into execution mode */
-function parseArgs(text: string): {
+interface ParsedArgs {
   mode: 'single' | 'batch';
   path?: string;
   sinceDays?: number;
-} | null {
-  const args = text.replace(/^\/reprocess\s*/, '').trim();
+  refetch?: boolean;
+}
+
+/** Parse command arguments into execution mode */
+function parseArgs(text: string): ParsedArgs | null {
+  // Normalize em-dash → double hyphen (iOS/macOS auto-corrects -- to —)
+  const args = text.replace(/^\/reprocess\s*/, '').replace(/\u2014/g, '--').replace(/\u2013/g, '--').trim();
   if (!args) return null;
 
-  if (args.startsWith('--all')) {
+  if (args.startsWith('--all') || args.startsWith('--refetch')) {
+    const refetch = args.includes('--refetch');
     const sinceMatch = args.match(/--since\s+(\d+)d/);
-    return { mode: 'batch', sinceDays: sinceMatch ? parseInt(sinceMatch[1], 10) : 7 };
+    // No --since means process ALL notes (sinceDays = undefined)
+    const sinceDays = sinceMatch ? parseInt(sinceMatch[1], 10) : undefined;
+    return { mode: 'batch', sinceDays, refetch };
   }
 
   return { mode: 'single', path: args };
 }
 
+/** Re-extract content from source URL (for GitHub: gets fresh stars/language/topics) */
+async function refetchFromUrl(url: string): Promise<import('../extractors/types.js').ExtractedContent | null> {
+  try {
+    const extractor = findExtractor(url);
+    if (!extractor) return null;
+    const content = await (extractor as ExtractorWithComments).extract(url);
+    return content;
+  } catch (err) {
+    logger.warn('reprocess', 'refetch failed', { url, error: (err as Error).message });
+    return null;
+  }
+}
+
 /** Reprocess a single vault note by file path */
 async function reprocessSingle(
-  filePath: string, config: AppConfig,
+  filePath: string, config: AppConfig, refetch?: boolean,
 ): Promise<{ success: boolean; title?: string; error?: string }> {
   try {
     const raw = await readFile(filePath, 'utf-8');
     const parsed = parseVaultNote(raw);
     if (!parsed) return { success: false, error: '無法解析筆記 frontmatter' };
 
-    const content = parsedNoteToExtractedContent(parsed);
+    let content = parsedNoteToExtractedContent(parsed);
+
+    // Refetch: re-extract from URL for fresh metadata
+    if (refetch) {
+      const fresh = await refetchFromUrl(parsed.url);
+      if (fresh) {
+        content = fresh;
+      }
+    }
+
     await enrichExtractedContent(content, config);
     await saveToVault(content, config.vaultPath, { forceOverwrite: true, saveVideos: config.saveVideos });
 
@@ -50,29 +82,32 @@ async function reprocessSingle(
   }
 }
 
-/** Reprocess batch: all vault notes within N days */
+/** Reprocess batch: all vault notes, optionally filtered by date */
 async function reprocessBatch(
   config: AppConfig,
-  sinceDays: number,
+  sinceDays: number | undefined,
+  refetch: boolean,
   onProgress: (processed: number, total: number, current: string) => Promise<void>,
 ): Promise<{ total: number; success: number; failed: number; errors: string[] }> {
   const notes = await scanVaultNotes(config.vaultPath);
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - sinceDays);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
 
-  // Filter by date
-  const targets = notes.filter(n => {
-    const fm = n.rawContent.split('\n').slice(0, 15).join('\n');
-    const dateMatch = fm.match(/^date:\s*(.+)$/m);
-    return dateMatch && dateMatch[1].trim() >= cutoffStr;
-  });
+  let targets = notes;
+  if (sinceDays != null) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - sinceDays);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    targets = notes.filter(n => {
+      const fm = n.rawContent.split('\n').slice(0, 15).join('\n');
+      const dateMatch = fm.match(/^date:\s*(.+)$/m);
+      return dateMatch && dateMatch[1].trim() >= cutoffStr;
+    });
+  }
 
   const result = { total: targets.length, success: 0, failed: 0, errors: [] as string[] };
 
   for (let i = 0; i < targets.length; i++) {
     const note = targets[i];
-    const res = await reprocessSingle(note.filePath, config);
+    const res = await reprocessSingle(note.filePath, config, refetch);
 
     if (res.success) {
       result.success++;
@@ -97,7 +132,14 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
 
   if (!parsed) {
     await ctx.reply(
-      tagForceReply('reprocess', '請輸入筆記路徑或批次選項：\n例：AI/Claude-Code/xxx.md\n或：--all --since 7d'),
+      tagForceReply('reprocess', [
+        '請輸入筆記路徑或批次選項：',
+        '• 單篇：AI/Claude-Code/xxx.md',
+        '• 全部重新豐富：--all',
+        '• 近 N 天：--all --since 7d',
+        '• 重新抓取（含 GitHub 元資料）：--refetch',
+        '• 近 N 天重新抓取：--refetch --since 7d',
+      ].join('\n')),
       forceReplyMarkup('筆記路徑或 --all…'),
     );
     return;
@@ -120,10 +162,12 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
   }
 
   // Batch mode
-  const days = parsed.sinceDays ?? 7;
-  const status = await ctx.reply(`正在掃描並重新處理近 ${days} 天的筆記...`);
+  const refetch = parsed.refetch ?? false;
+  const dayLabel = parsed.sinceDays != null ? `近 ${parsed.sinceDays} 天` : '全部';
+  const modeLabel = refetch ? '（重新抓取模式）' : '';
+  const status = await ctx.reply(`正在掃描並重新處理${dayLabel}的筆記${modeLabel}...`);
 
-  const result = await reprocessBatch(config, days, async (processed, total, current) => {
+  const result = await reprocessBatch(config, parsed.sinceDays, refetch, async (processed, total, current) => {
     try {
       await ctx.telegram.editMessageText(
         ctx.chat!.id, status.message_id, undefined,
@@ -135,7 +179,7 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
   try { await ctx.deleteMessage(status.message_id); } catch { /* */ }
 
   const lines = [
-    `重新處理完成（近 ${days} 天）`,
+    `重新處理完成${modeLabel}（${dayLabel}）`,
     `總計：${result.total} 篇`,
     `成功：${result.success} | 失敗：${result.failed}`,
   ];
@@ -145,5 +189,5 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
     if (result.errors.length > 5) lines.push(`...及其他 ${result.errors.length - 5} 項`);
   }
   await ctx.reply(lines.join('\n'));
-  logger.info('reprocess', '批次完成', { total: result.total, success: result.success, failed: result.failed });
+  logger.info('reprocess', '批次完成', { total: result.total, success: result.success, failed: result.failed, refetch });
 }

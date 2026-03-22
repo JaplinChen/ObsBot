@@ -91,6 +91,16 @@ export function buildFrontmatter(
     `summary: "${escape(stripMarkdown(content.enrichedSummary ?? displayText).replace(/\{\{VIDEO:\d+\}\}/g, '').slice(0, 150)).replace(/\n/g, ' ')}"`,
   ];
   if (content.stars != null) lines.push(`stars: ${content.stars}`);
+  if (content.language) lines.push(`language: ${content.language}`);
+  // Pipeline 處理日誌
+  if (content.processingLog) {
+    const log = content.processingLog;
+    lines.push(`extractor_used: ${log.extractorUsed}`);
+    if (log.wasFallback) lines.push(`fallback: true`);
+    if (log.classifierConfidence != null) lines.push(`classifier_confidence: ${log.classifierConfidence}`);
+    if (log.processingTimeMs != null) lines.push(`processing_ms: ${log.processingTimeMs}`);
+    if (log.enrichmentScore != null) lines.push(`enrichment_score: ${log.enrichmentScore}`);
+  }
   lines.push('---');
   return lines;
 }
