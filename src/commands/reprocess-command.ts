@@ -26,7 +26,8 @@ interface ParsedArgs {
 
 /** Parse command arguments into execution mode */
 function parseArgs(text: string): ParsedArgs | null {
-  const args = text.replace(/^\/reprocess\s*/, '').trim();
+  // Normalize em-dash → double hyphen (iOS/macOS auto-corrects -- to —)
+  const args = text.replace(/^\/reprocess\s*/, '').replace(/\u2014/g, '--').replace(/\u2013/g, '--').trim();
   if (!args) return null;
 
   if (args.startsWith('--all') || args.startsWith('--refetch')) {
