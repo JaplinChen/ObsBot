@@ -6,7 +6,8 @@
 import { fetchWithTimeout } from './fetch-with-timeout.js';
 import type { ModelTier } from './local-llm.js';
 
-const OMLX_BASE = 'http://127.0.0.1:8000';
+const OMLX_BASE = process.env['OMLX_BASE_URL'] ?? 'http://127.0.0.1:8000';
+const OMLX_API_KEY = process.env['OMLX_API_KEY'] ?? '';
 const AVAILABILITY_CACHE_MS = 30_000;
 
 /** Map model tiers to oMLX model directory names. */
@@ -15,6 +16,14 @@ const OMLX_MODELS: Record<ModelTier, string> = {
   standard: 'Qwen3.5-9B-MLX-4bit',
   deep: 'Qwen3.5-27B-4bit',
 };
+
+/** Build common headers (Content-Type + optional Authorization). */
+function authHeaders(contentType?: string): Record<string, string> {
+  const h: Record<string, string> = {};
+  if (contentType) h['Content-Type'] = contentType;
+  if (OMLX_API_KEY) h['Authorization'] = `Bearer ${OMLX_API_KEY}`;
+  return h;
+}
 
 /* ── Availability probe with cache ──────────────────────────────────── */
 
@@ -29,7 +38,9 @@ export async function isOmlxAvailable(): Promise<boolean> {
   }
 
   try {
-    const res = await fetchWithTimeout(`${OMLX_BASE}/v1/models`, 3_000);
+    const res = await fetchWithTimeout(`${OMLX_BASE}/v1/models`, 3_000, {
+      headers: authHeaders(),
+    });
     _available = res.ok;
   } catch {
     _available = false;
@@ -84,7 +95,7 @@ export async function omlxChatCompletion(
   try {
     const res = await fetchWithTimeout(`${OMLX_BASE}/v1/chat/completions`, timeoutMs, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders('application/json'),
       body,
     });
 
@@ -141,7 +152,7 @@ export async function omlxVisionCompletion(
   try {
     const res = await fetchWithTimeout(`${OMLX_BASE}/v1/chat/completions`, timeoutMs, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders('application/json'),
       body,
     });
 
