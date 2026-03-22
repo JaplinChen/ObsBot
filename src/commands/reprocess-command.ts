@@ -89,7 +89,9 @@ async function reprocessSingle(
   }
 }
 
-/** Reprocess batch: all vault notes, optionally filtered by date */
+const BATCH_CONCURRENCY = 3;
+
+/** Reprocess batch: all vault notes with concurrency control */
 async function reprocessBatch(
   config: AppConfig,
   sinceDays: number | undefined,
@@ -111,24 +113,30 @@ async function reprocessBatch(
   }
 
   const result = { total: targets.length, success: 0, failed: 0, errors: [] as string[] };
+  let processed = 0;
 
-  for (let i = 0; i < targets.length; i++) {
-    const note = targets[i];
-    const res = await reprocessSingle(note.filePath, config, refetch);
+  // Concurrent processing with limiter
+  const queue = [...targets];
+  const workers = Array.from({ length: BATCH_CONCURRENCY }, async () => {
+    while (queue.length > 0) {
+      const note = queue.shift()!;
+      const res = await reprocessSingle(note.filePath, config, refetch);
 
-    if (res.success) {
-      result.success++;
-    } else {
-      result.failed++;
-      result.errors.push(`${note.title}: ${res.error}`);
+      if (res.success) {
+        result.success++;
+      } else {
+        result.failed++;
+        result.errors.push(`${note.title}: ${res.error}`);
+      }
+
+      processed++;
+      if (processed % 5 === 0 || processed === targets.length) {
+        await onProgress(processed, targets.length, note.title);
+      }
     }
+  });
 
-    // Report progress every 5 notes
-    if ((i + 1) % 5 === 0 || i === targets.length - 1) {
-      await onProgress(i + 1, targets.length, note.title);
-    }
-  }
-
+  await Promise.all(workers);
   return result;
 }
 

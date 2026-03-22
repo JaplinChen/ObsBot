@@ -109,6 +109,9 @@ export async function omlxChatCompletion(
       choices?: Array<{ message?: { content?: string } }>;
     };
     const content = json.choices?.[0]?.message?.content?.trim();
+    if (content) {
+      console.log(`[omlx] ✓ ${modelId} (${content.length} chars)`);
+    }
     return content || null;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -166,6 +169,9 @@ export async function omlxVisionCompletion(
       choices?: Array<{ message?: { content?: string } }>;
     };
     const content = json.choices?.[0]?.message?.content?.trim();
+    if (content) {
+      console.log(`[omlx-vision] ✓ ${OMLX_VISION_MODEL} (${content.length} chars)`);
+    }
     return content || null;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
