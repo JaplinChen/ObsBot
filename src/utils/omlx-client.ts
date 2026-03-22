@@ -95,6 +95,8 @@ export async function omlxChatCompletion(
     messages: [{ role: 'user', content: prompt }],
     temperature: options.temperature ?? 0.3,
     max_tokens: options.maxTokens ?? 4096,
+    // Disable reasoning/thinking for Qwen3.5 models — 10x+ faster
+    chat_template_kwargs: { enable_thinking: false },
   });
 
   try {
