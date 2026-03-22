@@ -76,8 +76,8 @@ GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 
 | 小紅書 | ✅ | Camoufox |
 | 抖音 / 今日頭條 | ✅ | Camoufox |
 
-> 需登入的平台預設使用 [Camoufox](https://camoufox.com/)（反偵測瀏覽器），首次使用需執行 `npx camoufox-js fetch`。
-> 小紅書另支援 [Browser Use CLI](https://docs.browser-use.com/open-source/browser-use-cli) 作為替代方案（實驗性），設定 `USE_BROWSER_USE=1` 啟用，使用真實 Chrome 的登入狀態。
+> 需登入的平台使用 [Camoufox](https://camoufox.com/)（反偵測瀏覽器），首次使用需執行 `npx camoufox-js fetch`。
+> 通用網頁擷取另支援 [Browser Use CLI](https://docs.browser-use.com/open-source/browser-use-cli) 作為 Camoufox 之後的降級方案，自動處理需 JS 渲染的公開頁面。
 
 </details>
 

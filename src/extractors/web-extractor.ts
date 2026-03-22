@@ -2,7 +2,7 @@
 import type { ExtractedContent, Extractor } from './types.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 import { stripHtmlTags } from './web-cleaner.js';
-import { htmlToMarkdown, htmlToMarkdownWithBrowser } from '../utils/html-to-markdown.js';
+import { htmlToMarkdown, htmlToMarkdownWithBrowser, htmlToMarkdownWithBrowserUse } from '../utils/html-to-markdown.js';
 
 function decodeHtml(s: string): string {
   return s
@@ -88,14 +88,21 @@ export const webExtractor: Extractor = {
     const html = await res.text();
     if (!html || html.length < 100) throw new Error('Web page returned empty content');
 
-    // Try Readability + Turndown first; if it fails, retry with Camoufox browser;
-    // final fallback to regex extraction
+    // Tier 1: Readability + Turndown on raw HTML
+    // Tier 2: Camoufox browser rendering (JS-rendered pages, anti-fingerprint)
+    // Tier 3: Browser Use CLI rendering (lightweight headless Chromium fallback)
+    // Tier 4: Regex extraction (final fallback)
     let parsed = htmlToMarkdown(html, res.url || url);
     if (!parsed) {
       try {
         parsed = await htmlToMarkdownWithBrowser(res.url || url);
       } catch {
-        // Camoufox unavailable — continue with regex fallback
+        // Camoufox unavailable — try Browser Use CLI
+        try {
+          parsed = await htmlToMarkdownWithBrowserUse(res.url || url);
+        } catch {
+          // Browser Use CLI also unavailable — continue with regex fallback
+        }
       }
     }
 

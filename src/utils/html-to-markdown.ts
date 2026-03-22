@@ -150,6 +150,26 @@ export async function htmlToMarkdownWithBrowser(url: string): Promise<HtmlToMark
 }
 
 /**
+ * Fallback: render page with Browser Use CLI (headless Chromium), then extract.
+ * Used when Camoufox is unavailable or fails. Does not require login — suitable
+ * for public JS-rendered pages only.
+ */
+export async function htmlToMarkdownWithBrowserUse(url: string): Promise<HtmlToMarkdownResult | null> {
+  const { BrowserUseClient } = await import('./browser-use-client.js');
+  const client = new BrowserUseClient('getthreads-web');
+  try {
+    await client.open(url);
+    // Wait for JS rendering
+    await new Promise((r) => setTimeout(r, 3000));
+    const html = await client.html();
+    if (!html || html.length < 200) return null;
+    return htmlToMarkdown(html, url, true);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Convert an HTML fragment (not a full page) to Markdown.
  * Used for pre-extracted content like GitHub README <article> blocks.
  * @param baseUrl — optional source URL for resolving relative links/images
