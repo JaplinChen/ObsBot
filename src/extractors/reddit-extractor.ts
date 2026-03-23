@@ -44,6 +44,7 @@ export const redditExtractor: ExtractorWithComments = {
       if (!title.trim()) throw new Error('Reddit post title not found');
 
       const author = firstNonEmpty([
+        await page.locator('shreddit-post').first().getAttribute('author').catch(() => ''),
         await page.locator('a[href*="/user/"]').first().innerText().catch(() => ''),
         await page.locator('[data-testid="post_author_link"]').first().innerText().catch(() => ''),
       ]) || 'unknown';
@@ -55,6 +56,8 @@ export const redditExtractor: ExtractorWithComments = {
       const body = firstNonEmpty([
         await page.locator('[data-click-id="text"]').first().innerText().catch(() => ''),
         await page.locator('[data-post-click-location="text-body"]').first().innerText().catch(() => ''),
+        await page.locator('[slot="text-body"]').first().innerText().catch(() => ''),
+        await page.locator('shreddit-post [slot="text-body"]').first().innerText().catch(() => ''),
       ]);
 
       const text = [
@@ -111,7 +114,7 @@ export const redditExtractor: ExtractorWithComments = {
 
         const text = firstNonEmpty([
           await node.locator('[slot="comment"] p').allInnerTexts().then((arr) => arr.join('\n')).catch(() => ''),
-          await node.innerText().catch(() => ''),
+          await node.locator('p').first().innerText().catch(() => ''),
         ]);
         if (!text || text.length < 3) continue;
 
