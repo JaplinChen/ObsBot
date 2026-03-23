@@ -95,6 +95,11 @@ function breakInlineStructure(text: string): string {
         return '\n' + marker;
       });
     }
+    // Also break before bullet points (•)
+    const bulletMatches = result.match(/(?:^|\s)•\s+\S/g);
+    if (bulletMatches && bulletMatches.length >= 3) {
+      result = result.replace(/(?<=\S)\s+(•\s+)/g, '\n$1');
+    }
     return result;
   }).join('\n');
 }
