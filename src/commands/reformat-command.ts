@@ -93,19 +93,19 @@ async function reformatSingle(
 
     // Rule-based reformat
     const reformatted = reformatNoteBody(raw);
-    if (!reformatted) return { changed: false };
-
-    let final = reformatted;
+    let final = reformatted ?? raw;
     let usedLlm = false;
 
     // LLM fallback for remaining wall-of-text
-    if (useLlm && hasRemainingWall(reformatted)) {
-      const llmResult = await reformatWithLlm(reformatted);
+    if (useLlm && hasRemainingWall(final)) {
+      const llmResult = await reformatWithLlm(final);
       if (llmResult) {
         final = llmResult;
         usedLlm = true;
       }
     }
+
+    if (final === raw) return { changed: false };
 
     await writeFile(filePath, final, 'utf-8');
     return { changed: true, usedLlm };
