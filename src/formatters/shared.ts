@@ -33,10 +33,25 @@ export function stripMarkdown(s: string): string {
 
 /** Convert bare URLs to Markdown links, skip already-linked ones */
 export function linkifyUrls(text: string): string {
-  return text.replace(
-    /(?<!\]\()(?<![<])(https?:\/\/[^\s\)\]\>,'"]+)/g,
+  // Protect existing markdown links and angle-bracket links with placeholders
+  const placeholders: string[] = [];
+  let protected_ = text.replace(/\[([^\]]*)\]\([^)]+\)/g, (match) => {
+    placeholders.push(match);
+    return `\x00LINK${placeholders.length - 1}\x00`;
+  });
+  protected_ = protected_.replace(/<(https?:\/\/[^>]+)>/g, (match) => {
+    placeholders.push(match);
+    return `\x00LINK${placeholders.length - 1}\x00`;
+  });
+
+  // Linkify remaining bare URLs
+  protected_ = protected_.replace(
+    /(https?:\/\/[^\s)\]>,'"]+)/g,
     '[$1]($1)',
   );
+
+  // Restore placeholders
+  return protected_.replace(/\x00LINK(\d+)\x00/g, (_, i) => placeholders[Number(i)]);
 }
 
 /** Replace remote image URLs in text with local vault paths */

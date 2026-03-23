@@ -7,6 +7,7 @@ import {
   buildComments,
 } from './shared.js';
 import { cleanAdSpeak } from '../utils/content-cleaner.js';
+import { reformatBody } from './body-reformatter.js';
 
 function toPlainText(input: string): string {
   return input
@@ -148,7 +149,7 @@ export function assembleNote(
   }
 
   const { text: rawBodyText, usedPaths, inlinedVideoIndices: bodyInlinedVideos } = formatter.formatBody(displayText, imageUrlMap, localVideoPaths, content.videos);
-  const bodyText = cleanAdSpeak(rawBodyText);
+  const bodyText = reformatBody(cleanAdSpeak(rawBodyText));
   lines.push(bodyText, '');
 
   const cleanSummary = content.enrichedSummary

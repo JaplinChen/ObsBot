@@ -12,6 +12,7 @@ import { handleConsolidate } from './consolidate-command.js';
 import { handleAsk } from './ask-command.js';
 import { handleDiscover } from './discover-command.js';
 import { handleReprocess } from './reprocess-command.js';
+import { handleReformat } from './reformat-command.js';
 import { handleDedup } from './dedup-command.js';
 import { createRetryHandler, createRetryActionHandler } from './retry-command.js';
 import { handleSubscribe } from './subscribe-command.js';
@@ -97,6 +98,7 @@ export function registerCommands(
 
   // --- Maintenance ---
   registerAsyncCommand(bot, 'reprocess', 'reprocess', config, handleReprocess);
+  registerAsyncCommand(bot, 'reformat', 'reformat', config, handleReformat);
   registerAsyncCommand(bot, 'dedup', 'dedup', config, handleDedup);
   registerAsyncCommand(bot, 'retry', 'retry', config, createRetryHandler(stats));
   registerAsyncCommand(bot, 'subscribe', 'subscribe', config, handleSubscribe);
@@ -191,6 +193,8 @@ export function registerCommands(
     runCommandTask(ctx, 'discover', () => handleDiscover(ctx, config), formatErrorMessage));
   registerForceReplyHandler('reprocess', (ctx) =>
     runCommandTask(ctx, 'reprocess', () => handleReprocess(ctx, config), formatErrorMessage));
+  registerForceReplyHandler('reformat', (ctx) =>
+    runCommandTask(ctx, 'reformat', () => handleReformat(ctx, config), formatErrorMessage));
   registerForceReplyHandler('subscribe', (ctx) =>
     runCommandTask(ctx, 'subscribe', () => handleSubscribe(ctx, config), formatErrorMessage));
 
