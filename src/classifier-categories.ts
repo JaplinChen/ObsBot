@@ -100,6 +100,8 @@ export const CATEGORIES: CategoryRule[] = [
       'openclaw', 'open claw', 'openclaws', 'clawbot', '龍蝦', '龙虾',
       'nanoclaw', 'opencloy', 'u-claw', 'clawhub', '養蝦', '小龍蝦',
       'claw skill', 'clawhub skill', 'claw 技能',
+      'qclaw', 'nemoclaw', 'clawx', 'openclawctl',
+      'claw plugin', 'claw 插件',
     ],
   },
   {
@@ -257,7 +259,11 @@ export const CATEGORIES: CategoryRule[] = [
     keywords: ['mac', 'macbook', 'iphone', 'ipad', 'macos', 'apple silicon', 'apple watch', 'ios ', 'mac mini', 'mac studio', 'mac pro', 'imac', 'macwhisper', 'orbstack'],
   },
   { name: '科技', keywords: ['hardware', 'chip', 'semiconductor', '晶片', '半導體', '硬體', '科技新聞', '休眠機制'] },
-  { name: '程式設計', keywords: ['programming', 'javascript', 'typescript', 'python', 'rust', 'react', 'nextjs', '程式設計', 'backend', 'frontend', 'database', '訂閱管理', '健康檢查', 'heartbeat', 'health check', 'c#', '.net', 'golang', 'swift', 'kotlin', 'docker'] },
+  {
+    name: '程式設計',
+    keywords: ['programming', 'javascript', 'typescript', 'python', 'rust', 'react', 'nextjs', '程式設計', 'backend', 'frontend', 'database', '訂閱管理', '健康檢查', 'heartbeat', 'health check', 'c#', '.net', 'golang', 'swift', 'kotlin', 'docker'],
+    exclude: ['openclaw', 'claw', 'nanoclaw', 'qclaw'],
+  },
   {
     name: '投資理財',
     keywords: [
@@ -266,6 +272,7 @@ export const CATEGORIES: CategoryRule[] = [
       '比特幣', '報酬', '資產', 'finance', 'market', '市場',
       '金融', 'a股', 'a 股',
     ],
+    exclude: ['openclaw', 'claw', 'nanoclaw', 'qclaw'],
   },
   {
     name: '創業商業',
@@ -284,6 +291,7 @@ export const CATEGORIES: CategoryRule[] = [
       'productivity', 'habit', 'focus', '生產力', '工作流',
       '效率', 'notion', 'syncthing', '檔案同步', '磁盤清理', '系統優化',
     ],
+    exclude: ['openclaw', 'claw', 'nanoclaw', 'qclaw'],
   },
   { name: '新聞時事', keywords: ['news', 'breaking', 'report', 'election', 'government', 'policy', 'war', '新聞', '時事', '政策', '政府', '選舉', '戰爭', '國際'] },
   {
