@@ -95,10 +95,11 @@ export const CATEGORIES: CategoryRule[] = [
   // 4. AI/開發工具（品牌名優先於泛用 Agent 關鍵字）
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   {
-    name: 'AI/開發工具/OpenClaw',
+    name: 'AI/OpenClaw',
     keywords: [
       'openclaw', 'open claw', 'openclaws', 'clawbot', '龍蝦', '龙虾',
       'nanoclaw', 'opencloy', 'u-claw', 'clawhub', '養蝦', '小龍蝦',
+      'claw skill', 'clawhub skill', 'claw 技能',
     ],
   },
   {
