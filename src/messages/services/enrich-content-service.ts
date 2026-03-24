@@ -72,19 +72,28 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
     }
   }
 
-  // AI 豐富化 與 postProcess（連結補充 + 翻譯）並行——兩者互不依賴
+  // Phase A: 連結深度抓取 + 翻譯並行（連結內容需先於 AI 豐富化完成）
   const originalTitle = content.title;
-  const [enriched] = await Promise.all([
-    enrichContent(cleanedTitle, enrichText, hints, content.platform),
-    postProcess(content, {
-      enrichPostLinks: true,
-      enrichCommentLinks: true,
-      translate: config.enableTranslation,
-      maxLinkedUrls: config.maxLinkedUrls,
-    }).catch((err: Error) => {
-      logger.warn('post-process', 'post process failed', { message: err.message });
-    }),
-  ]);
+  await postProcess(content, {
+    enrichPostLinks: true,
+    enrichCommentLinks: true,
+    translate: config.enableTranslation,
+    maxLinkedUrls: config.maxLinkedUrls,
+  }).catch((err: Error) => {
+    logger.warn('post-process', 'post process failed', { message: err.message });
+  });
+
+  // Phase B: 將連結文章完整文本注入 AI 上下文
+  const linkedTexts = (content.linkedContent ?? [])
+    .filter((l) => l.fullText && l.fullText.length > 100)
+    .map((l) => l.fullText!);
+  if (linkedTexts.length > 0) {
+    const linkedContext = linkedTexts.join('\n\n---\n\n').slice(0, 4000);
+    enrichText += `\n\n[連結文章內容]\n${linkedContext}`;
+    logger.info('msg', '連結內容已注入 AI 上下文', { count: linkedTexts.length, chars: linkedContext.length });
+  }
+
+  const enriched = await enrichContent(cleanedTitle, enrichText, hints, content.platform, linkedTexts.length > 0);
 
   if (enriched.keywords) content.enrichedKeywords = enriched.keywords;
   if (enriched.summary) content.enrichedSummary = enriched.summary;

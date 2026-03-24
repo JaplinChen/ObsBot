@@ -30,10 +30,12 @@ function normalizeCategory(raw: unknown): string | undefined {
   return v.slice(0, 40);
 }
 
-/** Pick model tier based on content length and platform. */
-function selectModelTier(textLen: number, hasTranscript: boolean, platform?: string): ModelTier {
+/** Pick model tier based on content length, platform, and linked content. */
+function selectModelTier(textLen: number, hasTranscript: boolean, platform?: string, hasLinkedContent?: boolean): ModelTier {
   // GitHub READMEs need deep analysis regardless of length
   if (platform === 'github') return 'deep';
+  // Linked content provides rich context that benefits from deep analysis
+  if (hasLinkedContent) return 'deep';
   if (hasTranscript || textLen > 1000) return 'deep';
   if (textLen < 300) return 'flash';
   return 'standard';
@@ -77,19 +79,32 @@ export async function enrichContent(
   text: string,
   categoryHints: string[],
   platform?: string,
+  hasLinkedContent?: boolean,
 ): Promise<EnrichResult> {
   const isGithub = platform === 'github';
-  const previewLimit = isGithub ? 2500 : 1200;
+  // Expand preview limit when linked content is embedded in text
+  const previewLimit = isGithub ? 2500 : hasLinkedContent ? 3500 : 1200;
   const textPreview = text.slice(0, previewLimit).replace(/\n/g, ' ');
   const hints = categoryHints.slice(0, 8).join(', ');
   const hasTranscript = text.includes('文字稿：') || text.includes('[Transcript]');
-  const tier = selectModelTier(text.length, hasTranscript, platform);
+  const tier = selectModelTier(text.length, hasTranscript, platform, hasLinkedContent);
   const cleanedTitle = cleanTitle(title);
-  logger.info('enricher', 'model-route', { tier, textLen: text.length, hasTranscript, platform });
+  logger.info('enricher', 'model-route', { tier, textLen: text.length, hasTranscript, platform, hasLinkedContent });
 
   const jsonKeys = isGithub
     ? 'keywords, summary, analysis, keyPoints, title, category, githubAnalysis'
     : 'keywords, summary, analysis, keyPoints, title, category';
+
+  const linkedContentPrompt = hasLinkedContent
+    ? [
+        '',
+        '=== 連結文章分析指令 ===',
+        '內容中包含 [連結文章內容] 標記的部分是主文中連結到的外部文章。',
+        '分析時必須綜合主文與連結文章，重點提取連結文章的核心觀點、技術細節和實用資訊。',
+        'summary 和 analysis 應反映連結文章的深度內容，而非僅複述主文的表面列舉。',
+        'keyPoints 應從連結文章中提取最有價值的具體做法或結論。',
+      ]
+    : [];
 
   const prompt = [
     'You are a strict JSON generator for content enrichment.',
@@ -106,6 +121,7 @@ export async function enrichContent(
     '例：「Kaku-整合AI的深度定製終端」「Symphony-AI自動完成CI和PR」「Obsidian-雙向連結筆記管理工具」',
     'If content is insufficient, state what is missing briefly instead of inventing.',
     ...(isGithub ? buildGithubPrompt() : []),
+    ...linkedContentPrompt,
     hints ? `Category hints: ${hints}` : '',
     `Original title: ${cleanedTitle}`,
     `Content: ${textPreview}`,
