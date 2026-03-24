@@ -72,14 +72,28 @@ export function replaceInlineImages(
   return { text: result, usedPaths };
 }
 
-/** Format a linked content entry as a Markdown bullet */
+/** Format a linked content entry as a Markdown bullet, with optional content preview */
 export function formatLinkedMeta(link: LinkedContentMeta): string {
   const parts: string[] = [];
   if (link.stars != null) parts.push(`⭐ ${link.stars}`);
   if (link.language) parts.push(link.language);
   const suffix = parts.length > 0 ? ` | ${parts.join(' | ')}` : '';
   const desc = link.description ? ` — ${link.description}` : '';
-  return `- **[${link.title}](${link.url})**${desc}${suffix}`;
+  const header = `- **[${link.title}](${link.url})**${desc}${suffix}`;
+
+  // Show content preview when deep-fetched fullText is available
+  if (link.fullText && link.fullText.length > 100) {
+    const preview = link.fullText
+      .replace(/^#.*\n/gm, '')      // strip headings
+      .replace(/\n{2,}/g, '\n')     // collapse blank lines
+      .trim()
+      .slice(0, 300);
+    const truncated = preview.length >= 300 ? preview + '…' : preview;
+    const indented = truncated.split('\n').map(l => `  > ${l}`).join('\n');
+    return `${header}\n${indented}`;
+  }
+
+  return header;
 }
 
 /** Build frontmatter lines */
