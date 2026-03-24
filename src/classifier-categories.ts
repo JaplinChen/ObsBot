@@ -36,6 +36,7 @@ export const CATEGORIES: CategoryRule[] = [
   {
     name: 'AI/Claude/應用與技巧',
     keywords: ['claude', 'anthropic'],
+    exclude: ['cowork', 'claude code', 'claude-code', 'claude cli'],
   },
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
