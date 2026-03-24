@@ -45,6 +45,7 @@ export const CATEGORIES: CategoryRule[] = [
   {
     name: 'AI/模型與平台/OpenAI',
     keywords: ['chatgpt', 'openai', 'codex', 'openai codex', 'gpt-5', 'gpt-4o'],
+    exclude: ['openclaw', 'claw', '龍蝦', '龙虾', 'metaclaw', 'nanoclaw', 'qclaw'],
   },
   {
     name: 'AI/模型與平台/Gemini',
@@ -89,6 +90,7 @@ export const CATEGORIES: CategoryRule[] = [
       '调教', '調教', 'few-shot', 'zero-shot', 'chain of thought',
       '防幻覺', '幻覺協議', 'hallucination',
     ],
+    exclude: ['openclaw', 'claw', '龍蝦', '龙虾', '小龍蝦', 'metaclaw', 'nanoclaw', 'qclaw'],
   },
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -100,7 +102,7 @@ export const CATEGORIES: CategoryRule[] = [
       'openclaw', 'open claw', 'openclaws', 'clawbot', '龍蝦', '龙虾',
       'nanoclaw', 'opencloy', 'u-claw', 'clawhub', '養蝦', '小龍蝦',
       'claw skill', 'clawhub skill', 'claw 技能',
-      'qclaw', 'nemoclaw', 'clawx', 'openclawctl',
+      'qclaw', 'nemoclaw', 'clawx', 'openclawctl', 'metaclaw',
       'claw plugin', 'claw 插件',
     ],
   },
@@ -142,6 +144,7 @@ export const CATEGORIES: CategoryRule[] = [
       'ai agent', 'agentic', 'agent工程', 'agent engineer',
       'agent monitoring', 'agent 監控',
     ],
+    exclude: ['openclaw', 'claw', '龍蝦', '龙虾', 'metaclaw', 'nanoclaw', 'qclaw'],
   },
   {
     name: 'AI/Agent/自動化流程',
@@ -171,6 +174,7 @@ export const CATEGORIES: CategoryRule[] = [
       'getting started', '手把手', '3分钟', '0代码',
       '安裝教學', '安裝指南', '設定教學',
     ],
+    exclude: ['openclaw', 'claw', '龍蝦', '龙虾', '小龍蝦', 'metaclaw', 'nanoclaw', 'qclaw'],
   },
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
