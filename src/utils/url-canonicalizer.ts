@@ -10,6 +10,7 @@
   'ref',
   'ref_src',
   'source',
+  's',       // X/Twitter 分享追蹤參數
 ]);
 
 const TIKTOK_DROP_PARAMS = new Set([
@@ -47,7 +48,15 @@ export function canonicalizeUrl(raw: string): string {
   try {
     const u = new URL(raw.trim());
     const protocol = u.protocol.toLowerCase();
-    const hostname = u.hostname.toLowerCase().replace(/^www\./, '');
+    let hostname = u.hostname.toLowerCase().replace(/^www\./, '');
+    // 統一 twitter.com → x.com
+    if (hostname === 'twitter.com' || hostname === 'mobile.twitter.com') {
+      hostname = 'x.com';
+    }
+    // 統一 fxtwitter/vxtwitter → x.com
+    if (hostname === 'fxtwitter.com' || hostname === 'vxtwitter.com' || hostname === 'fixupx.com') {
+      hostname = 'x.com';
+    }
     const pathname = normalizePath(u.pathname);
     const port = u.port && !((protocol === 'https:' && u.port === '443') || (protocol === 'http:' && u.port === '80'))
       ? `:${u.port}`
@@ -57,12 +66,15 @@ export function canonicalizeUrl(raw: string): string {
     const isYoutubeWatch = (hostname === 'youtube.com' || hostname === 'm.youtube.com') && pathname === '/watch';
     const isYoutuBe = hostname === 'youtu.be';
     const isTiktok = hostname === 'tiktok.com' || hostname.endsWith('.tiktok.com');
+    const isXTwitter = hostname === 'x.com';
 
     for (const [key, value] of u.searchParams.entries()) {
       const lower = key.toLowerCase();
       if (DROP_QUERY_PARAMS.has(lower) || lower.startsWith('utm_')) continue;
 
       if (isTiktok && TIKTOK_DROP_PARAMS.has(lower)) continue;
+      // X/Twitter：推文 URL 不需任何 query param（s, t 等皆為追蹤參數）
+      if (isXTwitter && /^\/\w+\/status\/\d+/.test(pathname)) continue;
 
       if (isYoutubeWatch) {
         if (YOUTUBE_KEEP_PARAMS.has(lower)) filtered.append(lower, value);

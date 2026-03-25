@@ -58,7 +58,7 @@ export async function executeReclassify(config: AppConfig): Promise<ReclassifyRe
     if (storedCategory === newCategory) continue;
 
     // Compute the new path based on full category path
-    // e.g. baseDir/AI/工具/foo.md → baseDir/AI/研究對話/Claude/foo.md
+    // e.g. baseDir/AI/產業動態/foo.md → baseDir/AI/Claude/Claude Code/foo.md
     const relativeTail = filePath.slice(baseDir.length).replace(/\\/g, '/');
     const segments = relativeTail.split('/').filter(Boolean);
     const fileName = segments[segments.length - 1];
