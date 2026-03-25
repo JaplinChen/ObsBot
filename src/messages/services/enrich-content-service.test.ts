@@ -50,7 +50,7 @@ function makeContent(): ExtractedContent {
 describe('enrich-content-service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockClassifyContent.mockReturnValue('�޳N');
+    mockClassifyContent.mockReturnValue('其他');
     mockGetTopKeywordsForCategory.mockReturnValue(['ai', 'agent']);
     mockPostProcess.mockResolvedValue(undefined as never);
     mockEnrichContent.mockResolvedValue({} as never);
@@ -68,7 +68,7 @@ describe('enrich-content-service', () => {
     });
 
     expect(mockClassifyContent).toHaveBeenCalledWith('T', 'Body');
-    expect(content.category).toBe('�޳N');
+    expect(content.category).toBe('其他');
     expect(mockPostProcess).toHaveBeenCalledTimes(1);
   });
 
@@ -79,7 +79,7 @@ describe('enrich-content-service', () => {
       keywords: ['k1'],
       summary: 's1',
       title: 'new title',
-      category: '�s����',
+      category: '其他',
     } as never);
 
     await enrichExtractedContent(content, {
@@ -90,14 +90,14 @@ describe('enrich-content-service', () => {
       saveVideos: false,
     });
 
-    expect(mockGetTopKeywordsForCategory).toHaveBeenCalledWith('�޳N');
+    expect(mockGetTopKeywordsForCategory).toHaveBeenCalledWith('其他');
     expect(mockEnrichContent).toHaveBeenCalledTimes(1);
     const aiText = mockEnrichContent.mock.calls[0][1] as string;
     expect(aiText).toContain(AI_TRANSCRIPT_PREFIX);
     expect(content.enrichedKeywords).toEqual(['k1']);
     expect(content.enrichedSummary).toBe('s1');
     expect(content.title).toBe('new title');
-    expect(content.category).toBe('�s����');
+    expect(content.category).toBe('其他');
   });
 
   it('runs AI enrich without requiring local provider config', async () => {
