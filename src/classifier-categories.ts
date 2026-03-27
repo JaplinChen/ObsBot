@@ -211,6 +211,16 @@ export const CATEGORIES: CategoryRule[] = [
   { name: 'AI/設計工具', keywords: ['設計工具', 'design tool', '平面設計'] },
   { name: 'AI/Logo生成', keywords: ['logo生成', 'logo 生成', 'logo design', 'logo設計'] },
   {
+    name: 'AI/多模態生成/語音',
+    keywords: [
+      '語音輸入', '語音識別', '語音轉文字', '語音轉錄',
+      'speech-to-text', 'speech to text', 'speech recognition',
+      'whisper', 'stt', '轉錄', '聽寫', 'dictation',
+      'voice input', 'voice typing', '語音打字',
+      'sherpaonnx', 'sherpa-onnx', 'macparakeet', 'type4me', 'typeno',
+    ],
+  },
+  {
     name: 'AI/研究對話',
     keywords: [
       '完全教程', '教程', '小白', '新手',
