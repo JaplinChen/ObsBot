@@ -12,8 +12,22 @@ import { loadBenchmarkData, saveBenchmarkData, recordPlatformAttempt } from '../
 import { ocrContentImages, isLikelyScreenshot } from '../../enrichment/ocr-service.js';
 import { cleanTitle } from '../../utils/content-cleaner.js';
 
+/** For GitHub repos, build classification text from description + topics only (not README body) */
+function buildGithubClassifyText(content: ExtractedContent): string {
+  const parts: string[] = [];
+  // Use og:description (first line of text, before README)
+  const desc = content.text.split('\n\n')[0] ?? '';
+  if (desc) parts.push(desc);
+  // Topics are the best signal for what a project actually does
+  if (content.extraTags?.length) parts.push(content.extraTags.join(' '));
+  return parts.join(' ');
+}
+
 export async function enrichExtractedContent(content: ExtractedContent, config: AppConfig): Promise<void> {
-  content.category = classifyContent(content.title, content.text);
+  const classifyText = content.platform === 'github'
+    ? buildGithubClassifyText(content)
+    : content.text;
+  content.category = classifyContent(content.title, classifyText);
   logger.info('msg', 'category', { category: content.category });
 
   const hints = getTopKeywordsForCategory(content.category);

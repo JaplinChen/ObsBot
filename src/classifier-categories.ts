@@ -246,6 +246,9 @@ export const CATEGORIES: CategoryRule[] = [
       'obsidian', 'pkm', 'zettelkasten',
       '第二大腦', '第二大脑', '筆記軟體', '笔记软件', '筆記工具', '笔记工具',
       '雙向連結', '雙向鏈結', '知識圖譜', '知識網路', '知識網絡',
+      'note-taking', 'knowledge-management', 'knowledge management',
+      'personal-knowledge', 'roam', 'logseq', 'siyuan', '思源',
+      '知識管理', '知识管理',
     ],
   },
   {
@@ -253,7 +256,18 @@ export const CATEGORIES: CategoryRule[] = [
     keywords: ['mac', 'macbook', 'iphone', 'ipad', 'macos', 'apple silicon', 'apple watch', 'ios ', 'mac mini', 'mac studio', 'mac pro', 'imac', 'macwhisper', 'orbstack'],
   },
   { name: '科技', keywords: ['hardware', 'chip', 'semiconductor', '晶片', '半導體', '硬體', '科技新聞', '休眠機制'] },
-  { name: '程式設計', keywords: ['programming', 'javascript', 'typescript', 'python', 'rust', 'react', 'nextjs', '程式設計', 'backend', 'frontend', 'database', '訂閱管理', '健康檢查', 'heartbeat', 'health check', 'c#', '.net', 'golang', 'swift', 'kotlin', 'docker'] },
+  {
+    name: '程式設計',
+    keywords: [
+      'programming', 'javascript', 'typescript', 'python', 'rust',
+      'react', 'nextjs', '程式設計', 'backend', 'frontend',
+      'database', '訂閱管理', '健康檢查', 'heartbeat', 'health check',
+      'c#', '.net', 'golang', 'swift', 'kotlin', 'docker',
+      'cli-tool', 'developer-tools', 'dev-tools', 'devtools',
+      'code-generation', 'code-quality', 'linter', 'formatter',
+      'syntax-highlighting', 'tree-sitter',
+    ],
+  },
   {
     name: '投資理財',
     keywords: [
@@ -278,6 +292,9 @@ export const CATEGORIES: CategoryRule[] = [
     keywords: [
       'productivity', 'habit', 'focus', '生產力', '工作流',
       '效率', 'notion', 'syncthing', '檔案同步', '磁盤清理', '系統優化',
+      'dotfiles', 'ricing', 'desktop-customization', 'rice',
+      'awesome-list', 'curated-list', 'resource-list', '資源清單', '資源列表',
+      'terminal-emulator', 'window-manager', 'linux-desktop',
     ],
   },
   { name: '新聞時事', keywords: ['news', 'breaking', 'report', 'election', 'government', 'policy', 'war', '新聞', '時事', '政策', '政府', '選舉', '戰爭', '國際'] },
