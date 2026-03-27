@@ -7,7 +7,7 @@
 import type { Context } from 'telegraf';
 import { readFile, stat, unlink } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER, type AppConfig } from '../utils/config.js';
 import { logger } from '../core/logger.js';
 import { canonicalizeUrl } from '../utils/url-canonicalizer.js';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
@@ -21,7 +21,7 @@ interface NoteEntry {
 
 /** Scan vault and group notes by canonical URL */
 async function findDuplicates(vaultPath: string): Promise<Map<string, NoteEntry[]>> {
-  const rootDir = join(vaultPath, 'GetThreads');
+  const rootDir = join(vaultPath, VAULT_SUBFOLDER);
   const files = await getAllMdFiles(rootDir);
 
   const urlMap = new Map<string, NoteEntry[]>();
@@ -58,7 +58,7 @@ async function findDuplicates(vaultPath: string): Promise<Map<string, NoteEntry[
 
 /** Format duplicate report for Telegram */
 function formatReport(dupes: Map<string, NoteEntry[]>, vaultPath: string): string {
-  const rootDir = join(vaultPath, 'GetThreads');
+  const rootDir = join(vaultPath, VAULT_SUBFOLDER);
   const lines: string[] = [];
   let totalDupes = 0;
 
@@ -108,7 +108,7 @@ export async function handleDedup(ctx: Context, config: AppConfig): Promise<void
   // Execute deletion
   let deleted = 0;
   const errors: string[] = [];
-  const rootDir = join(config.vaultPath, 'GetThreads');
+  const rootDir = join(config.vaultPath, VAULT_SUBFOLDER);
 
   for (const [, entries] of dupes) {
     entries.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());

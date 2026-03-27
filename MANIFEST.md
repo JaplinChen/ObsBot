@@ -1,4 +1,4 @@
-# GetThreads — MANIFEST
+# ObsBot — MANIFEST
 
 > AI 讀取此檔案即可快速理解專案結構，避免不必要的探索。
 > 詳細架構設計見 `docs/architecture.md`。
@@ -17,7 +17,7 @@ Telegram Bot，將使用者傳送的 URL 內容抓取、分類、AI 摘要後存
 ## 目錄結構
 
 ```
-GetThreads/
+ObsBot/
 ├── src/                    ← 所有原始碼
 │   ├── index.ts            ← 主入口：啟動 config、extractor、guardian
 │   ├── bot.ts              ← Telegraf Bot 組裝

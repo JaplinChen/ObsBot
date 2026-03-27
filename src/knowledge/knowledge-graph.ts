@@ -6,6 +6,7 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { join, basename, dirname } from 'node:path';
 import type { VaultKnowledge, NoteAnalysis, EntityType } from './types.js';
 import { getTopEntities } from './knowledge-aggregator.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 
 /** Adjacency graph built from entity co-occurrence */
 export interface EntityGraph {
@@ -154,7 +155,7 @@ export function formatGapsSummary(gaps: KnowledgeGap[]): string {
 
 /** Generate an Obsidian Map of Content note */
 export async function generateMocNote(vaultPath: string, knowledge: VaultKnowledge): Promise<string> {
-  const outPath = join(vaultPath, 'GetThreads', '知識地圖.md');
+  const outPath = join(vaultPath, VAULT_SUBFOLDER, '知識地圖.md');
   const now = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const noteLink = (n: NoteAnalysis) => `[[${basename(n.filePath, '.md')}|${n.title.slice(0, 45)}]]`;
 
@@ -208,7 +209,7 @@ export async function generateMocNote(vaultPath: string, knowledge: VaultKnowled
   }
 
   L.push('---');
-  L.push(`*自動產生 by GetThreads /vault-analyze — ${new Date().toISOString().slice(0, 19)}*`);
+  L.push(`*自動產生 by ObsBot /vault-analyze — ${new Date().toISOString().slice(0, 19)}*`);
 
   const content = L.join('\n');
   await mkdir(dirname(outPath), { recursive: true });

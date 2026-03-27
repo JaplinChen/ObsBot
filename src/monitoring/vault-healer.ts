@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 import type { VaultIssue } from './health-types.js';
 import { logger } from '../core/logger.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 
 const HTML_TAG_RE = /<(?:div|span|br|p|a|img|table|tr|td|th|ul|ol|li|h[1-6])\b[^>]*\/?>/gi;
 const HTML_CLOSE_RE = /<\/(?:div|span|p|a|table|tr|td|th|ul|ol|li|h[1-6])>/gi;
@@ -44,7 +45,7 @@ interface ScanResult {
 
 /** Scan and auto-fix vault issues */
 export async function healVault(vaultPath: string, dryRun: boolean = false): Promise<ScanResult> {
-  const rootDir = join(vaultPath, 'GetThreads');
+  const rootDir = join(vaultPath, VAULT_SUBFOLDER);
   const files = await getAllMdFiles(rootDir);
   const issues: VaultIssue[] = [];
   let autoFixed = 0;
@@ -55,7 +56,7 @@ export async function healVault(vaultPath: string, dryRun: boolean = false): Pro
       const parsed = splitNote(raw);
       if (!parsed) continue;
 
-      const relPath = filePath.replace(/.*GetThreads[\\/]/, '');
+      const relPath = filePath.replace(new RegExp('.*' + VAULT_SUBFOLDER + '[\\\\/]'), '');
       let modified = false;
       let newContent = raw;
 

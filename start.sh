@@ -1,5 +1,5 @@
 #!/bin/bash
-# GetThreads Bot 啟動腳本（macOS）
+# ObsBot 啟動腳本（macOS）
 # 用法：雙擊或在終端機執行 ./啟動.sh
 # 加上 --loop 參數可自動重啟：./啟動.sh --loop
 

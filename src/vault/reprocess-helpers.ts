@@ -4,13 +4,14 @@
 import { readdir, readFile, writeFile, rename, mkdir, cp, unlink, rmdir } from 'node:fs/promises';
 import { join, dirname, normalize } from 'node:path';
 import { classifyContent } from '../classifier.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 
 /* ── Backup ───────────────────────────────────────────────────────────── */
 
 export async function backupVault(vaultPath: string): Promise<string> {
-  const src = join(vaultPath, 'GetThreads');
+  const src = join(vaultPath, VAULT_SUBFOLDER);
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const dest = join(vaultPath, `GetThreads-backup-${ts}`);
+  const dest = join(vaultPath, `${VAULT_SUBFOLDER}-backup-${ts}`);
   await cp(src, dest, { recursive: true, filter: (s) => !s.includes('attachments') });
   return dest;
 }
@@ -40,7 +41,7 @@ export class ReprocessProgress {
   private filePath: string;
 
   constructor(vaultPath: string) {
-    this.filePath = join(vaultPath, 'GetThreads', PROGRESS_FILE);
+    this.filePath = join(vaultPath, VAULT_SUBFOLDER, PROGRESS_FILE);
     this.data = { startedAt: new Date().toISOString(), results: [], completedUrls: [] };
   }
 

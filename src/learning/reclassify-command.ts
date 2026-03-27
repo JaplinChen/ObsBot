@@ -1,7 +1,7 @@
 /** Reclassify all Markdown notes in the Vault by comparing stored category to fresh classification. */
 
 import { classifyContent } from '../classifier.js';
-import type { AppConfig } from '../utils/config.js';
+import { type AppConfig, VAULT_SUBFOLDER } from '../utils/config.js';
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { recordFeedback } from './feedback-tracker.js';
@@ -30,11 +30,11 @@ function replaceFrontmatterField(content: string, field: string, newValue: strin
 }
 
 /**
- * Scan all .md files under {vaultPath}/GetThreads/, reclassify each by title,
+ * Scan all .md files under {vaultPath}/ObsBot/, reclassify each by title,
  * and move files whose top-level category has changed to the new folder.
  */
 export async function executeReclassify(config: AppConfig): Promise<ReclassifyResult> {
-  const baseDir = join(config.vaultPath, 'GetThreads');
+  const baseDir = join(config.vaultPath, VAULT_SUBFOLDER);
   const allFiles = await getAllMdFiles(baseDir);
 
   let moved = 0;

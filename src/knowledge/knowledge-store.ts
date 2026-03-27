@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { canonicalizeUrl } from '../utils/url-canonicalizer.js';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 import type {
   VaultKnowledge, NoteAnalysis, KnowledgeEntity,
   KnowledgeInsight, KnowledgeRelation, AIAnalysisResponse,
@@ -131,7 +132,7 @@ export function cleanupDeletedNotes(
 export async function scanVaultNotes(vaultPath: string): Promise<Array<{
   noteId: string; filePath: string; title: string; category: string; rawContent: string;
 }>> {
-  const rootDir = join(vaultPath, 'GetThreads');
+  const rootDir = join(vaultPath, VAULT_SUBFOLDER);
   const files = await getAllMdFiles(rootDir);
   const results: Array<{
     noteId: string; filePath: string; title: string; category: string; rawContent: string;

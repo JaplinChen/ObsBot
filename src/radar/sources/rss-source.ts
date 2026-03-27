@@ -82,7 +82,7 @@ export const rssSource: RadarSource = {
     try {
       const res = await fetchWithTimeout(feedUrl, 20_000, {
         headers: {
-          'User-Agent': 'GetThreads-Radar/1.0',
+          'User-Agent': 'ObsBot-Radar/1.0',
           Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml',
         },
       });

@@ -3,7 +3,7 @@
  * Hybrid: statistical entity graph for connections + LLM for semantic synthesis.
  */
 import type { Context } from 'telegraf';
-import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER, type AppConfig } from '../utils/config.js';
 import { scanVaultNotes, loadKnowledge, saveKnowledge } from '../knowledge/knowledge-store.js';
 import { consolidateVault } from '../knowledge/consolidator.js';
 import { formatConsolidationReport, saveConsolidationNote } from '../knowledge/consolidation-report.js';
@@ -57,5 +57,5 @@ export async function handleConsolidate(ctx: Context, config: AppConfig): Promis
     await ctx.reply(chunk);
   }
 
-  await ctx.reply(`📝 整合筆記已存到 Vault：${notePath.split('GetThreads')[1] ?? notePath}`);
+  await ctx.reply(`📝 整合筆記已存到 Vault：${notePath.split(VAULT_SUBFOLDER)[1] ?? notePath}`);
 }

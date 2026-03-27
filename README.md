@@ -1,4 +1,4 @@
-# GetThreads
+# ObsBot
 
 **把社群內容變成你的第二大腦。**
 
@@ -7,12 +7,12 @@
 ---
 
 <details>
-<summary><strong>為什麼需要 GetThreads？</strong></summary>
+<summary><strong>為什麼需要 ObsBot？</strong></summary>
 
 你在 Twitter 看到一篇好文、Reddit 上有精彩討論、Threads 上有值得收藏的串文——
 但你知道這些內容遲早會消失在時間線裡。
 
-GetThreads 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 Obsidian 裡了**。
+ObsBot 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 Obsidian 裡了**。
 不只文章本體，連底下的評論討論也一起收。
 
 </details>

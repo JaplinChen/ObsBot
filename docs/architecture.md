@@ -1,6 +1,6 @@
 ﻿# Architecture
 
-This document defines the current module boundaries, data flow, and engineering guardrails for GetThreads.
+This document defines the current module boundaries, data flow, and engineering guardrails for ObsBot.
 
 ## Runtime Flow
 

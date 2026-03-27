@@ -156,7 +156,7 @@ export async function htmlToMarkdownWithBrowser(url: string): Promise<HtmlToMark
  */
 export async function htmlToMarkdownWithBrowserUse(url: string): Promise<HtmlToMarkdownResult | null> {
   const { BrowserUseClient } = await import('./browser-use-client.js');
-  const client = new BrowserUseClient('getthreads-web');
+  const client = new BrowserUseClient('obsbot-web');
   try {
     await client.open(url);
     // Wait for JS rendering

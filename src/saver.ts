@@ -6,6 +6,7 @@ import { formatAsMarkdown } from './formatter.js';
 import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
 import { canonicalizeUrl } from './utils/url-canonicalizer.js';
 import { getAllMdFiles } from './vault/frontmatter-utils.js';
+import { VAULT_SUBFOLDER, ATTACHMENTS_SUBFOLDER } from './utils/config.js';
 
 // In-memory URL index: normalizedUrl → filePath (built on first use)
 let urlIndex: Map<string, string> | null = null;
@@ -73,7 +74,7 @@ async function downloadImage(
     const fullName = `${filename}${ext}`;
     const fullPath = join(destDir, fullName);
     await copyFile(imageUrl, fullPath);
-    return `attachments/getthreads/${platform}/${fullName}`;
+    return `attachments/${ATTACHMENTS_SUBFOLDER}/${platform}/${fullName}`;
   }
 
   const res = await fetchWithTimeout(imageUrl, 30_000);
@@ -85,7 +86,7 @@ async function downloadImage(
   const fullName = `${filename}${ext}`;
   const fullPath = join(destDir, fullName);
   await writeFile(fullPath, buffer);
-  return `attachments/getthreads/${platform}/${fullName}`;
+  return `attachments/${ATTACHMENTS_SUBFOLDER}/${platform}/${fullName}`;
 }
 
 export interface SaveResult {
@@ -98,7 +99,7 @@ export interface SaveResult {
 /** Build URL index by scanning all .md files (runs once, then cached in memory). */
 async function buildUrlIndex(vaultPath: string): Promise<Map<string, string>> {
   const index = new Map<string, string>();
-  const rootDir = join(vaultPath, 'GetThreads');
+  const rootDir = join(vaultPath, VAULT_SUBFOLDER);
   const files = await getAllMdFiles(rootDir);
 
   for (const fullPath of files) {
@@ -171,12 +172,12 @@ export async function saveToVault(
     const fullFolderPath = content.subFolder
       ? `${folderPath}/${content.subFolder.replace(/[<>:"/\\|?*]/g, '').trim()}`
       : folderPath;
-    const baseGetThreads = resolve(join(vaultPath, 'GetThreads'));
-    const resolvedNotes = resolve(join(vaultPath, 'GetThreads', fullFolderPath));
-    const notesDir = (resolvedNotes === baseGetThreads || resolvedNotes.startsWith(baseGetThreads + sep))
+    const baseVaultDir = resolve(join(vaultPath, VAULT_SUBFOLDER));
+    const resolvedNotes = resolve(join(vaultPath, VAULT_SUBFOLDER, fullFolderPath));
+    const notesDir = (resolvedNotes === baseVaultDir || resolvedNotes.startsWith(baseVaultDir + sep))
       ? resolvedNotes
-      : baseGetThreads;
-    const imagesDir = join(vaultPath, 'attachments', 'getthreads', content.platform);
+      : baseVaultDir;
+    const imagesDir = join(vaultPath, 'attachments', ATTACHMENTS_SUBFOLDER, content.platform);
     await mkdir(notesDir, { recursive: true });
     await mkdir(imagesDir, { recursive: true });
 
@@ -217,7 +218,7 @@ export async function saveToVault(
             const ext = extname(v.localPath) || '.mp4';
             const vidName = `${imgSlug}-vid${i}${ext}`;
             await copyFile(v.localPath, join(imagesDir, vidName));
-            localVideoPaths.push(`attachments/getthreads/${content.platform}/${vidName}`);
+            localVideoPaths.push(`attachments/${ATTACHMENTS_SUBFOLDER}/${content.platform}/${vidName}`);
           } catch { /* skip if copy fails */ }
         }
       }

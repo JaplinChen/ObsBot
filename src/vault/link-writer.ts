@@ -7,6 +7,7 @@ import { join, dirname, basename } from 'node:path';
 import { logger } from '../core/logger.js';
 import type { LinkSuggestion } from './link-suggester.js';
 import { noteBasename } from './link-suggester.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 
 const MARKER_START = '<!-- related-notes-start -->';
 const MARKER_END = '<!-- related-notes-end -->';
@@ -63,7 +64,7 @@ export async function writeSuggestionsToNote(
 export async function writeIndexNote(
   vaultPath: string, allSuggestions: Map<string, LinkSuggestion[]>,
 ): Promise<string> {
-  const outPath = join(vaultPath, 'GetThreads', '相關筆記索引.md');
+  const outPath = join(vaultPath, VAULT_SUBFOLDER, '相關筆記索引.md');
   const now = new Date().toISOString().slice(0, 10);
 
   const lines: string[] = [];
@@ -79,8 +80,8 @@ export async function writeIndexNote(
   const byCategory = new Map<string, Array<{ note: string; suggestions: LinkSuggestion[] }>>();
 
   for (const [filePath, suggestions] of allSuggestions) {
-    // Extract category from path: .../GetThreads/Category/SubCategory/note.md
-    const rel = filePath.split('GetThreads')[1] ?? '';
+    // Extract category from path: .../VAULT_SUBFOLDER/Category/SubCategory/note.md
+    const rel = filePath.split(VAULT_SUBFOLDER)[1] ?? '';
     const parts = rel.replace(/\\/g, '/').split('/').filter(Boolean);
     const category = parts.length >= 2 ? parts.slice(0, -1).join('/') : '其他';
     const name = noteBasename(filePath);
@@ -105,7 +106,7 @@ export async function writeIndexNote(
   }
 
   lines.push('---');
-  lines.push(`*自動產生 by GetThreads /suggest — ${new Date().toISOString().slice(0, 19)}*`);
+  lines.push(`*自動產生 by ObsBot /suggest — ${new Date().toISOString().slice(0, 19)}*`);
 
   const content = lines.join('\n');
   await mkdir(dirname(outPath), { recursive: true });

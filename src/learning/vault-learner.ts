@@ -2,6 +2,7 @@
 import { dirname, join } from 'node:path';
 import { logger } from '../core/logger.js';
 import { parseFrontmatter, parseArrayField, getAllMdFiles } from '../vault/frontmatter-utils.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 import { getFeedbackWeight, loadFeedbackStore } from './feedback-tracker.js';
 
 export interface NoteStats {
@@ -49,7 +50,7 @@ const STOP_WORDS = new Set([
   // URL / web noise
   'https', 'http', 'com', 'www', 'net', 'org', 'io', 'co',
   'html', 'htm', 'php', 'jpg', 'png', 'gif', 'view', 'original',
-  'image', 'attachments', 'getthreads', 'source', 'archive',
+  'image', 'attachments', 'obsbot', 'source', 'archive',
 ]);
 
 export function tokenize(text: string): string[] {
@@ -69,7 +70,7 @@ export function tokenize(text: string): string[] {
 }
 
 export async function scanVaultNotes(vaultPath: string): Promise<NoteStats[]> {
-  const files = await getAllMdFiles(join(vaultPath, 'GetThreads'));
+  const files = await getAllMdFiles(join(vaultPath, VAULT_SUBFOLDER));
   const notes: NoteStats[] = [];
 
   for (const f of files) {

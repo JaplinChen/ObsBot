@@ -75,7 +75,7 @@ export const webExtractor: Extractor = {
   async extract(url: string): Promise<ExtractedContent> {
     const res = await fetchWithTimeout(url, 30_000, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (GetThreads Bot)',
+        'User-Agent': 'Mozilla/5.0 (ObsBot)',
         Accept: 'text/html,application/xhtml+xml',
       },
       redirect: 'follow',

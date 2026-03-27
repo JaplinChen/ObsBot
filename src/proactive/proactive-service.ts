@@ -1,6 +1,6 @@
 /**
  * Proactive intelligence service — scheduled digest push & trend alerts.
- * Transforms GetThreads from passive collector to active knowledge assistant.
+ * Transforms ObsBot from passive collector to active knowledge assistant.
  */
 import type { Telegraf } from 'telegraf';
 import { type AppConfig, getOwnerUserId } from '../utils/config.js';

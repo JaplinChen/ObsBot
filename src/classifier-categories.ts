@@ -27,10 +27,31 @@ export const CATEGORIES: CategoryRule[] = [
   },
 
   // ── 1. 研究對話：具體工具 ──
+  // Claude Code CLI 必須排在 Claude Desktop 前面（更精確的先匹配）
+  {
+    name: 'AI/研究對話/Claude/Claude Code CLI',
+    keywords: [
+      'claude code', 'claude code cli', 'claude-code',
+      'claude skill', 'claude hook', 'claude plugin',
+      'claude agent', 'subagent', 'statusline',
+      'claude worktree', 'claude mcp', 'claude sdk',
+      'claude channel', 'claude mem', 'claude-mem',
+      'agent sdk', 'agentcli',
+    ],
+  },
+  {
+    name: 'AI/研究對話/Claude/Claude Desktop',
+    keywords: [
+      'claude desktop', 'claude.ai', 'claude app',
+      'claude artifact', 'claude project',
+      'claude cowork', 'claude voice', 'voice mode',
+      'claude speech', 'claude team',
+    ],
+  },
   {
     name: 'AI/研究對話/Claude',
     keywords: [
-      'claude code', 'claude', 'anthropic',
+      'claude', 'anthropic',
     ],
   },
   {

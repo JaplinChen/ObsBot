@@ -118,7 +118,7 @@ export function generateSkillContent(topic: TopicCluster, knowledge: VaultKnowle
   }
 
   L.push('---');
-  L.push(`*自動產生 by GetThreads /vault-analyze — ${new Date().toISOString().slice(0, 10)}*`);
+  L.push(`*自動產生 by ObsBot /vault-analyze — ${new Date().toISOString().slice(0, 10)}*`);
 
   return L.join('\n');
 }

@@ -82,7 +82,7 @@ async function fetchChineseReadme(
   try {
     const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filename}`;
     const res = await fetchWithTimeout(rawUrl, 10_000, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (GetThreads Bot)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (ObsBot)' },
     });
     if (!res.ok) return null;
     return await res.text();
@@ -110,7 +110,7 @@ export const githubExtractor: Extractor = {
 
     const [, owner, repo, number] = m;
     const res = await fetchWithTimeout(url, 30_000, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (GetThreads Bot)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (ObsBot)' },
     });
     if (!res.ok) {
       throw new Error(`GitHub page error: ${res.status} ${res.statusText}`);

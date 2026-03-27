@@ -9,7 +9,7 @@ import type { Context } from 'telegraf';
 import { Markup } from 'telegraf';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER, type AppConfig } from '../utils/config.js';
 import { logger } from '../core/logger.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
@@ -31,7 +31,7 @@ function fm(raw: string, field: string): string {
 async function collectRecentNotes(
   vaultPath: string, dayLimit: number,
 ): Promise<NoteSummary[]> {
-  const rootDir = join(vaultPath, 'GetThreads');
+  const rootDir = join(vaultPath, VAULT_SUBFOLDER);
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dayLimit);
   const results: NoteSummary[] = [];
