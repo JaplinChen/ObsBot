@@ -36,20 +36,33 @@ export interface LearnedPatterns {
 }
 
 const STOP_WORDS = new Set([
-  // English
+  // English — common words
   'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 'but',
   'is', 'are', 'was', 'this', 'that', 'with', 'from', 'by', 'as', 'be', 'it',
   'have', 'not', 'he', 'she', 'we', 'they', 'you', 'my', 'its', 'our', 'can',
   'will', 'do', 'does', 'did', 'has', 'had', 'would', 'could', 'should', 'may',
   'about', 'up', 'out', 'into', 'more', 'also', 'just', 'than', 'then', 'when',
   'what', 'how', 'if', 'all', 'each', 'any', 'some', 'one', 'two', 'new', 'use',
-  // Chinese
+  'get', 'set', 'day', 'way', 'see', 'now', 'own', 'only', 'your', 'other',
+  'like', 'make', 'using', 'used', 'very', 'most', 'many', 'first', 'last',
+  'open', 'based', 'here', 'over', 'such', 'after', 'before', 'between',
+  'through', 'same', 'different', 'where', 'there', 'while', 'during', 'much',
+  'every', 'under', 'still', 'well', 'back', 'even', 'both', 'those', 'these',
+  'research', 'example', 'support', 'available', 'provide', 'create', 'build',
+  'read', 'write', 'file', 'data', 'time', 'code', 'project', 'version',
+  // Chinese — common generic words (too broad for classification)
   '的', '了', '在', '是', '我', '有', '和', '也', '就', '都', '而', '及', '與', '著',
   '或', '一個', '沒有', '我們', '你們', '他們', '這個', '那個',
+  '可以', '使用', '基於', '支援', '支持', '透過', '通過', '提供', '需要', '進行',
+  '功能', '方式', '設定', '設置', '安裝', '配置', '操作', '執行', '完成', '開始',
+  '系統', '工具', '應用', '介面', '用戶', '內容', '文件', '管理', '開發', '建立',
+  '如何', '包括', '相關', '實現', '處理', '輸入', '輸出', '更新', '下載', '整合',
+  '替代', '方案', '替代方案', '快速', '自動', '自動化', '本地', '遠端',
   // URL / web noise
   'https', 'http', 'com', 'www', 'net', 'org', 'io', 'co',
   'html', 'htm', 'php', 'jpg', 'png', 'gif', 'view', 'original',
   'image', 'attachments', 'getthreads', 'source', 'archive',
+  'github', 'readme', 'license', 'contributing', 'changelog',
 ]);
 
 export function tokenize(text: string): string[] {
@@ -126,7 +139,9 @@ export function computeClassificationRules(notes: NoteStats[]): ClassificationRu
   const rules: ClassificationRule[] = [];
   for (const [keyword, catMap] of kwCat) {
     const total = kwTotal.get(keyword) ?? 0;
-    if (total < 3) continue;
+    // Single-word keywords need more evidence (higher count) to be reliable
+    const isSingle = !keyword.includes(' ');
+    if (total < (isSingle ? 4 : 3)) continue;
 
     let bestCat = '';
     let bestCount = 0;

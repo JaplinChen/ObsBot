@@ -14,56 +14,82 @@ function isExcluded(cat: CategoryRule, titleH: string, bodyH: string): boolean {
   return cat.exclude.some(kw => keywordMatch(titleH, kw) || keywordMatch(bodyH, kw));
 }
 
-/** 計算分類的關鍵字命中分數：標題命中 ×2，本文命中 ×1 */
-function scoreCategory(cat: CategoryRule, titleH: string, bodyH: string): number {
-  let score = 0;
+/**
+ * 分離計算標題與 body 的命中數，避免重複計分。
+ * 回傳 { titleHits, bodyHits }。
+ */
+function countHits(cat: CategoryRule, titleH: string, bodyH: string) {
+  let titleHits = 0;
+  let bodyHits = 0;
+  const matchedKws: string[] = [];
   for (const kw of cat.keywords) {
-    if (keywordMatch(titleH, kw)) score += 2;
-    else if (bodyH && keywordMatch(bodyH, kw)) score += 1;
+    // 跳過被已命中的更長關鍵字包含的短關鍵字（避免 "claude" 和 "claude code" 重複計分）
+    const kwLower = kw.toLowerCase();
+    if (matchedKws.some(prev => prev.includes(kwLower))) continue;
+    if (keywordMatch(titleH, kw)) { titleHits++; matchedKws.push(kwLower); }
+    else if (bodyH && keywordMatch(bodyH, kw)) { bodyHits++; matchedKws.push(kwLower); }
   }
-  return score;
+  return { titleHits, bodyHits };
 }
 
 export function classifyContent(title: string, text: string): string {
-  // Step 0：優先使用 vault 學習到的規則（信心 >= 0.75）
+  // Step 0：優先使用 vault 學習到的規則（高信心門檻）
   const learned = classifyWithLearnedRules(title, text);
   if (learned) return learned;
 
   const titleH = title.toLowerCase();
   const bodyH = text.toLowerCase();
 
-  // 計分制：遍歷所有分類，累加分數，最高分勝出
-  const scores = new Map<string, { score: number; order: number }>();
+  // ── 兩階段分類：標題優先，body 輔助 ──
+  // Phase 1：只看標題，找出所有在標題命中的分類
+  // Phase 2：如果標題沒有命中任何分類，才考慮 body
+
+  interface CatScore { titleHits: number; bodyHits: number; order: number }
+  const scores = new Map<string, CatScore>();
 
   for (let i = 0; i < CATEGORIES.length; i++) {
     const cat = CATEGORIES[i];
     if (isExcluded(cat, titleH, bodyH)) continue;
 
-    const score = scoreCategory(cat, titleH, bodyH);
-    if (score <= 0) continue;
+    const { titleHits, bodyHits } = countHits(cat, titleH, bodyH);
+    if (titleHits <= 0 && bodyHits <= 0) continue;
 
     const existing = scores.get(cat.name);
     if (existing) {
-      existing.score += score; // 同名分類累加
+      existing.titleHits += titleHits;
+      existing.bodyHits += bodyHits;
     } else {
-      scores.set(cat.name, { score, order: i });
+      scores.set(cat.name, { titleHits, bodyHits, order: i });
     }
   }
 
-  // 最高分勝出，同分按 CATEGORIES 順序（越前面優先級越高）
-  let bestName = '';
-  let bestScore = 0;
-  let bestOrder = Infinity;
+  // Phase 1：有標題命中的分類才參與競爭
+  const titleCandidates = [...scores.entries()].filter(([, s]) => s.titleHits > 0);
 
-  for (const [name, { score, order }] of scores) {
-    if (score > bestScore || (score === bestScore && order < bestOrder)) {
-      bestName = name;
-      bestScore = score;
-      bestOrder = order;
-    }
+  if (titleCandidates.length > 0) {
+    // 在標題候選中，用「標題命中數 ×3 + body 命中數」排序
+    // 同分按 CATEGORIES 順序
+    titleCandidates.sort((a, b) => {
+      const scoreA = a[1].titleHits * 3 + a[1].bodyHits;
+      const scoreB = b[1].titleHits * 3 + b[1].bodyHits;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return a[1].order - b[1].order;
+    });
+    return titleCandidates[0][0];
   }
 
-  return bestName || '其他';
+  // Phase 2：標題無命中，fallback 到 body（只有在完全沒有標題線索時）
+  const bodyCandidates = [...scores.entries()].filter(([, s]) => s.bodyHits > 0);
+
+  if (bodyCandidates.length > 0) {
+    bodyCandidates.sort((a, b) => {
+      if (b[1].bodyHits !== a[1].bodyHits) return b[1].bodyHits - a[1].bodyHits;
+      return a[1].order - b[1].order;
+    });
+    return bodyCandidates[0][0];
+  }
+
+  return '其他';
 }
 
 /** 從內容中提取命中的所有關鍵詞（最多 5 個），供 frontmatter keywords 欄位使用 */

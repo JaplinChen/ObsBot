@@ -92,7 +92,13 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
   if (enriched.keyPoints?.length) content.enrichedKeyPoints = enriched.keyPoints;
   if (enriched.title) content.title = enriched.title;
   if (enriched.githubAnalysis) content.githubAnalysis = enriched.githubAnalysis;
-  // 不用 enricher 的 category — classifier 的關鍵字匹配更可靠
+
+  // LLM 分類優先：LLM 理解內容後選的分類比 keyword 更可靠
+  // 只在 LLM 回傳有效分類且不是「其他」時採用，否則保留 keyword fallback
+  if (enriched.category && enriched.category !== '其他') {
+    logger.info('msg', 'llm-category', { llm: enriched.category, keyword: content.category });
+    content.category = enriched.category;
+  }
 
   // Benchmark: score enrichment quality (non-blocking)
   try {

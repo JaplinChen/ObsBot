@@ -194,6 +194,7 @@ export const CATEGORIES: CategoryRule[] = [
       'ai agent', 'agentic', 'agent工程', 'agent engineer',
       'multi-agent', 'agent orchestration', 'agent 軍團', 'agent 架構',
       'agent framework', 'agent monitoring', 'agent 操控', 'agent 監控',
+      '桌面代理', 'desktop agent', '桌面自動化', 'computer use',
       '自動化', 'automation', 'workflow', 'mcp server', 'mcp tool', 'mcp ',
       'telegram bot', 'bot',
       'rag', 'retrieval', 'vector database', 'embedding',

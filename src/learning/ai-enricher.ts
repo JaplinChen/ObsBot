@@ -3,6 +3,7 @@
 import { logger } from '../core/logger.js';
 import { runLocalLlmPrompt, type ModelTier } from '../utils/local-llm.js';
 import { cleanTitle } from '../utils/content-cleaner.js';
+import { CATEGORIES } from '../classifier-categories.js';
 // @ts-expect-error opencc-js lacks proper TS declarations
 import * as OpenCC from 'opencc-js';
 
@@ -28,6 +29,12 @@ function normalizeCategory(raw: unknown): string | undefined {
   const v = raw.trim();
   if (!v) return undefined;
   return v.slice(0, 40);
+}
+
+/** 從 CATEGORIES 提取去重的分類名稱清單，供 LLM prompt 使用 */
+function getCategoryList(): string {
+  const unique = [...new Set(CATEGORIES.map(c => c.name))];
+  return unique.join(', ');
 }
 
 /** Pick model tier based on content length and platform. */
@@ -81,7 +88,6 @@ export async function enrichContent(
   const isGithub = platform === 'github';
   const previewLimit = isGithub ? 2500 : 1200;
   const textPreview = text.slice(0, previewLimit).replace(/\n/g, ' ');
-  const hints = categoryHints.slice(0, 8).join(', ');
   const hasTranscript = text.includes('文字稿：') || text.includes('[Transcript]');
   const tier = selectModelTier(text.length, hasTranscript, platform);
   const cleanedTitle = cleanTitle(title);
@@ -105,8 +111,14 @@ export async function enrichContent(
     'title: 格式「{工具或概念名}-{簡短描述}」，<=40字，語意清楚，不要作者前綴，不要感嘆號。',
     '例：「Kaku-整合AI的深度定製終端」「Symphony-AI自動完成CI和PR」「Obsidian-雙向連結筆記管理工具」',
     'If content is insufficient, state what is missing briefly instead of inventing.',
+    '',
+    '=== 分類指令 ===',
+    'category: 根據內容的核心主題選擇最適合的分類。',
+    '判斷標準：這篇文章的主要目的/主角是什麼？不要被內文偶然提及的工具名帶偏。',
+    '例如：一篇 NotebookLM 的 Python API 工具，即使內文提到 Claude Code 和 OpenClaw 作為相容代理，核心主題仍是 NotebookLM → 應分「AI/研究對話/Gemini」。',
+    `可選分類：${getCategoryList()}`,
+    '若以上分類都不適合，使用「其他」。',
     ...(isGithub ? buildGithubPrompt() : []),
-    hints ? `Category hints: ${hints}` : '',
     `Original title: ${cleanedTitle}`,
     `Content: ${textPreview}`,
   ].filter(Boolean).join('\n');
