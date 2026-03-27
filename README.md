@@ -46,6 +46,7 @@ ObsBot 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 Obsi
 - **分類回饋學習** — 用戶手動重分類時自動記錄校正，強化動態分類器準確度
 - **互動式指令** — 缺參數時自動引導輸入，知識類指令提供快捷按鈕
 - **多模型智慧路由** — 依內容複雜度自動選擇 flash / standard / deep 免費模型，兼顧速度與品質；可選 oMLX 本地推理優先
+- **連結深度抓取** — 推文中的連結（X Article、部落格等）自動抓取完整內容，AI 綜合分析主文與連結文章，產出有深度的筆記
 - **批次翻譯** — 英文/簡中筆記自動翻譯為繁體中文
 - **跨裝置同步** — 搭配 [Remotely Save](https://github.com/remotely-save/remotely-save) + [InfiniCLOUD](https://infini-cloud.net/) 免費 WebDAV，Windows / Mac / iPhone 三端同步
 
@@ -306,7 +307,8 @@ src/
 │   ├── consolidation-report.ts # 整合報告格式化與 Vault 存檔
 │   └── types.ts                # 知識系統型別
 ├── enrichment/                 # 內容後處理
-│   └── post-processor.ts       # 連結展開、翻譯
+│   ├── post-processor.ts       # 連結展開、翻譯
+│   └── link-enricher.ts        # 連結深度抓取（X Article + Readability）
 ├── learning/                   # 分類學習與 AI 增強
 │   ├── dynamic-classifier.ts   # 動態分類規則快取
 │   ├── vault-learner.ts        # Vault 掃描學習

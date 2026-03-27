@@ -74,7 +74,7 @@ export interface ExtractedContent {
   tempDir?: string;
 }
 
-/** Lightweight metadata fetched from a URL found in content or comments */
+/** Metadata fetched from a URL found in content or comments */
 export interface LinkedContentMeta {
   url: string;
   source: 'post' | 'comment';
@@ -84,6 +84,8 @@ export interface LinkedContentMeta {
   platform?: string;
   stars?: number;
   language?: string;
+  /** Full text content from deep fetch (truncated to ~3000 chars) */
+  fullText?: string;
 }
 
 /** Translation result for non-Traditional-Chinese content */
