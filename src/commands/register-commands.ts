@@ -32,7 +32,7 @@ import { runCommandTask } from './command-runner.js';
 import { formatErrorMessage } from '../core/errors.js';
 import { logger } from '../core/logger.js';
 import { registerForceReplyHandler } from '../messages/force-reply-router.js';
-import { BOT_COMMANDS_MENU, HELP_TEXT } from './command-help.js';
+import { BOT_COMMANDS_MENU, HELP_TEXT, HELP_ALL_TEXT } from './command-help.js';
 import { registerLearningCommands } from './register-learning-commands.js';
 import { registerInfoCommands } from './register-info-commands.js';
 import type { BotStats } from '../messages/types.js';
@@ -76,7 +76,10 @@ export function registerCommands(
   startTime: number,
 ): void {
   bot.start((ctx) => ctx.reply(HELP_TEXT));
-  bot.command('help', (ctx) => ctx.reply(HELP_TEXT));
+  bot.command('help', (ctx) => {
+    const arg = (ctx.message?.text ?? '').split(/\s+/)[1];
+    ctx.reply(arg === 'all' ? HELP_ALL_TEXT : HELP_TEXT);
+  });
 
   registerLearningCommands(bot, config, formatErrorMessage);
 

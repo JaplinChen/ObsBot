@@ -1,5 +1,5 @@
 import type { Context } from 'telegraf';
-import { logger } from '../core/logger.js';;
+import { logger } from '../core/logger.js';
 
 /**
  * Run an async command task with unified error handling.
