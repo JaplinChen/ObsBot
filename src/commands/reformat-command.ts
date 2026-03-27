@@ -12,7 +12,7 @@
 import type { Context } from 'telegraf';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER, type AppConfig } from '../utils/config.js';
 import { logger } from '../core/logger.js';
 import { scanVaultNotes } from '../knowledge/knowledge-store.js';
 import { reformatNoteBody } from '../formatters/body-reformatter.js';
@@ -184,7 +184,7 @@ export async function handleReformat(ctx: Context, config: AppConfig): Promise<v
   }
 
   if (parsed.mode === 'single') {
-    const filePath = join(config.vaultPath, 'GetThreads', parsed.path!);
+    const filePath = join(config.vaultPath, VAULT_SUBFOLDER, parsed.path!);
     const status = await ctx.reply(`正在排版修復：${parsed.path}...`);
     const result = await reformatSingle(filePath, false);
     try { await ctx.deleteMessage(status.message_id); } catch { /* */ }

@@ -1,5 +1,5 @@
 export const HELP_TEXT = [
-  'GetThreads Bot',
+  'ObsBot',
   '',
   '傳送連結即可自動儲存內容與評論：',
   'X / Threads / Reddit / YouTube / GitHub',

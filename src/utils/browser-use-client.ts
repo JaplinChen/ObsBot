@@ -41,7 +41,7 @@ export class BrowserUseClient {
   private readonly session: string;
   private readonly headed: boolean;
 
-  constructor(session = 'getthreads', headed = false) {
+  constructor(session = 'obsbot', headed = false) {
     this.session = session;
     this.headed = headed;
   }
@@ -182,5 +182,5 @@ export class BrowserUseClient {
   }
 }
 
-/** Shared singleton — use `getthreads` session by default */
+/** Shared singleton — use `obsbot` session by default */
 export const browserUseClient = new BrowserUseClient();

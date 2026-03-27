@@ -9,6 +9,7 @@ import { logger } from '../core/logger.js';
 import { parseFrontmatter, parseArrayField, getAllMdFiles } from './frontmatter-utils.js';
 import { findRelatedNotes } from '../knowledge/knowledge-graph.js';
 import { KNOWLEDGE_PATH } from '../knowledge/knowledge-store.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 import type { VaultKnowledge } from '../knowledge/types.js';
 
 export interface LinkSuggestion {
@@ -37,7 +38,7 @@ interface NoteInfo {
 
 /** Load all note metadata from vault frontmatter */
 export async function loadNoteIndex(vaultPath: string): Promise<NoteInfo[]> {
-  const root = join(vaultPath, 'GetThreads');
+  const root = join(vaultPath, VAULT_SUBFOLDER);
   const files = await getAllMdFiles(root);
   const notes: NoteInfo[] = [];
 

@@ -4,7 +4,7 @@
  * for non-zh-TW content (opencc-js for zh-CN, local LLM CLI for en).
  */
 
-import type { AppConfig } from '../utils/config.js';
+import { type AppConfig, VAULT_SUBFOLDER } from '../utils/config.js';
 import { detectLanguage, translateIfNeeded } from '../enrichment/translator.js';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
@@ -81,7 +81,7 @@ function insertTranslation(raw: string, section: string): string {
 /* ------------------------------------------------------------------ */
 
 export async function executeBatchTranslate(config: AppConfig): Promise<BatchTranslateResult> {
-  const baseDir = join(config.vaultPath, 'GetThreads');
+  const baseDir = join(config.vaultPath, VAULT_SUBFOLDER);
   const allFiles = await getAllMdFiles(baseDir);
 
   const result: BatchTranslateResult = {

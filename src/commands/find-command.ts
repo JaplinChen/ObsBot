@@ -5,7 +5,7 @@
 import type { Context } from 'telegraf';
 import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER, type AppConfig } from '../utils/config.js';
 import { getAllMdFiles, parseFrontmatter, parseArrayField } from '../vault/frontmatter-utils.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
 
@@ -52,7 +52,7 @@ export async function handleFind(ctx: Context, config: AppConfig): Promise<void>
   const status = await ctx.reply(`正在搜尋 Vault「${query}」...`);
 
   try {
-    const rootDir = join(config.vaultPath, 'GetThreads');
+    const rootDir = join(config.vaultPath, VAULT_SUBFOLDER);
     const files = await getAllMdFiles(rootDir);
     const matches: MatchedNote[] = [];
 

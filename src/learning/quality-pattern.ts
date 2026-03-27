@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import type { BenchmarkData } from '../monitoring/benchmark-types.js';
 import { loadBenchmarkData } from '../monitoring/benchmark-store.js';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 
 export interface QualityPattern {
   /** Sources that produce higher quality content */
@@ -35,7 +36,7 @@ function parseKeywords(raw: string): string[] {
 /** Analyze quality patterns from benchmark data and vault notes */
 export async function analyzeQualityPatterns(vaultPath: string): Promise<QualityPattern> {
   const benchData = await loadBenchmarkData();
-  const files = await getAllMdFiles(join(vaultPath, 'GetThreads'));
+  const files = await getAllMdFiles(join(vaultPath, VAULT_SUBFOLDER));
 
   // Build note metadata index
   const noteMeta = new Map<string, { source: string; category: string; keywords: string[]; bodyLen: number }>();

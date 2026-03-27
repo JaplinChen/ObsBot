@@ -7,7 +7,7 @@
 import type { Context } from 'telegraf';
 import { readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
-import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER, type AppConfig } from '../utils/config.js';
 import { logger } from '../core/logger.js';
 import { parseVaultNote, parsedNoteToExtractedContent } from '../vault/note-parser.js';
 import { enrichExtractedContent } from '../messages/services/enrich-content-service.js';
@@ -175,7 +175,7 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
   }
 
   if (parsed.mode === 'single') {
-    const vaultNotesDir = join(config.vaultPath, 'GetThreads');
+    const vaultNotesDir = join(config.vaultPath, VAULT_SUBFOLDER);
     const filePath = join(vaultNotesDir, parsed.path!);
     const status = await ctx.reply(`正在重新處理：${parsed.path}...`);
 

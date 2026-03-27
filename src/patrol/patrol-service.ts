@@ -57,7 +57,7 @@ async function fetchTrending(language?: string): Promise<TrendingRepo[]> {
     : 'https://github.com/trending?since=daily';
 
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'GetThreads-Patrol/1.0' },
+    headers: { 'User-Agent': 'ObsBot-Patrol/1.0' },
     signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) return [];

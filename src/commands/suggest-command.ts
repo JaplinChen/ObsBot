@@ -4,7 +4,7 @@
  * /suggest <URL>  → single note
  */
 import type { Context } from 'telegraf';
-import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER, type AppConfig } from '../utils/config.js';
 import { suggestAllLinks, loadNoteIndex, suggestLinks } from '../vault/link-suggester.js';
 import { writeSuggestionsToNote, writeIndexNote } from '../vault/link-writer.js';
 import { logger } from '../core/logger.js';
@@ -55,7 +55,7 @@ export async function handleSuggest(ctx: Context, config: AppConfig): Promise<vo
     '',
     `📊 ${allSuggestions.size} 篇筆記有推薦`,
     `✅ ${written} 篇已寫入連結`,
-    `📋 索引: GetThreads${(indexPath.split('GetThreads')[1] ?? '').replace(/\.\w+$/, '')}`,
+    `📋 索引: ${VAULT_SUBFOLDER}${(indexPath.split(VAULT_SUBFOLDER)[1] ?? '').replace(/\.\w+$/, '')}`,
   ];
 
   logger.info('suggest', '完成', { total: allSuggestions.size, written });

@@ -254,7 +254,7 @@ export const tiktokExtractor: Extractor = {
     }
 
     // ── Video: existing yt-dlp download pipeline ──
-    const tmpDir = join(tmpdir(), `getthreads-tiktok-${meta.id}`);
+    const tmpDir = join(tmpdir(), `obsbot-tiktok-${meta.id}`);
     await mkdir(tmpDir, { recursive: true });
     await mkdir(TIKTOK_CACHE_DIR, { recursive: true });
     const cacheVideoPath = join(TIKTOK_CACHE_DIR, `${meta.id}.mp4`);

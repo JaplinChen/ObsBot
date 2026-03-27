@@ -3,7 +3,7 @@
  * Probes all extractors, checks CLI dependencies, browser pool, and vault stats.
  */
 import type { Context } from 'telegraf';
-import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER, ATTACHMENTS_SUBFOLDER, type AppConfig } from '../utils/config.js';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readdir } from 'node:fs/promises';
@@ -88,8 +88,8 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
 
   // 4. Vault stats
   const vaultPath = config.vaultPath;
-  const gtPath = join(vaultPath, 'GetThreads');
-  const attachPath = join(vaultPath, 'attachments', 'getthreads');
+  const gtPath = join(vaultPath, VAULT_SUBFOLDER);
+  const attachPath = join(vaultPath, 'attachments', ATTACHMENTS_SUBFOLDER);
   const [noteCount, attachCount] = await Promise.all([
     countFiles(gtPath, '.md'),
     countFiles(attachPath, ''),

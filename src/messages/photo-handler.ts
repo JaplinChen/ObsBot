@@ -74,7 +74,7 @@ export function registerPhotoHandler(
     const status = await ctx.reply('🖼 分析圖片中…');
 
     const id = randomBytes(4).toString('hex');
-    const tempDir = join(tmpdir(), `getthreads-photo-${id}`);
+    const tempDir = join(tmpdir(), `obsbot-photo-${id}`);
 
     try {
       await mkdir(tempDir, { recursive: true });

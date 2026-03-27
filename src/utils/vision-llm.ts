@@ -107,7 +107,7 @@ export async function analyzeContentImages(
   maxCount = 2,
 ): Promise<string> {
   const id = randomBytes(4).toString('hex');
-  const tempDir = join(tmpdir(), `getthreads-vision-${id}`);
+  const tempDir = join(tmpdir(), `obsbot-vision-${id}`);
   await mkdir(tempDir, { recursive: true });
 
   const descriptions: string[] = [];

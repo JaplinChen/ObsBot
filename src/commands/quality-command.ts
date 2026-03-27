@@ -6,7 +6,7 @@
 import type { Context } from 'telegraf';
 import { readFile, access } from 'node:fs/promises';
 import { join, basename } from 'node:path';
-import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER, type AppConfig } from '../utils/config.js';
 import { logger } from '../core/logger.js';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 
@@ -36,7 +36,7 @@ async function scanAllNotes(rootDir: string, results: QualityIssue[]): Promise<n
       const raw = await readFile(fullPath, 'utf-8');
       const issues = checkNote(raw);
       if (issues.length > 0) {
-        const relPath = fullPath.replace(/.*GetThreads[\\/]/, '');
+        const relPath = fullPath.replace(new RegExp('.*' + VAULT_SUBFOLDER + '[\\\\/]'), '');
         results.push({ file: relPath, issues });
       }
     } catch { /* skip unreadable */ }
@@ -75,7 +75,7 @@ function checkNote(raw: string): string[] {
 }
 
 async function generateReport(vaultPath: string): Promise<QualityReport> {
-  const rootDir = join(vaultPath, 'GetThreads');
+  const rootDir = join(vaultPath, VAULT_SUBFOLDER);
   const issues: QualityIssue[] = [];
   const totalNotes = await scanAllNotes(rootDir, issues);
 

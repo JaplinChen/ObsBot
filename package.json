@@ -1,5 +1,5 @@
 {
-  "name": "getthreads",
+  "name": "obsbot",
   "version": "1.0.0",
   "description": "Telegram Bot to extract X.com/Threads content and save to Obsidian",
   "type": "module",

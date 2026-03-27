@@ -6,7 +6,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Context } from 'telegraf';
 import { logger } from '../core/logger.js';
-import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER, type AppConfig } from '../utils/config.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 
@@ -78,7 +78,7 @@ function scoreNote(note: NoteMeta, queryWords: string[]): number {
 }
 
 async function searchVault(vaultPath: string, query: string): Promise<string> {
-  const notesDir = join(vaultPath, 'GetThreads');
+  const notesDir = join(vaultPath, VAULT_SUBFOLDER);
   const files = await findMdFiles(notesDir);
   const queryWords = query.split(/\s+/).filter((w) => w.length >= 2);
 

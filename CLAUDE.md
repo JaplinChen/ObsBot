@@ -1,4 +1,4 @@
-# GetThreads 專案規則
+# ObsBot 專案規則
 
 ## Hard Rules（硬規則——絕對不可違反）
 

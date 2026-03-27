@@ -167,7 +167,7 @@ async function enrichWebPage(url: string): Promise<MetaResult> {
   const res = await fetchWithTimeout(url, 15_000, {
     headers: {
       Accept: 'text/html,application/xhtml+xml',
-      'User-Agent': 'Mozilla/5.0 (GetThreads Bot)',
+      'User-Agent': 'Mozilla/5.0 (ObsBot)',
     },
     redirect: 'follow',
   });

@@ -4,6 +4,7 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ConsolidationReport } from './consolidator.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 
 /** Format consolidation report for Telegram message */
 export function formatConsolidationReport(report: ConsolidationReport): string {
@@ -45,7 +46,7 @@ export async function saveConsolidationNote(
   report: ConsolidationReport,
 ): Promise<string> {
   const date = report.periodEnd;
-  const outDir = join(vaultPath, 'GetThreads', '知識整合');
+  const outDir = join(vaultPath, VAULT_SUBFOLDER, '知識整合');
   const outPath = join(outDir, `consolidation-${date}.md`);
 
   const noteLink = (title: string) =>
@@ -84,7 +85,7 @@ export async function saveConsolidationNote(
   }
 
   L.push('---');
-  L.push(`*自動產生 by GetThreads /consolidate — ${report.generatedAt.slice(0, 19)}*`);
+  L.push(`*自動產生 by ObsBot /consolidate — ${report.generatedAt.slice(0, 19)}*`);
 
   await mkdir(outDir, { recursive: true });
   await writeFile(outPath, L.join('\n'), 'utf-8');

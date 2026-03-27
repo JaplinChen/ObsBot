@@ -5,6 +5,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 import type { TrendAlert, CategoryGap } from './proactive-types.js';
 
 interface NoteEntry {
@@ -27,7 +28,7 @@ function parseKeywords(raw: string): string[] {
 
 /** Collect note metadata from vault */
 async function collectNotes(vaultPath: string): Promise<NoteEntry[]> {
-  const files = await getAllMdFiles(join(vaultPath, 'GetThreads'));
+  const files = await getAllMdFiles(join(vaultPath, VAULT_SUBFOLDER));
   const notes: NoteEntry[] = [];
 
   for (const f of files) {
