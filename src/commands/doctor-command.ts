@@ -45,10 +45,28 @@ async function countFiles(dir: string, ext: string): Promise<number> {
 }
 
 export async function handleDoctor(ctx: Context, config: AppConfig): Promise<void> {
-  await ctx.reply('🩺 正在執行全面診斷，請稍候…');
+  const statusMsg = await ctx.reply('🩺 正在執行全面診斷…\n⏳ [1/4] 探測 Extractors');
+  const chatId = statusMsg.chat.id;
+  const msgId = statusMsg.message_id;
   const t0 = Date.now();
 
+  const updateProgress = async (step: number, label: string): Promise<void> => {
+    const bar = ['Extractors', '外部工具', '瀏覽器池', 'Vault 統計'];
+    const lines = bar.map((name, i) => {
+      if (i < step - 1) return `✅ ${name}`;
+      if (i === step - 1) return `⏳ ${name}`;
+      return `⬜ ${name}`;
+    });
+    try {
+      await ctx.telegram.editMessageText(
+        chatId, msgId, undefined,
+        `🩺 正在執行全面診斷…\n${lines.join('\n')}\n\n${label}`,
+      );
+    } catch { /* ignore edit race / same-content errors */ }
+  };
+
   // 1. Probe all extractors
+  await updateProgress(1, '正在探測各平台…');
   const extractors = getRegisteredExtractors();
   const monConfig = await loadMonitorConfig();
   const health = await probeAllExtractors(extractors, monConfig.extractorHealth);
@@ -71,6 +89,7 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
   }
 
   // 2. Check CLI dependencies
+  await updateProgress(2, '正在檢查 CLI 工具…');
   const browserUseBin = join(homedir(), '.browser-use-env', 'bin', 'browser-use');
   const cliChecks = await Promise.all([
     checkCli('yt-dlp', 'yt-dlp', ['--version']),
@@ -84,9 +103,11 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
   });
 
   // 3. Camoufox pool
+  await updateProgress(3, '正在檢查瀏覽器池…');
   const pool = camoufoxPool.getStats();
 
   // 4. Vault stats
+  await updateProgress(4, '正在統計 Vault…');
   const vaultPath = config.vaultPath;
   const gtPath = join(vaultPath, 'ObsBot');
   const attachPath = join(vaultPath, 'attachments', 'obsbot');
@@ -95,7 +116,7 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
     countFiles(attachPath, ''),
   ]);
 
-  // 5. Format report
+  // 5. Format final report (edit the same message)
   const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
   const lines = [
     '🩺 系統診斷報告',
@@ -116,5 +137,12 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
   ];
 
   logger.info('doctor', '診斷完成', { elapsed, noteCount, attachCount });
-  await ctx.reply(lines.join('\n').slice(0, 4000));
+  try {
+    await ctx.telegram.editMessageText(
+      chatId, msgId, undefined,
+      lines.join('\n').slice(0, 4000),
+    );
+  } catch {
+    await ctx.reply(lines.join('\n').slice(0, 4000));
+  }
 }
