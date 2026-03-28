@@ -24,6 +24,7 @@ ObsBot 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 Obsi
 - **PDF 文件收集** — 直接傳 PDF 到 Telegram，自動擷取文字、分類、存入 Vault
 - **智慧分類** — 計分制分類器，自動歸檔到對的 Obsidian 資料夾，支援 20+ 分類 + exclude 防誤判
 - **跨平台搜尋** — 在 Telegram 裡搜 DuckDuckGo + Reddit
+- **多平臺巡邏** — `/patrol` 自動巡邏 HN / Reddit / Dev.to / GitHub Trending，AI 相關性評分，inline 一鍵存檔
 - **GitHub 探索** — `/discover` 搜尋專案或瀏覽每日熱門
 - **知識問答** — `/ask` 用 Vault 知識回答問題，AI 結合筆記上下文
 - **時間軸抓取** — 一次撈回某人最近的所有貼文
@@ -34,7 +35,11 @@ ObsBot 讓你在 Telegram 裡丟一個連結，**3 秒後它就躺在你的 Obsi
 - **工具情報牆** — 自動追蹤已收藏 AI 工具的活躍/沉睡狀態，新工具入庫時 Jaccard 比對已有工具推送「可取代/補強」建議
 - **主動推理** — 每日 09:00 自動推送知識摘要 + 趨勢關鍵字警報 + 久未更新分類提醒到 Telegram
 - **Vault 搜尋** — `/find` 在本地 Vault 筆記中搜尋（frontmatter 加權匹配：標題 > 關鍵字 > 分類/摘要）
-- **自動巡邏** — `/patrol` 自動抓取 GitHub Trending 專案存入 Vault，支援手動觸發或定時巡邏
+- **影片語意搜尋** — `/vsearch` 搜尋 Vault 影片筆記的章節、轉錄文字，兩階段搜尋（關鍵字 → AI 排序）
+- **自動巡邏** — `/patrol` 多平臺巡邏（HN / Reddit / Dev.to / GitHub Trending），oMLX 相關性評分，inline 一鍵存檔
+- **遠端指令** — `/code` 在 Telegram 執行安全白名單指令（health / status / test / log）
+- **使用者偏好記憶** — 自動追蹤存檔行為，累積後 AI 生成偏好摘要，微調分類建議
+- **插件架構** — `plugins/` 目錄動態載入第三方 extractor，受限 API 介面確保安全
 - **oMLX 本地推理** — 可選配 Apple Silicon 本地推理伺服器，零 API 成本、完全離線可用
 - **處理進度串流** — URL 處理時即時顯示目前階段（擷取 → 豐富化 → 儲存），Telegram 訊息原地更新
 - **遠端管理** — 在 Telegram 裡查看 log、系統健康、重啟 Bot，搭配 loop 模式自動恢復
@@ -156,7 +161,12 @@ npx camoufox-js fetch
 | `/quality` | Vault 品質報告 |
 | `/benchmark` | enrichment 品質基準報告（評分趨勢/平台成功率） |
 | `/suggest` | 相關筆記推薦（自動連結，寫入筆記底部 + 索引） |
-| `/patrol` | 自動巡邏 GitHub Trending（`/patrol auto` 啟用定時） |
+| `/patrol` | 多平臺巡邏（HN/Reddit/Dev.to/GitHub Trending） |
+| `/patrol sources` | 管理巡邏來源（啟用/停用各平臺） |
+| `/patrol topics` | 設定興趣主題（用於 AI 相關性評分） |
+| `/patrol auto` | 啟用/停用定時自動巡邏 |
+| `/vsearch <關鍵字>` | 搜尋影片筆記（章節/轉錄文字） |
+| `/code <action>` | 遠端執行指令（health/status/test/log/build/disk） |
 | `/radar` | 內容雷達（自動搜尋+存入，on/off/auto/run/add/remove/wall） |
 | `/status` | Bot 運行狀態與本次儲存統計 |
 | `/health` | 系統健康報告（記憶體 / Extractor / Vault） |
@@ -275,7 +285,9 @@ src/
 │   ├── suggest-command.ts     # /suggest 相關筆記推薦
 │   ├── radar-command.ts       # /radar 內容雷達管理
 │   ├── find-command.ts        # /find Vault 筆記搜尋
-│   ├── patrol-command.ts      # /patrol GitHub Trending 巡邏
+│   ├── patrol-command.ts      # /patrol 多平臺巡邏（HN/Reddit/Dev.to/GitHub）
+│   ├── vsearch-command.ts    # /vsearch 影片語意搜尋
+│   ├── code-command.ts       # /code 遠端指令執行
 │   ├── admin-command.ts       # /logs /health /restart 遠端管理
 │   └── doctor-command.ts      # /doctor 全面即時診斷
 ├── extractors/                 # 各平台內容擷取器
@@ -321,10 +333,24 @@ src/
 │   ├── radar-store.ts          # 設定持久化 + 自動查詢生成
 │   ├── radar-service.ts        # 背景排程引擎（多來源 → Vault）
 │   └── sources/                # 可擴展來源（DDG、GitHub Trending、RSS）
-├── patrol/                     # 自動巡邏（GitHub Trending 定時抓取）
-│   ├── patrol-service.ts       # 巡邏引擎（HTML 解析 + pipeline 整合）
+├── patrol/                     # 多平臺巡邏（HN / Reddit / Dev.to / GitHub Trending）
+│   ├── patrol-service.ts       # 巡邏引擎（多來源 + AI 評分 + pipeline 整合）
+│   ├── patrol-notifier.ts      # Telegram 通知格式化 + inline save buttons
+│   ├── relevance-scorer.ts     # oMLX 批次相關性評分
 │   ├── patrol-store.ts         # 設定持久化
-│   └── patrol-types.ts         # 型別定義
+│   ├── patrol-types.ts         # 型別定義
+│   └── sources/                # 巡邏來源（HN Firebase / Reddit JSON / Dev.to API）
+├── memory/                     # 使用者偏好記憶
+│   ├── memory-store.ts         # JSON 持久化 + 事件追蹤
+│   ├── memory-types.ts         # 型別定義
+│   └── preference-summarizer.ts # oMLX 偏好摘要生成
+├── video/                      # 影片語意搜尋
+│   ├── video-index.ts          # Vault 影片索引（章節 + 轉錄解析）
+│   └── video-search.ts         # 兩階段搜尋（關鍵字 → AI 排序）
+├── plugins/                    # 插件系統
+│   ├── plugin-types.ts         # 插件介面定義
+│   ├── plugin-loader.ts        # 動態載入 + 註冊
+│   └── plugin-context.ts       # 受限 API（fetch / AI / logger）
 ├── proactive/                  # 主動推理（排程摘要 + 趨勢警報）
 │   ├── proactive-service.ts    # 排程推送 digest + 趨勢通知
 │   ├── trend-detector.ts       # 關鍵字頻率突增偵測 + 分類缺口
