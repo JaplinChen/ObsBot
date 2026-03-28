@@ -59,27 +59,30 @@ export async function probeAllExtractors(
 ): Promise<Record<string, ExtractorHealth>> {
   const results: Record<string, ExtractorHealth> = {};
 
-  // Only probe extractors that have known probe URLs
+  // Probe all extractors in parallel for speed
+  const probePromises: Array<{ platform: string; promise: Promise<ExtractorHealth> }> = [];
+
   for (const ext of extractors) {
     const probeUrl = PROBE_URLS[ext.platform];
     if (!probeUrl) {
-      // Keep previous health state or mark as unknown
       if (previousHealth[ext.platform]) {
         results[ext.platform] = previousHealth[ext.platform];
       }
       continue;
     }
+    probePromises.push({ platform: ext.platform, promise: probeExtractor(ext.platform, ext.extract, probeUrl) });
+  }
 
-    const health = await probeExtractor(ext.platform, ext.extract, probeUrl);
+  const probeResults = await Promise.all(probePromises.map((p) => p.promise));
 
-    // Track consecutive failures
-    const prev = previousHealth[ext.platform];
+  for (let i = 0; i < probePromises.length; i++) {
+    const health = probeResults[i];
+    const prev = previousHealth[probePromises[i].platform];
     if (prev && health.status !== 'ok') {
       health.consecutiveFailures = prev.consecutiveFailures + 1;
     }
-
-    results[ext.platform] = health;
-    logger.info('probe', `${ext.platform}: ${health.status}`, {
+    results[probePromises[i].platform] = health;
+    logger.info('probe', `${probePromises[i].platform}: ${health.status}`, {
       error: health.lastError,
     });
   }
