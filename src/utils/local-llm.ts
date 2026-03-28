@@ -1,23 +1,18 @@
 /**
- * LLM prompt runner with multi-model routing.
- * Priority: opencode CLI (remote) → DDG AI Chat.
- * oMLX is reserved for translation only (called directly in translator.ts)
- * to avoid resource contention with enrichment in concurrent batches.
+ * LLM prompt runner with multi-provider routing.
+ * Priority: oMLX (local) → OpenCode CLI (remote) → DDG AI Chat (fallback).
  */
 import { spawn } from 'node:child_process';
 import { runViaDdgChat } from './ddg-chat.js';
+import { isOmlxAvailable, omlxChatCompletion } from './omlx-client.js';
 
 const CLI_TIMEOUT_MS = 90_000;
 
-/** oMLX local inference config from environment. */
-const OMLX_BASE_URL = process.env.OMLX_BASE_URL || '';
-const OMLX_MODEL = process.env.OMLX_MODEL || '';
-
-/** Available free models ranked by capability. */
+/** OpenCode free models ranked by benchmark performance. */
 export const LLM_MODELS = {
-  flash: 'opencode/mimo-v2-flash-free',       // fast, keyword/title extraction
-  standard: 'opencode/minimax-m2.5-free',      // balanced, general enrichment
-  deep: 'opencode/nemotron-3-super-free',      // thorough, long-form analysis
+  flash: 'opencode/mimo-v2-pro-free',       // fastest (6.7s), clean JSON
+  standard: 'opencode/big-pickle',           // best TW Chinese, structured
+  deep: 'opencode/big-pickle',               // deep analysis fallback
 } as const;
 
 export type ModelTier = keyof typeof LLM_MODELS;
@@ -65,53 +60,22 @@ async function runViaCli(prompt: string, timeoutMs: number, model: string): Prom
   });
 }
 
-/* ── oMLX provider (local OpenAI-compatible API) ──────────────────────── */
-
-/** Run prompt via oMLX local inference server (OpenAI-compatible API). */
-async function runViaOmlx(prompt: string, timeoutMs: number): Promise<string | null> {
-  if (!OMLX_BASE_URL || !OMLX_MODEL) return null;
-
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-    const res = await fetch(`${OMLX_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: OMLX_MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-      }),
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-
-    if (!res.ok) return null;
-    const data = await res.json() as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = data.choices?.[0]?.message?.content?.trim();
-    return content || null;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Run a prompt against LLM providers.
- * Priority: opencode CLI (remote) → DDG AI Chat.
+ * Run a prompt against LLM providers with tier-based model selection.
+ * Priority: oMLX (local, tier-aware) → OpenCode CLI (remote) → DDG AI Chat.
  */
 export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}): Promise<string | null> {
   const timeoutMs = options.timeoutMs ?? 30_000;
   const tier = options.model ?? 'standard';
   const model = LLM_MODELS[tier];
 
-  // 1) Try oMLX local inference (if configured)
-  const omlxResult = await runViaOmlx(prompt, timeoutMs);
-  if (omlxResult) return omlxResult;
+  // 1) oMLX local inference (tier-aware: flash→4B, standard→9B, deep→27B)
+  if (await isOmlxAvailable()) {
+    const omlxResult = await omlxChatCompletion(prompt, { model: tier, timeoutMs });
+    if (omlxResult) return omlxResult;
+  }
 
-  // 2) Try opencode CLI with selected model
+  // 2) OpenCode CLI with best-performing model per tier
   const cliResult = await runViaCli(prompt, timeoutMs, model);
   if (cliResult) return cliResult;
 

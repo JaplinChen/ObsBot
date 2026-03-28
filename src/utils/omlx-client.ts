@@ -16,14 +16,21 @@ function getApiKey(): string {
 
 /**
  * Map model tiers to oMLX model directory names.
- * All tiers use 9B for local inference — 27B is too slow for concurrent
- * batch processing (90s+ with 3 workers). Deep tier falls back to
- * opencode CLI when oMLX 9B quality is insufficient.
+ * flash: 4B Claude-distilled (fast, structured output)
+ * standard: 9B Qwen3.5 (balanced)
+ * deep: 27B Qwen3.5 (high quality, user-initiated only — batch mode caps to 9B)
  */
 const OMLX_MODELS: Record<ModelTier, string> = {
-  flash: 'Qwen3.5-9B-MLX-4bit',
+  flash: 'MLX-Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-4bit',
   standard: 'Qwen3.5-9B-MLX-4bit',
-  deep: 'Qwen3.5-9B-MLX-4bit',
+  deep: 'Qwen3.5-27B-4bit',
+};
+
+/** Per-tier default timeouts (ms). Deep is longer for 27B inference. */
+const OMLX_TIMEOUTS: Record<ModelTier, number> = {
+  flash: 15_000,
+  standard: 30_000,
+  deep: 120_000,
 };
 
 /** Build common headers (Content-Type + optional Authorization). */
@@ -65,11 +72,27 @@ function invalidateCache(): void {
   _checkedAt = 0;
 }
 
+/* ── Batch mode guard ──────────────────────────────────────────────── */
+
+let _batchMode = false;
+
+/** Enable/disable batch mode. Deep tier auto-downgrades to 9B in batch. */
+export function setBatchMode(enabled: boolean): void {
+  _batchMode = enabled;
+}
+
 /* ── Model selection ────────────────────────────────────────────────── */
 
-/** Get the oMLX model ID for a given tier. */
+/** Get the oMLX model ID for a given tier. Deep caps to 9B in batch mode. */
 export function getOmlxModelId(tier: ModelTier): string {
+  if (_batchMode && tier === 'deep') return OMLX_MODELS.standard;
   return OMLX_MODELS[tier];
+}
+
+/** Get the default timeout for a given tier. */
+export function getOmlxTimeout(tier: ModelTier): number {
+  if (_batchMode && tier === 'deep') return OMLX_TIMEOUTS.standard;
+  return OMLX_TIMEOUTS[tier];
 }
 
 const OMLX_VISION_MODEL = 'Qwen2.5-VL-7B-Instruct-4bit';
@@ -93,7 +116,7 @@ export async function omlxChatCompletion(
 ): Promise<string | null> {
   const tier = options.model ?? 'standard';
   const modelId = getOmlxModelId(tier);
-  const timeoutMs = options.timeoutMs ?? 30_000;
+  const timeoutMs = options.timeoutMs ?? getOmlxTimeout(tier);
 
   const body = JSON.stringify({
     model: modelId,

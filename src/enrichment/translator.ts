@@ -1,12 +1,11 @@
 /**
  * Language detection + translation for non-Traditional-Chinese content.
  * - zh-CN -> zh-TW: opencc-js (deterministic, local)
- * - en -> zh-TW: oMLX (local, fast) → opencode CLI (remote, fallback)
+ * - en -> zh-TW: unified LLM routing (oMLX → OpenCode → DDG)
  */
 
 import type { TranslationResult } from '../extractors/types.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
-import { isOmlxAvailable, omlxChatCompletion } from '../utils/omlx-client.js';
 // @ts-expect-error opencc-js lacks proper TS declarations
 import * as OpenCC from 'opencc-js';
 
@@ -76,18 +75,8 @@ async function translateEnglishWithLocalLlm(
   text: string,
 ): Promise<TranslationResult | null> {
   const prompt = buildTranslationPrompt(title, text);
-
-  // 1) Try oMLX (local, ~2-5s per request; 60s allows for GPU queuing in concurrent batches)
-  if (await isOmlxAvailable()) {
-    const omlxResponse = await omlxChatCompletion(prompt, { timeoutMs: 60_000 });
-    if (omlxResponse) {
-      const result = parseTranslationResponse(omlxResponse);
-      if (result) return result;
-    }
-  }
-
-  // 2) Fallback to opencode CLI (remote)
-  const response = await runLocalLlmPrompt(prompt, { timeoutMs: 30_000 });
+  // Unified routing: oMLX (standard/9B) → OpenCode → DDG
+  const response = await runLocalLlmPrompt(prompt, { timeoutMs: 60_000 });
   if (!response) return null;
   return parseTranslationResponse(response);
 }
