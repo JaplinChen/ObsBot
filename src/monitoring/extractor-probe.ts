@@ -1,88 +1,99 @@
 /**
- * Extractor health probe — periodically tests each platform extractor
- * with a known URL to detect API changes or blocks.
+ * Extractor health probe — lightweight connectivity checks for /doctor.
+ * Uses HTTP HEAD/GET to test reachability without running full extraction.
  */
 import type { ExtractorHealth } from './health-types.js';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 import { logger } from '../core/logger.js';
 
-/** Probe URLs — lightweight, public, stable content for each platform */
-const PROBE_URLS: Record<string, string> = {
-  x: 'https://x.com/elonmusk/status/1585341984679469056',
-  threads: 'https://www.threads.net/@zuck/post/CuVGBSxsuaJ',
-  youtube: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-  github: 'https://github.com/anthropics/claude-code',
-  reddit: 'https://www.reddit.com/r/programming/comments/1a',
-  bilibili: 'https://www.bilibili.com/video/BV1GJ411x7h7',
-  weibo: 'https://weibo.com/2803301701/4976424138269810',
-  xiaohongshu: 'https://www.xiaohongshu.com/explore/6548d6b2000000001f0066ab',
-  douyin: 'https://www.douyin.com/video/7294556955546986752',
-  tiktok: 'https://www.tiktok.com/@tiktok/video/7106594312292453674',
-  ithome: 'https://ithelp.ithome.com.tw/articles/10290464',
-  web: 'https://example.com',
+const PROBE_TIMEOUT_MS = 8_000;
+
+const BROWSER_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+/** Lightweight probe endpoints — homepage or API, never full article URLs */
+const PROBE_ENDPOINTS: Record<string, { url: string; method: 'HEAD' | 'GET' }> = {
+  x:           { url: 'https://api.fxtwitter.com/status/1585341984679469056', method: 'GET' },
+  threads:     { url: 'https://www.threads.net/', method: 'HEAD' },
+  youtube:     { url: 'https://www.youtube.com/', method: 'HEAD' },
+  github:      { url: 'https://github.com/', method: 'HEAD' },
+  reddit:      { url: 'https://www.reddit.com/r/programming.json?limit=1', method: 'GET' },
+  bilibili:    { url: 'https://www.bilibili.com/', method: 'HEAD' },
+  weibo:       { url: 'https://m.weibo.cn/', method: 'HEAD' },
+  xiaohongshu: { url: 'https://www.xiaohongshu.com/', method: 'HEAD' },
+  douyin:      { url: 'https://www.douyin.com/', method: 'HEAD' },
+  tiktok:      { url: 'https://www.tiktok.com/', method: 'HEAD' },
+  ithome:      { url: 'https://ithelp.ithome.com.tw/', method: 'HEAD' },
+  web:         { url: 'https://example.com', method: 'HEAD' },
 };
 
-/** Test a single extractor by attempting to extract a known URL */
-async function probeExtractor(
+/** Lightweight connectivity probe — HTTP only, no browser, no parsing */
+async function probeConnectivity(
   platform: string,
-  extractFn: (url: string) => Promise<unknown>,
-  url: string,
-  timeoutMs: number = 30_000,
+  endpoint: { url: string; method: 'HEAD' | 'GET' },
 ): Promise<ExtractorHealth> {
   const now = new Date().toISOString();
 
   try {
-    const result = await Promise.race([
-      extractFn(url),
-      new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), timeoutMs)),
-    ]);
+    const res = await fetchWithTimeout(endpoint.url, PROBE_TIMEOUT_MS, {
+      method: endpoint.method,
+      headers: { 'User-Agent': BROWSER_UA },
+      redirect: 'follow',
+    });
 
-    if (result === 'timeout') {
-      return { platform, status: 'degraded', lastCheckAt: now, lastError: '超時', consecutiveFailures: 1 };
+    if (res.ok || (res.status >= 300 && res.status < 400)) {
+      return { platform, status: 'ok', lastCheckAt: now, consecutiveFailures: 0 };
     }
 
-    return { platform, status: 'ok', lastCheckAt: now, consecutiveFailures: 0 };
-  } catch (err) {
     return {
       platform,
-      status: 'down',
+      status: 'degraded',
       lastCheckAt: now,
-      lastError: (err as Error).message.slice(0, 200),
+      lastError: `HTTP ${res.status}`,
+      consecutiveFailures: 1,
+    };
+  } catch (err) {
+    const msg = (err as Error).message?.slice(0, 200) ?? 'unknown';
+    const status = msg.includes('abort') ? 'degraded' : 'down';
+    return {
+      platform,
+      status,
+      lastCheckAt: now,
+      lastError: msg.includes('abort') ? '超時' : msg,
       consecutiveFailures: 1,
     };
   }
 }
 
-/** Run health probes for all configured extractors */
+/** Run lightweight connectivity probes for all configured extractors */
 export async function probeAllExtractors(
   extractors: ReadonlyArray<{ platform: string; extract: (url: string) => Promise<unknown> }>,
   previousHealth: Record<string, ExtractorHealth>,
 ): Promise<Record<string, ExtractorHealth>> {
   const results: Record<string, ExtractorHealth> = {};
-
-  // Probe all extractors in parallel for speed
-  const probePromises: Array<{ platform: string; promise: Promise<ExtractorHealth> }> = [];
+  const probes: Array<{ platform: string; promise: Promise<ExtractorHealth> }> = [];
 
   for (const ext of extractors) {
-    const probeUrl = PROBE_URLS[ext.platform];
-    if (!probeUrl) {
+    const endpoint = PROBE_ENDPOINTS[ext.platform];
+    if (!endpoint) {
       if (previousHealth[ext.platform]) {
         results[ext.platform] = previousHealth[ext.platform];
       }
       continue;
     }
-    probePromises.push({ platform: ext.platform, promise: probeExtractor(ext.platform, ext.extract, probeUrl) });
+    probes.push({ platform: ext.platform, promise: probeConnectivity(ext.platform, endpoint) });
   }
 
-  const probeResults = await Promise.all(probePromises.map((p) => p.promise));
+  const probeResults = await Promise.all(probes.map((p) => p.promise));
 
-  for (let i = 0; i < probePromises.length; i++) {
+  for (let i = 0; i < probes.length; i++) {
     const health = probeResults[i];
-    const prev = previousHealth[probePromises[i].platform];
+    const prev = previousHealth[probes[i].platform];
     if (prev && health.status !== 'ok') {
       health.consecutiveFailures = prev.consecutiveFailures + 1;
     }
-    results[probePromises[i].platform] = health;
-    logger.info('probe', `${probePromises[i].platform}: ${health.status}`, {
+    results[probes[i].platform] = health;
+    logger.info('probe', `${probes[i].platform}: ${health.status}`, {
       error: health.lastError,
     });
   }
