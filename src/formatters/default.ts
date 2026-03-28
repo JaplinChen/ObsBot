@@ -1,7 +1,6 @@
-import type { VideoInfo } from '../extractors/types.js';
-import type { ExtractedContent } from '../extractors/types.js';
+import type { VideoInfo, ExtractedContent } from '../extractors/types.js';
 import type { PlatformFormatter, FormatBodyResult } from './types.js';
-import { linkifyUrls } from './shared.js';
+import { buildChapters, linkifyUrls } from './shared.js';
 
 /** Default formatter used by platforms without custom formatting needs */
 export const defaultFormatter: PlatformFormatter = {
@@ -23,8 +22,8 @@ export const defaultFormatter: PlatformFormatter = {
     return lines;
   },
 
-  extraSections(): string[] {
-    return [];
+  extraSections(content: ExtractedContent): string[] {
+    return buildChapters(content.chapters);
   },
 
   filterRemainingImages(localImagePaths: string[]): string[] {

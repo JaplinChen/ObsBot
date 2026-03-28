@@ -1,4 +1,4 @@
-import type { ExtractedContent, LinkedContentMeta, ThreadComment } from '../extractors/types.js';
+import type { ChapterInfo, ExtractedContent, LinkedContentMeta, ThreadComment } from '../extractors/types.js';
 import { extractKeywords } from '../classifier.js';
 
 export const PLATFORM_LABELS: Record<string, string> = {
@@ -170,5 +170,20 @@ export function buildComments(comments?: ThreadComment[], commentCount?: number)
   if (commentCount && commentCount > comments.length) {
     lines.push(`_共 ${commentCount} 則，顯示前 ${comments.length} 則_`, '');
   }
+  return lines;
+}
+
+/** Build chapters section as Markdown table */
+export function buildChapters(chapters?: ChapterInfo[]): string[] {
+  if (!chapters || chapters.length === 0) return [];
+  const lines: string[] = ['## 章節', ''];
+  lines.push('| 時間 | 章節 | 摘要 |');
+  lines.push('|------|------|------|');
+  for (const ch of chapters) {
+    const time = ch.startTime;
+    const summary = ch.summary ?? '';
+    lines.push(`| ${time} | ${ch.title} | ${summary} |`);
+  }
+  lines.push('');
   return lines;
 }

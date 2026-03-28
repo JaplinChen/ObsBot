@@ -13,6 +13,21 @@ export interface ThreadComment {
   replies?: ThreadComment[];
 }
 
+/** A transcript segment with timing information */
+export interface TranscriptSegment {
+  start: number;
+  end: number;
+  text: string;
+}
+
+/** A chapter in a video (from platform or AI-generated) */
+export interface ChapterInfo {
+  startTime: string;   // "00:05:10"
+  endTime?: string;    // "00:12:00"
+  title: string;
+  summary?: string;
+}
+
 /** Unified content extracted from any platform */
 export interface VideoInfo {
   url: string;
@@ -66,8 +81,12 @@ export interface ExtractedContent {
   translation?: TranslationResult;
   /** AI-generated descriptions of images from vision model */
   imageDescriptions?: string;
-  /** Video transcript (subtitles / STT) ??used for AI summary, not rendered in note */
+  /** Video transcript (subtitles / STT) — used for AI summary, not rendered in note */
   transcript?: string;
+  /** Timed transcript segments for chapter generation (from whisper STT) */
+  timedTranscript?: TranscriptSegment[];
+  /** Video chapters (from platform metadata or AI-generated) */
+  chapters?: ChapterInfo[];
   /** Sub-folder under category for grouping series articles (e.g. "Obsidian雙向連結系列教學") */
   subFolder?: string;
   /** Temp directory to clean up after saving (used by TikTok extractor for local screenshots) */

@@ -63,6 +63,15 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
     }
   }
 
+  // Build timed transcript text for chapter generation
+  const timedTranscriptText = content.timedTranscript && content.timedTranscript.length > 20
+    ? content.timedTranscript.map(s => {
+        const mm = Math.floor(s.start / 60);
+        const ss = Math.floor(s.start % 60);
+        return `[${mm}:${String(ss).padStart(2, '0')}] ${s.text}`;
+      }).join('\n').slice(0, 4000)
+    : '';
+
   let textForAI = content.transcript
     ? `${cleanText}${AI_TRANSCRIPT_PREFIX}${content.transcript.slice(0, 2500)}`
     : cleanText;
@@ -88,8 +97,10 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
 
   // AI 豐富化 與 postProcess（連結補充 + 翻譯）並行——兩者互不依賴
   const originalTitle = content.title;
+  const hasLinkedContent = (content.linkedContent?.length ?? 0) > 0;
+  const hasTimedTranscript = timedTranscriptText.length > 0 && !content.chapters;
   const [enriched] = await Promise.all([
-    enrichContent(cleanedTitle, enrichText, hints, content.platform),
+    enrichContent(cleanedTitle, enrichText, hints, content.platform, hasLinkedContent, hasTimedTranscript ? timedTranscriptText : undefined),
     postProcess(content, {
       enrichPostLinks: true,
       enrichCommentLinks: true,
@@ -106,6 +117,8 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
   if (enriched.keyPoints?.length) content.enrichedKeyPoints = enriched.keyPoints;
   if (enriched.title) content.title = enriched.title;
   if (enriched.githubAnalysis) content.githubAnalysis = enriched.githubAnalysis;
+  // AI-generated chapters (only when no platform-native chapters exist)
+  if (!content.chapters && enriched.chapters?.length) content.chapters = enriched.chapters;
   // 不用 enricher 的 category — classifier 的關鍵字匹配更可靠
 
   // Benchmark: score enrichment quality (non-blocking)

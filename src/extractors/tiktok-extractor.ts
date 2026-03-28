@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { ExtractedContent, Extractor } from './types.js';
 import { camoufoxPool } from '../utils/camoufox-pool.js';
+import { getPlainTranscript } from '../utils/transcript-service.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -84,31 +85,9 @@ async function extractFrames(
   return entries.filter(f => f.startsWith('frame-') && f.endsWith('.jpg')).sort().map(f => join(outputDir, f));
 }
 
-/** Try whisper.cpp STT fallback for videos without subtitles */
-async function whisperTranscribe(videoPath: string, tmpDir: string): Promise<string | null> {
-  const audioPath = join(tmpDir, 'audio.wav');
-  try {
-    await execFileAsync('ffmpeg', [
-      '-y', '-i', videoPath, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', audioPath,
-    ], { timeout: 30_000 });
-  } catch { logger.warn('tiktok', 'ffmpeg audio extraction failed'); return null; }
-
-  for (const cmd of ['whisper-cli', 'whisper']) {
-    try {
-      const { stdout } = await execFileAsync(cmd, [
-        '-m', join(process.cwd(), 'models', 'ggml-small.bin'),
-        '-l', 'zh', '--no-timestamps', '-f', audioPath,
-      ], { timeout: 120_000, maxBuffer: 5 * 1024 * 1024 });
-      if (stdout.trim()) return stdout.trim();
-    } catch { continue; }
-  }
-  logger.warn('tiktok', 'whisper.cpp not available; skipping STT');
-  return null;
-}
-
-/** Get transcript: prefer platform subtitles, fallback to whisper.cpp */
+/** Get transcript: prefer platform subtitles, fallback to shared whisper service */
 async function getTranscript(
-  meta: TikTokMeta, tmpDir: string, videoPath: string,
+  _meta: TikTokMeta, tmpDir: string, videoPath: string,
 ): Promise<string | null> {
   const subFiles = (await readdir(tmpDir).catch(() => [])).filter(f => f.endsWith('.vtt'));
   if (subFiles.length > 0) {
@@ -117,7 +96,7 @@ async function getTranscript(
     const text = parseVTT(await readFile(join(tmpDir, preferred), 'utf-8'));
     if (text.length > 10) return text;
   }
-  return whisperTranscribe(videoPath, tmpDir);
+  return getPlainTranscript(videoPath, tmpDir);
 }
 
 /** Build clean display text from metadata */

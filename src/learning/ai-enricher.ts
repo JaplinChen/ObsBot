@@ -12,6 +12,8 @@ const s2tw: (text: string) => string = OpenCC.ConverterFactory(
   OpenCC.Locale.to.tw,
 );
 
+import type { ChapterInfo } from '../extractors/types.js';
+
 export interface EnrichResult {
   keywords: string[] | null;
   summary: string | null;
@@ -21,6 +23,8 @@ export interface EnrichResult {
   category?: string;
   /** Deep analysis for GitHub projects (use cases, comparison, pros/cons) */
   githubAnalysis?: string;
+  /** AI-generated chapters from timed transcript */
+  chapters?: ChapterInfo[];
 }
 
 function normalizeCategory(raw: unknown): string | undefined {
@@ -80,6 +84,7 @@ export async function enrichContent(
   categoryHints: string[],
   platform?: string,
   hasLinkedContent?: boolean,
+  timedTranscriptText?: string,
 ): Promise<EnrichResult> {
   const isGithub = platform === 'github';
   // Expand preview limit when linked content is embedded in text
@@ -91,9 +96,28 @@ export async function enrichContent(
   const cleanedTitle = cleanTitle(title);
   logger.info('enricher', 'model-route', { tier, textLen: text.length, hasTranscript, platform, hasLinkedContent });
 
+  const hasChapterRequest = !!timedTranscriptText;
   const jsonKeys = isGithub
     ? 'keywords, summary, analysis, keyPoints, title, category, githubAnalysis'
-    : 'keywords, summary, analysis, keyPoints, title, category';
+    : hasChapterRequest
+      ? 'keywords, summary, analysis, keyPoints, title, category, chapters'
+      : 'keywords, summary, analysis, keyPoints, title, category';
+
+  const chapterPrompt = hasChapterRequest
+    ? [
+        '',
+        '=== 影片章節分析指令 ===',
+        '以下提供了帶時間戳的轉錄文字。請根據語義轉折點識別章節邊界。',
+        'JSON 需額外包含 chapters 欄位（陣列），每個元素包含：',
+        '  startTime: "MM:SS" 或 "HH:MM:SS" 格式的開始時間',
+        '  title: 章節標題（繁體中文，≤20字）',
+        '  summary: 一句話摘要（繁體中文，≤40字）',
+        '章節數量 3-8 個，根據內容豐富度決定。',
+        '時間戳必須對應轉錄文字中出現的時間點。',
+        '',
+        `[帶時間戳的轉錄文字]\n${timedTranscriptText}`,
+      ]
+    : [];
 
   const linkedContentPrompt = hasLinkedContent
     ? [
@@ -122,6 +146,7 @@ export async function enrichContent(
     'If content is insufficient, state what is missing briefly instead of inventing.',
     ...(isGithub ? buildGithubPrompt() : []),
     ...linkedContentPrompt,
+    ...chapterPrompt,
     hints ? `Category hints: ${hints}` : '',
     `Original title: ${cleanedTitle}`,
     `Content: ${textPreview}`,
@@ -149,6 +174,17 @@ export async function enrichContent(
       title: typeof parsed.title === 'string' ? s2tw(parsed.title).slice(0, 40) : undefined,
       category: normalizeCategory(parsed.category),
       githubAnalysis: typeof parsed.githubAnalysis === 'string' ? s2tw(parsed.githubAnalysis) : undefined,
+      chapters: Array.isArray(parsed.chapters)
+        ? parsed.chapters
+            .filter((ch): ch is Record<string, unknown> => typeof ch === 'object' && ch !== null)
+            .map(ch => ({
+              startTime: typeof ch.startTime === 'string' ? ch.startTime : '00:00',
+              title: typeof ch.title === 'string' ? s2tw(ch.title).slice(0, 20) : '',
+              summary: typeof ch.summary === 'string' ? s2tw(ch.summary).slice(0, 40) : undefined,
+            }))
+            .filter(ch => ch.title.length > 0)
+            .slice(0, 8)
+        : undefined,
     };
   } catch {
     return NULL_RESULT;

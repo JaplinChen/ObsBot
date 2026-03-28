@@ -2,9 +2,18 @@
  * Douyin / TikTok CN / Toutiao extractor — uses Camoufox for anti-bot bypass.
  * Supports: douyin.com, v.douyin.com short URLs, toutiao.com articles.
  */
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { mkdir, rm } from 'node:fs/promises';
 import type { ExtractedContent, Extractor } from './types.js';
 import { camoufoxPool } from '../utils/camoufox-pool.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+import { getTimedTranscript } from '../utils/transcript-service.js';
+import { logger } from '../core/logger.js';
+
+const execFileAsync = promisify(execFile);
 
 const DOUYIN_PATTERN = /douyin\.com\/video\/([\d]+)/i;
 const DOUYIN_SHORT = /v\.douyin\.com\/([\w]+)/i;
@@ -58,6 +67,30 @@ async function extractDouyin(url: string, page: import('playwright-core').Page):
   const thumbnail = await page.locator('video[poster]').first().getAttribute('poster').catch(() => null);
   const images = thumbnail ? [thumbnail] : [];
 
+  // Try whisper STT for transcript
+  let transcript: string | undefined;
+  let timedTranscript: ExtractedContent['timedTranscript'];
+  const tmpDir = join(tmpdir(), `obsbot-douyin-${Date.now()}`);
+  await mkdir(tmpDir, { recursive: true });
+  try {
+    const videoPath = join(tmpDir, 'video.mp4');
+    await execFileAsync('yt-dlp', [
+      '-f', 'best[ext=mp4]/best', '-o', videoPath,
+      '--no-playlist', '--no-warnings', url,
+    ], { maxBuffer: 10 * 1024 * 1024, timeout: 120_000 });
+    const result = await getTimedTranscript(videoPath, tmpDir);
+    if (result) {
+      transcript = result.fullText;
+      timedTranscript = result.segments;
+    }
+  } catch (err) {
+    logger.warn('douyin', 'video download for STT failed', {
+      message: (err as Error).message?.slice(0, 200),
+    });
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+  }
+
   return {
     platform: 'douyin',
     author: author.trim(),
@@ -69,6 +102,8 @@ async function extractDouyin(url: string, page: import('playwright-core').Page):
     date: new Date().toISOString().split('T')[0],
     url,
     likes: likes || undefined,
+    transcript,
+    timedTranscript,
   };
 }
 

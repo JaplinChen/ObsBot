@@ -1,6 +1,6 @@
-import type { VideoInfo } from '../extractors/types.js';
+import type { ExtractedContent, VideoInfo } from '../extractors/types.js';
 import type { PlatformFormatter, FormatBodyResult } from './types.js';
-import { linkifyUrls, replaceInlineImages } from './shared.js';
+import { buildChapters, linkifyUrls, replaceInlineImages } from './shared.js';
 
 /** YouTube formatter — inline thumbnails + inline video embeds for playlists */
 export const youtubeFormatter: PlatformFormatter = {
@@ -44,8 +44,8 @@ export const youtubeFormatter: PlatformFormatter = {
     return lines;
   },
 
-  extraSections(): string[] {
-    return [];
+  extraSections(content: ExtractedContent): string[] {
+    return buildChapters(content.chapters);
   },
 
   filterRemainingImages(localImagePaths: string[], usedPaths: Set<string>): string[] {
