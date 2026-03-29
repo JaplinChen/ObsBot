@@ -12,6 +12,7 @@ import { findNotesByTopic } from './knowledge-query-helpers.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 import { saveReportToVault } from '../knowledge/report-saver.js';
 import { logger } from '../core/logger.js';
+import { replyEmptyKnowledge } from './reply-buttons.js';
 
 /* re-use the callback cache from the parent module */
 import { buildCallbackData, resolveCallbackToken } from './knowledge-query-command.js';
@@ -32,7 +33,7 @@ export async function handleDeepSynthesis(
   try {
     const knowledge = await loadAndAggregate();
     if (!knowledge) {
-      await ctx.reply('知識庫為空，請先執行 /vault analyze');
+      await replyEmptyKnowledge(ctx);
       return;
     }
 

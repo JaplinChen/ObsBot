@@ -7,6 +7,7 @@ import type { AppConfig } from '../utils/config.js';
 import { scanVaultNotes, loadKnowledge, saveKnowledge } from '../knowledge/knowledge-store.js';
 import { consolidateVault } from '../knowledge/consolidator.js';
 import { formatConsolidationReport, saveConsolidationNote } from '../knowledge/consolidation-report.js';
+import { replyEmptyKnowledge } from './reply-buttons.js';
 
 const TELEGRAM_MSG_LIMIT = 4096;
 
@@ -31,7 +32,7 @@ function splitMessage(text: string): string[] {
 export async function handleConsolidate(ctx: Context, config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /analyze 進行深度分析。');
+    await replyEmptyKnowledge(ctx);
     return;
   }
 

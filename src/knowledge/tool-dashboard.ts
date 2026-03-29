@@ -100,7 +100,7 @@ const STATUS_EMOJI: Record<string, string> = {
 /** Format dashboard for Telegram message */
 export function formatToolDashboard(d: ToolDashboard): string {
   if (d.totalTools === 0) {
-    return '📭 知識庫中尚未偵測到工具/框架。\n請先執行 /vault analyze 進行深度分析。';
+    return '📭 知識庫中尚未偵測到工具/框架。';
   }
 
   const lines: string[] = ['🛠 工具使用率儀表板', ''];

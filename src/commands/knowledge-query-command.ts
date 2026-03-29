@@ -14,6 +14,7 @@ import type { VaultKnowledge } from '../knowledge/types.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
 import { findEntity, findNotesByTopic, formatEntitySection, findDirectRelations } from './knowledge-query-helpers.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
+import { replyEmptyKnowledge } from './reply-buttons.js';
 
 const CALLBACK_CACHE_LIMIT = 500;
 const callbackPayloadCache = new Map<string, string>();
@@ -116,7 +117,7 @@ export async function handleModePicker(ctx: Context, topic: string): Promise<voi
 async function runRecommend(ctx: Context, topic: string): Promise<void> {
   const knowledge = await loadAndAggregate();
   if (!knowledge) {
-    await ctx.reply('知識庫為空，請先執行 /vault analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
 
@@ -151,7 +152,7 @@ async function runRecommend(ctx: Context, topic: string): Promise<void> {
 async function runBrief(ctx: Context, topic: string): Promise<void> {
   const knowledge = await loadAndAggregate();
   if (!knowledge) {
-    await ctx.reply('知識庫為空，請先執行 /vault analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
 
@@ -195,7 +196,7 @@ async function runCompare(ctx: Context, arg: string): Promise<void> {
 
   const knowledge = await loadAndAggregate();
   if (!knowledge) {
-    await ctx.reply('知識庫為空，請先執行 /vault analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
 

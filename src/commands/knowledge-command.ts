@@ -14,15 +14,13 @@ import { detectKnowledgeGaps, formatGapsSummary } from '../knowledge/knowledge-g
 import { detectHighDensityTopics, formatTopicsSummary } from '../knowledge/skill-generator.js';
 import { buildToolDashboard, formatToolDashboard } from '../knowledge/tool-dashboard.js';
 import { runVaultAnalysis } from '../knowledge/vault-analyzer.js';
+import { replyEmptyKnowledge, replyWithNextSteps, NEXT_STEPS } from './reply-buttons.js';
 
 /** /knowledge — show summary + sub-function buttons */
 export async function handleKnowledge(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply(
-      '知識庫為空。\n\n點擊下方「🔍 深度分析」按鈕即可開始。',
-      Markup.inlineKeyboard([[Markup.button.callback('🔍 深度分析', 'kb:analyze')]]),
-    );
+    await replyEmptyKnowledge(ctx);
     return;
   }
   aggregateKnowledge(knowledge);
@@ -45,7 +43,7 @@ export async function handleKnowledge(ctx: Context, _config: AppConfig): Promise
 export async function handleGaps(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /vault analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
   aggregateKnowledge(knowledge);
@@ -57,7 +55,7 @@ export async function handleGaps(ctx: Context, _config: AppConfig): Promise<void
 export async function handleSkills(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /vault analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
   aggregateKnowledge(knowledge);
@@ -69,7 +67,7 @@ export async function handleSkills(ctx: Context, _config: AppConfig): Promise<vo
 export async function handleDashboard(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /vault analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
   aggregateKnowledge(knowledge);
@@ -97,8 +95,7 @@ export async function handleAnalyze(ctx: Context, config: AppConfig): Promise<vo
       lines.push(`  • ${e.name}（${e.mentions} 次）`);
     }
 
-    lines.push('', '使用 /explore 探索主題，/digest 產生報告。');
-    await ctx.reply(lines.join('\n'));
+    await replyWithNextSteps(ctx, lines.join('\n'), [...NEXT_STEPS.afterAnalyze]);
   } catch (err) {
     await ctx.reply(`分析失敗：${(err as Error).message}`);
   } finally {

@@ -8,6 +8,7 @@ import type { AppConfig } from '../utils/config.js';
 import { scanVaultNotes, loadKnowledge } from '../knowledge/knowledge-store.js';
 import { extractPreferences, formatDetailedReport } from '../knowledge/preference-extractor.js';
 import { distillVault, formatDistillReport } from '../knowledge/distiller.js';
+import { replyEmptyKnowledge } from './reply-buttons.js';
 
 const TELEGRAM_MSG_LIMIT = 4096;
 
@@ -53,7 +54,7 @@ export async function handlePreferences(ctx: Context, config: AppConfig): Promis
 export async function handleDistill(ctx: Context, config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /vault analyze 進行深度分析。');
+    await replyEmptyKnowledge(ctx);
     return;
   }
 

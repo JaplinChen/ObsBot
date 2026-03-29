@@ -136,6 +136,12 @@ export function registerCommands(
     if (handler) await handler(ctx, config);
   });
 
+  // --- InlineKeyboard: navigation shortcuts ---
+  registerAsyncAction(bot, /^nav:explore$/, 'nav-explore', async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    await handleExplore(ctx, config);
+  });
+
   // --- InlineKeyboard: /explore sub-actions ---
   registerAsyncAction(bot, /^xpick:(.+)$/, 'explore-pick', async (ctx) => {
     const token = ctx.match![1];
