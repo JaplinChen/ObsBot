@@ -92,6 +92,25 @@ export async function handleCompareByArg(ctx: Context, arg: string): Promise<voi
   await runCompare(ctx, arg);
 }
 
+/** xpick callback — show mode picker for a topic selected from entity buttons */
+export async function handleModePicker(ctx: Context, topic: string): Promise<void> {
+  const recToken = rememberCallbackPayload('xrec', topic);
+  const brfToken = rememberCallbackPayload('xbrf', topic);
+  const deepToken = rememberCallbackPayload('xdeep', topic);
+  await ctx.reply(
+    `探索「${topic}」：`,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback('📚 推薦筆記', `xrec:${recToken}`),
+        Markup.button.callback('🧠 知識簡報', `xbrf:${brfToken}`),
+      ],
+      [
+        Markup.button.callback('🔬 深度合成', `xdeep:${deepToken}`),
+      ],
+    ]),
+  );
+}
+
 // --- Core logic ---
 
 async function runRecommend(ctx: Context, topic: string): Promise<void> {
@@ -262,9 +281,9 @@ async function replyWithTopicPicker(ctx: Context, command: string, prompt: strin
 
   const buttons: Array<{ text: string; callback_data: string }[]> = [];
   for (let i = 0; i < topEntities.length; i += 2) {
-    const row = [Markup.button.callback(topEntities[i].name, buildCallbackData('xrec', topEntities[i].name))];
+    const row = [Markup.button.callback(topEntities[i].name, buildCallbackData('xpick', topEntities[i].name))];
     if (i + 1 < topEntities.length) {
-      row.push(Markup.button.callback(topEntities[i + 1].name, buildCallbackData('xrec', topEntities[i + 1].name)));
+      row.push(Markup.button.callback(topEntities[i + 1].name, buildCallbackData('xpick', topEntities[i + 1].name)));
     }
     buttons.push(row);
   }

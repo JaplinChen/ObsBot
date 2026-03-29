@@ -27,6 +27,7 @@ import {
   handleRecommendByTopic,
   handleBriefByTopic,
   handleCompareByArg,
+  handleModePicker,
   resolveCallbackToken,
 } from './knowledge-query-command.js';
 import { handleDeepSynthesis, handleSaveToVault } from './explore-deep-command.js';
@@ -136,6 +137,17 @@ export function registerCommands(
   });
 
   // --- InlineKeyboard: /explore sub-actions ---
+  registerAsyncAction(bot, /^xpick:(.+)$/, 'explore-pick', async (ctx) => {
+    const token = ctx.match![1];
+    const topic = resolveCallbackToken('xpick', token);
+    await ctx.answerCbQuery().catch(() => {});
+    if (!topic) {
+      await ctx.reply('按鈕已過期，請重新執行 /explore');
+      return;
+    }
+    await handleModePicker(ctx, topic);
+  });
+
   registerAsyncAction(bot, /^xrec:(.+)$/, 'explore-action', async (ctx) => {
     const token = ctx.match![1];
     const topic = resolveCallbackToken('xrec', token);
