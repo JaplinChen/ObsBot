@@ -15,6 +15,10 @@ export interface ProactiveConfig {
   lastDigestAt: string | null;
   /** Last trend check timestamp */
   lastTrendAt: string | null;
+  /** Day of week (0=Sun, 1=Mon, ..., 6=Sat) for weekly deep digest (default: 0 = Sunday) */
+  weeklyDigestDay: number;
+  /** Last weekly digest push timestamp */
+  lastWeeklyAt: string | null;
 }
 
 export interface TrendAlert {
@@ -46,4 +50,6 @@ export const DEFAULT_PROACTIVE_CONFIG: ProactiveConfig = {
   digestHour: 9,
   lastDigestAt: null,
   lastTrendAt: null,
+  weeklyDigestDay: 0,
+  lastWeeklyAt: null,
 };

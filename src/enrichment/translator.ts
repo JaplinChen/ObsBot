@@ -75,8 +75,11 @@ async function translateEnglishWithLocalLlm(
   text: string,
 ): Promise<TranslationResult | null> {
   const prompt = buildTranslationPrompt(title, text);
-  // Unified routing: oMLX (standard/9B) → OpenCode → DDG
-  const response = await runLocalLlmPrompt(prompt, { timeoutMs: 60_000 });
+  // Short translations (title-only or brief text) use flash; longer ones use standard
+  const totalLen = title.length + text.length;
+  const tier = totalLen < 500 ? 'flash' : 'standard';
+  const timeoutMs = tier === 'flash' ? 20_000 : 60_000;
+  const response = await runLocalLlmPrompt(prompt, { timeoutMs, model: tier });
   if (!response) return null;
   return parseTranslationResponse(response);
 }

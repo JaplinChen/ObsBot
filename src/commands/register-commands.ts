@@ -18,7 +18,7 @@ import { handleDedup } from './dedup-command.js';
 import { createRetryHandler, createRetryActionHandler } from './retry-command.js';
 import { handleSubscribe } from './subscribe-command.js';
 import { handleQuality } from './quality-command.js';
-import { handleDigestMenu, handleDigest } from './digest-command.js';
+import { handleDigestMenu, handleDigest, handleWeeklyDigest } from './digest-command.js';
 import { handleSuggest } from './suggest-command.js';
 import { handleRadar, handleRadarAction } from './radar-command.js';
 import { handleBenchmark } from './benchmark-command.js';
@@ -27,8 +27,10 @@ import {
   handleRecommendByTopic,
   handleBriefByTopic,
   handleCompareByArg,
+  handleModePicker,
   resolveCallbackToken,
 } from './knowledge-query-command.js';
+import { handleDeepSynthesis, handleSaveToVault } from './explore-deep-command.js';
 import { runCommandTask } from './command-runner.js';
 import { formatErrorMessage } from '../core/errors.js';
 import { logger } from '../core/logger.js';
@@ -134,7 +136,24 @@ export function registerCommands(
     if (handler) await handler(ctx, config);
   });
 
+  // --- InlineKeyboard: navigation shortcuts ---
+  registerAsyncAction(bot, /^nav:explore$/, 'nav-explore', async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    await handleExplore(ctx, config);
+  });
+
   // --- InlineKeyboard: /explore sub-actions ---
+  registerAsyncAction(bot, /^xpick:(.+)$/, 'explore-pick', async (ctx) => {
+    const token = ctx.match![1];
+    const topic = resolveCallbackToken('xpick', token);
+    await ctx.answerCbQuery().catch(() => {});
+    if (!topic) {
+      await ctx.reply('按鈕已過期，請重新執行 /explore');
+      return;
+    }
+    await handleModePicker(ctx, topic);
+  });
+
   registerAsyncAction(bot, /^xrec:(.+)$/, 'explore-action', async (ctx) => {
     const token = ctx.match![1];
     const topic = resolveCallbackToken('xrec', token);
@@ -168,12 +187,35 @@ export function registerCommands(
     await handleCompareByArg(ctx, arg);
   });
 
+  registerAsyncAction(bot, /^xdeep:(.+)$/, 'explore-deep', async (ctx) => {
+    const token = ctx.match![1];
+    const topic = resolveCallbackToken('xdeep', token);
+    await ctx.answerCbQuery().catch(() => {});
+    if (!topic) {
+      await ctx.reply('按鈕已過期，請重新執行 /explore');
+      return;
+    }
+    await handleDeepSynthesis(ctx, topic, config);
+  });
+
+  registerAsyncAction(bot, /^xsave:(.+)$/, 'explore-save', async (ctx) => {
+    const token = ctx.match![1];
+    const payload = resolveCallbackToken('xsave', token);
+    await ctx.answerCbQuery('存入 Vault 中…').catch(() => {});
+    if (!payload) {
+      await ctx.reply('按鈕已過期，請重新執行 /explore');
+      return;
+    }
+    await handleSaveToVault(ctx, payload, config);
+  });
+
   // --- InlineKeyboard: /digest sub-actions ---
   registerAsyncAction(bot, /^dg:(.+)$/, 'digest-action', async (ctx) => {
     const mode = ctx.match![1];
     await ctx.answerCbQuery().catch(() => {});
     const handlers: Record<string, (c: Context, cfg: AppConfig) => Promise<void>> = {
       digest: handleDigest,
+      weekly: handleWeeklyDigest,
       distill: handleDistill,
       consolidate: handleConsolidate,
     };

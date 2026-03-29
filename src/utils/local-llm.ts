@@ -21,6 +21,8 @@ interface RunOptions {
   timeoutMs?: number;
   /** Model tier for routing. Default: 'standard'. */
   model?: ModelTier;
+  /** Max tokens for oMLX inference. Default: 4096. */
+  maxTokens?: number;
 }
 
 /* ── CLI provider (OpenCode + multi-model routing) ───────────────────── */
@@ -71,7 +73,7 @@ export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}
 
   // 1) oMLX local inference (tier-aware: flash→4B, standard→9B, deep→27B)
   if (await isOmlxAvailable()) {
-    const omlxResult = await omlxChatCompletion(prompt, { model: tier, timeoutMs });
+    const omlxResult = await omlxChatCompletion(prompt, { model: tier, timeoutMs, maxTokens: options.maxTokens });
     if (omlxResult) return omlxResult;
   }
 

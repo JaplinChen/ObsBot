@@ -14,6 +14,7 @@ import { loadWallConfig } from '../radar/wall-service.js';
 import { formatWallSummaryForDigest } from '../radar/wall-service.js';
 import { logger } from '../core/logger.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
+import { runWeeklyCycle } from './proactive-weekly.js';
 
 /** Format radar cycle summary for digest. */
 function formatRadarSection(summary: RadarCycleSummary | undefined): string[] {
@@ -105,7 +106,7 @@ async function generateDigestInsight(digest: ProactiveDigest): Promise<string | 
   ].filter(Boolean).join('\n');
 
   try {
-    const result = await runLocalLlmPrompt(prompt, { timeoutMs: 60_000, model: 'flash' });
+    const result = await runLocalLlmPrompt(prompt, { timeoutMs: 20_000, model: 'flash', maxTokens: 256 });
     return result ?? undefined;
   } catch {
     return undefined;
@@ -268,11 +269,18 @@ export async function startProactiveService(
     setInterval(() => { runTrendCycle(bot, config, pConfig).catch(() => {}); }, trendCheckMs),
   );
 
+  // Weekly digest cycle: check every hour (same cadence as daily digest)
+  timers.push(
+    setInterval(() => { runWeeklyCycle(bot, config, pConfig).catch(() => {}); }, digestCheckMs),
+  );
+
   // Run initial digest check after 5 min delay (let other services init first)
   setTimeout(() => { runDigestCycle(bot, config, pConfig).catch(() => {}); }, 5 * 60 * 1000);
 
+  const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
   logger.info('proactive', '主動推理服務啟動', {
     digestTime: `每日 ${String(pConfig.digestHour).padStart(2, '0')}:00`,
+    weeklyTime: `每週${dayNames[pConfig.weeklyDigestDay]} ${String(pConfig.digestHour).padStart(2, '0')}:00`,
     trendInterval: `${pConfig.trendIntervalHours}h`,
   });
 

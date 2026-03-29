@@ -13,6 +13,8 @@ import { aggregateKnowledge, getTopEntities, getInsightsByTopic } from '../knowl
 import type { VaultKnowledge } from '../knowledge/types.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
 import { findEntity, findNotesByTopic, formatEntitySection, findDirectRelations } from './knowledge-query-helpers.js';
+import { runLocalLlmPrompt } from '../utils/local-llm.js';
+import { replyEmptyKnowledge } from './reply-buttons.js';
 
 const CALLBACK_CACHE_LIMIT = 500;
 const callbackPayloadCache = new Map<string, string>();
@@ -58,12 +60,16 @@ export async function handleExplore(ctx: Context, _config: AppConfig): Promise<v
   if (arg) {
     const recToken = rememberCallbackPayload('xrec', arg);
     const brfToken = rememberCallbackPayload('xbrf', arg);
+    const deepToken = rememberCallbackPayload('xdeep', arg);
     await ctx.reply(
       `探索「${arg}」：`,
       Markup.inlineKeyboard([
         [
           Markup.button.callback('📚 推薦筆記', `xrec:${recToken}`),
           Markup.button.callback('🧠 知識簡報', `xbrf:${brfToken}`),
+        ],
+        [
+          Markup.button.callback('🔬 深度合成', `xdeep:${deepToken}`),
         ],
       ]),
     );
@@ -87,12 +93,31 @@ export async function handleCompareByArg(ctx: Context, arg: string): Promise<voi
   await runCompare(ctx, arg);
 }
 
+/** xpick callback — show mode picker for a topic selected from entity buttons */
+export async function handleModePicker(ctx: Context, topic: string): Promise<void> {
+  const recToken = rememberCallbackPayload('xrec', topic);
+  const brfToken = rememberCallbackPayload('xbrf', topic);
+  const deepToken = rememberCallbackPayload('xdeep', topic);
+  await ctx.reply(
+    `探索「${topic}」：`,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback('📚 推薦筆記', `xrec:${recToken}`),
+        Markup.button.callback('🧠 知識簡報', `xbrf:${brfToken}`),
+      ],
+      [
+        Markup.button.callback('🔬 深度合成', `xdeep:${deepToken}`),
+      ],
+    ]),
+  );
+}
+
 // --- Core logic ---
 
 async function runRecommend(ctx: Context, topic: string): Promise<void> {
   const knowledge = await loadAndAggregate();
   if (!knowledge) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
 
@@ -127,7 +152,7 @@ async function runRecommend(ctx: Context, topic: string): Promise<void> {
 async function runBrief(ctx: Context, topic: string): Promise<void> {
   const knowledge = await loadAndAggregate();
   if (!knowledge) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
 
@@ -171,7 +196,7 @@ async function runCompare(ctx: Context, arg: string): Promise<void> {
 
   const knowledge = await loadAndAggregate();
   if (!knowledge) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
 
@@ -189,6 +214,30 @@ async function runCompare(ctx: Context, arg: string): Promise<void> {
     for (const r of directRels) {
       lines.push(`• ${r.from} → ${r.to}：${r.description}`);
     }
+  }
+
+  // LLM-powered comparison when both have enough notes
+  const notesA = findNotesByTopic(knowledge, rawA);
+  const notesB = findNotesByTopic(knowledge, rawB);
+  if (notesA.length >= 2 && notesB.length >= 2) {
+    try {
+      const summariesA = notesA.slice(0, 5).map(n => n.title).join('、');
+      const summariesB = notesB.slice(0, 5).map(n => n.title).join('、');
+      const prompt = [
+        `比較「${rawA}」和「${rawB}」兩個主題。`,
+        `${rawA} 相關筆記：${summariesA}`,
+        `${rawB} 相關筆記：${summariesB}`,
+        '用繁體中文寫 100-150 字的比較分析，涵蓋：',
+        '1. 兩者的核心差異 2. 各自優勢 3. 適用場景',
+        '語氣中性專業，不要列點。',
+      ].join('\n');
+      const analysis = await runLocalLlmPrompt(prompt, {
+        timeoutMs: 30_000, model: 'standard', maxTokens: 512,
+      });
+      if (analysis) {
+        lines.push('', '🤖 AI 比較分析：', analysis);
+      }
+    } catch { /* best-effort */ }
   }
 
   await ctx.reply(lines.join('\n'));
@@ -233,9 +282,9 @@ async function replyWithTopicPicker(ctx: Context, command: string, prompt: strin
 
   const buttons: Array<{ text: string; callback_data: string }[]> = [];
   for (let i = 0; i < topEntities.length; i += 2) {
-    const row = [Markup.button.callback(topEntities[i].name, buildCallbackData('xrec', topEntities[i].name))];
+    const row = [Markup.button.callback(topEntities[i].name, buildCallbackData('xpick', topEntities[i].name))];
     if (i + 1 < topEntities.length) {
-      row.push(Markup.button.callback(topEntities[i + 1].name, buildCallbackData('xrec', topEntities[i + 1].name)));
+      row.push(Markup.button.callback(topEntities[i + 1].name, buildCallbackData('xpick', topEntities[i + 1].name)));
     }
     buttons.push(row);
   }

@@ -36,11 +36,14 @@ function normalizeCategory(raw: unknown): string | undefined {
 
 /** Pick model tier based on content length, platform, and linked content. */
 function selectModelTier(textLen: number, hasTranscript: boolean, platform?: string, hasLinkedContent?: boolean): ModelTier {
-  // GitHub READMEs need deep analysis regardless of length
-  if (platform === 'github') return 'deep';
-  // Linked content provides rich context that benefits from deep analysis
-  if (hasLinkedContent) return 'deep';
-  if (hasTranscript || textLen > 1000) return 'deep';
+  // GitHub: deep only for substantial READMEs; short descriptions use standard
+  if (platform === 'github') return textLen > 800 ? 'deep' : 'standard';
+  // Linked content: deep for rich context, standard for light context
+  if (hasLinkedContent) return textLen > 1500 ? 'deep' : 'standard';
+  // Transcripts: deep for substantial transcripts, standard for short ones
+  if (hasTranscript) return textLen > 800 ? 'deep' : 'standard';
+  // Length-based fallback
+  if (textLen > 1000) return 'deep';
   if (textLen < 300) return 'flash';
   return 'standard';
 }

@@ -13,15 +13,14 @@ import { aggregateKnowledge, formatKnowledgeSummary } from '../knowledge/knowled
 import { detectKnowledgeGaps, formatGapsSummary } from '../knowledge/knowledge-graph.js';
 import { detectHighDensityTopics, formatTopicsSummary } from '../knowledge/skill-generator.js';
 import { buildToolDashboard, formatToolDashboard } from '../knowledge/tool-dashboard.js';
+import { runVaultAnalysis } from '../knowledge/vault-analyzer.js';
+import { replyEmptyKnowledge, replyWithNextSteps, NEXT_STEPS } from './reply-buttons.js';
 
 /** /knowledge — show summary + sub-function buttons */
 export async function handleKnowledge(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply(
-      '知識庫為空。\n\n' +
-      '請在 Claude Code 中執行 /vault-analyze 進行深度分析。',
-    );
+    await replyEmptyKnowledge(ctx);
     return;
   }
   aggregateKnowledge(knowledge);
@@ -44,7 +43,7 @@ export async function handleKnowledge(ctx: Context, _config: AppConfig): Promise
 export async function handleGaps(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
   aggregateKnowledge(knowledge);
@@ -56,7 +55,7 @@ export async function handleGaps(ctx: Context, _config: AppConfig): Promise<void
 export async function handleSkills(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
   aggregateKnowledge(knowledge);
@@ -68,7 +67,7 @@ export async function handleSkills(ctx: Context, _config: AppConfig): Promise<vo
 export async function handleDashboard(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await replyEmptyKnowledge(ctx);
     return;
   }
   aggregateKnowledge(knowledge);
@@ -76,29 +75,30 @@ export async function handleDashboard(ctx: Context, _config: AppConfig): Promise
   await ctx.reply(formatToolDashboard(dashboard).slice(0, 4000));
 }
 
-/** kb:analyze callback — guide to Claude Code */
-export async function handleAnalyze(ctx: Context, _config: AppConfig): Promise<void> {
-  const knowledge = await loadKnowledge();
-  const noteCount = Object.keys(knowledge.notes).length;
+/** kb:analyze callback — run vault analysis directly */
+export async function handleAnalyze(ctx: Context, config: AppConfig): Promise<void> {
+  const status = await ctx.reply('🔍 正在分析 Vault 知識庫…');
 
-  const lines = [
-    '🔍 知識分析請在 Claude Code 中執行：',
-    '',
-    '```',
-    '/vault-analyze              # 增量分析',
-    '/vault-analyze --full       # 全量重新分析',
-    '```',
-    '',
-    '分析完成後會自動：',
-    '• 更新 vault-knowledge.json',
-    '• 產生 Obsidian 知識庫摘要筆記',
-    '',
-    '使用 /knowledge 查看目前知識庫。',
-  ];
+  try {
+    const result = await runVaultAnalysis(config.vaultPath);
 
-  if (noteCount > 0) {
-    lines.push('', `📊 目前知識庫：${knowledge.stats.analyzedNotes} 篇已分析，${knowledge.stats.totalEntities} 個實體`);
+    const lines = [
+      '✅ 知識分析完成',
+      '',
+      `📊 新分析 ${result.processed} 篇 | 跳過 ${result.skipped} 篇（未變更）`,
+      `🏷 共 ${result.totalEntities} 個實體`,
+      '',
+      '🔥 Top 實體：',
+    ];
+
+    for (const e of result.topEntities.slice(0, 10)) {
+      lines.push(`  • ${e.name}（${e.mentions} 次）`);
+    }
+
+    await replyWithNextSteps(ctx, lines.join('\n'), [...NEXT_STEPS.afterAnalyze]);
+  } catch (err) {
+    await ctx.reply(`分析失敗：${(err as Error).message}`);
+  } finally {
+    await ctx.deleteMessage(status.message_id).catch(() => {});
   }
-
-  await ctx.reply(lines.join('\n'));
 }

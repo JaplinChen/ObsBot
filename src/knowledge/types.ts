@@ -77,6 +77,7 @@ export interface VaultKnowledge {
     totalInsights: number;
     totalRelations: number;
     avgQualityScore: number;
+    lastAnalyzedAt?: string;
   };
   /** Per-note analyses keyed by noteId (normalised URL) */
   notes: Record<string, NoteAnalysis>;

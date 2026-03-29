@@ -19,6 +19,9 @@ import { extractContentWithComments } from './services/extract-content-service.j
 import { saveExtractedContent } from './services/save-content-service.js';
 import { processSeriesBatch } from './services/series-processing-service.js';
 import type { BotStats } from './types.js';
+import { parseIntent, replySuggestion } from './intent-parser.js';
+import { handleWeeklyDigest } from '../commands/digest-command.js';
+import { handleCompareByArg } from '../commands/knowledge-query-command.js';
 
 function isSeriesExtractor(e: unknown): e is ExtractorWithSeries {
   return typeof (e as ExtractorWithSeries).isSeries === 'function';
@@ -56,7 +59,27 @@ export function registerUrlProcessingHandler(
 
     const urls = extractUrls(text);
     logger.info('msg', 'urls', { urls });
-    if (urls.length === 0) return;
+
+    // No URLs found → try intent parsing for natural language commands
+    if (urls.length === 0) {
+      const intent = parseIntent(text);
+      if (intent) {
+        if (intent.mode === 'auto') {
+          // High-confidence: auto-execute
+          if (intent.intent === 'weekly-digest') {
+            await handleWeeklyDigest(ctx, config);
+          } else if (intent.intent === 'compare' && intent.topic && intent.topicB) {
+            await handleCompareByArg(ctx, `${intent.topic} vs ${intent.topicB}`);
+          } else if (intent.intent === 'trends') {
+            await handleWeeklyDigest(ctx, config);
+          }
+        } else {
+          // Low-confidence: show suggestion buttons
+          await replySuggestion(ctx, intent);
+        }
+      }
+      return;
+    }
 
     // 收到 URL 立刻回饋：typing 指示器 + 👀 反應
     ctx.sendChatAction('typing').catch(() => {});

@@ -156,7 +156,7 @@ async function generateWallInsight(report: WallReport): Promise<string | undefin
   ].filter(Boolean).join('\n');
 
   try {
-    return (await runLocalLlmPrompt(prompt, { timeoutMs: 60_000, model: 'flash' })) ?? undefined;
+    return (await runLocalLlmPrompt(prompt, { timeoutMs: 20_000, model: 'flash', maxTokens: 256 })) ?? undefined;
   } catch {
     return undefined;
   }

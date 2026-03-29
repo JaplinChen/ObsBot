@@ -140,7 +140,7 @@ export async function handleAsk(ctx: Context, config: AppConfig): Promise<void> 
       `\n問題：${query}`,
     ].join('\n');
 
-    const answer = await runLocalLlmPrompt(prompt, { timeoutMs: 60_000, model: 'deep' });
+    const answer = await runLocalLlmPrompt(prompt, { timeoutMs: 60_000, model: 'deep', maxTokens: 1024 });
 
     if (!answer) {
       await ctx.reply('LLM 無回應，請稍後再試。');
