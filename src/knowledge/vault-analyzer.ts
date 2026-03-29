@@ -18,6 +18,106 @@ interface AnalyzeResult {
   topEntities: Array<{ name: string; mentions: number }>;
 }
 
+// ─── Entity Type Classifier ────────────────────────────────────────────────
+
+const KNOWN_LANGUAGES = new Set([
+  'typescript', 'javascript', 'python', 'rust', 'go', 'swift', 'kotlin',
+  'java', 'ruby', 'php', 'dart', 'c++', 'c#', 'scala', 'elixir', 'haskell',
+  'bash', 'shell', 'sql', 'r',
+]);
+
+const KNOWN_PLATFORMS = new Set([
+  'github', 'twitter', 'x', 'youtube', 'reddit', 'hn', 'hacker news',
+  'discord', 'telegram', 'notion', 'obsidian', 'cloudflare', 'vercel', 'hacker news',
+  'netlify', 'hugging face', 'huggingface', 'producthunt', 'dev.to',
+  'npm', 'pypi', 'docker hub', 'dockerhub', 'google', 'apple',
+  'linkedin', 'medium', 'substack',
+]);
+
+const KNOWN_TOOLS = new Set([
+  'claude', 'gpt', 'gemini', 'llama', 'mistral', 'ollama', 'omlx',
+  'cursor', 'copilot', 'codeium', 'tabnine',
+  'ffmpeg', 'yt-dlp', 'homebrew', 'brew',
+  'vscode', 'vs code', 'neovim', 'vim', 'emacs',
+  'docker', 'podman', 'kubernetes', 'k8s',
+  'nginx', 'caddy', 'traefik',
+  'telegraf', 'obsidian', 'notion', 'logseq',
+  'tailscale', 'zerotier',
+  'openai', 'anthropic',
+  // Multi-word known tools
+  'claude code', 'claude api', 'github copilot', 'visual studio',
+  'vs code', 'xcode', 'android studio',
+]);
+
+const TOOL_SUFFIXES = [
+  'sdk', 'cli', 'api', 'bot', 'app', 'tool', 'agent',
+  '.js', '.py', '.ts', '-cli', '-sdk',
+];
+
+const FRAMEWORK_KEYWORDS = [
+  'framework', 'library', 'runtime', 'engine', 'stack',
+];
+
+const TECH_ACRONYM_RE = /^[A-Z]{2,6}(\+\+)?$/;
+
+const CAMEL_CASE_RE = /^[A-Z][a-z]+[A-Z]/;
+const KEBAB_CODE_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/;
+const VERSION_RE = /\d+\.\d+/;
+// Two PascalCase words: "Claude Code", "Visual Studio", "Type Whisper"
+const TITLE_CASE_TOOL_RE = /^[A-Z][a-z]+ [A-Z][a-z]+$/;
+
+/**
+ * Classify an entity type using heuristic rules.
+ * Checks known sets first, then structural patterns.
+ */
+function classifyEntityType(name: string, category: string): EntityType {
+  const lower = name.toLowerCase().trim();
+
+  // Category-based quick path
+  const catLower = category.toLowerCase();
+  if (catLower.includes('程式語言')) return 'language';
+
+  // Known language check
+  if (KNOWN_LANGUAGES.has(lower)) return 'language';
+
+  // Known platform check
+  if (KNOWN_PLATFORMS.has(lower)) return 'platform';
+
+  // Known tool check
+  if (KNOWN_TOOLS.has(lower)) return 'tool';
+
+  // Tech acronyms (LLM, RAG, OCR, GPU, etc.) — keep as technology
+  if (TECH_ACRONYM_RE.test(name)) return 'technology';
+
+  // Framework indicators
+  for (const kw of FRAMEWORK_KEYWORDS) {
+    if (lower.endsWith(kw) || lower.includes(kw + ' ')) return 'framework';
+  }
+
+  // Tool suffix indicators
+  for (const suf of TOOL_SUFFIXES) {
+    if (lower.endsWith(suf)) return 'tool';
+  }
+
+  // Kebab-case (code-style names like "claude-code", "yt-dlp")
+  if (KEBAB_CODE_RE.test(name) && name.length <= 30) return 'tool';
+
+  // CamelCase proper nouns (e.g. TypeWhisper, GraphRAG, VibeEdit)
+  if (CAMEL_CASE_RE.test(name) && name.length <= 30) return 'tool';
+
+  // Two Title-Case words (e.g. "Claude Code", "Visual Studio")
+  if (TITLE_CASE_TOOL_RE.test(name) && name.length <= 30) return 'tool';
+
+  // Contains version number → likely a tool/tech
+  if (VERSION_RE.test(name)) return 'tool';
+
+  // Mostly English + short → likely a tool/technology
+  const isEnglishHeavy = (name.match(/[a-zA-Z]/g) ?? []).length / name.length > 0.7;
+  if (isEnglishHeavy && name.length <= 20 && !name.includes(' ')) return 'tool';
+
+  return 'concept';
+}
+
 /** Parse frontmatter from raw markdown */
 function parseFM(raw: string): Record<string, string> {
   const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -70,26 +170,32 @@ export async function runVaultAnalysis(vaultPath: string): Promise<AnalyzeResult
       // Check if already analyzed with same hash
       const existing = knowledge.notes[noteId];
       if (existing?.contentHash === hash) {
-        // Still rebuild entity map from existing data
+        // Rebuild entity map — re-classify with updated classifier
         for (const e of existing.entities) {
-          addEntity(entityMap, e.name, e.type, noteId);
+          const reclassified = classifyEntityType(e.name, category);
+          addEntity(entityMap, e.name, reclassified, noteId);
         }
         for (const part of category.split('/')) {
           if (part.trim().length >= 2) addEntity(entityMap, part.trim(), 'concept', noteId);
         }
+        // Re-classify entities in the stored note too
+        knowledge.notes[noteId].entities = existing.entities.map(e => ({
+          ...e, type: classifyEntityType(e.name, category),
+        }));
         skipped++;
         continue;
       }
 
-      // Extract entities from keywords
+      // Extract entities from keywords with smart type classification
       const entities: KnowledgeEntity[] = [];
       for (const kw of keywords) {
         if (kw.length < 2 || kw.length > 30) continue;
-        entities.push({ name: kw, type: 'concept', aliases: [], mentions: 1, noteIds: [noteId] });
-        addEntity(entityMap, kw, 'concept', noteId);
+        const type = classifyEntityType(kw, category);
+        entities.push({ name: kw, type, aliases: [], mentions: 1, noteIds: [noteId] });
+        addEntity(entityMap, kw, type, noteId);
       }
 
-      // Extract category as entities
+      // Extract category as concept entities
       for (const part of category.split('/')) {
         const trimmed = part.trim();
         if (trimmed.length >= 2) addEntity(entityMap, trimmed, 'concept', noteId);
