@@ -20,7 +20,7 @@ export async function handleKnowledge(ctx: Context, _config: AppConfig): Promise
   if (Object.keys(knowledge.notes).length === 0) {
     await ctx.reply(
       '知識庫為空。\n\n' +
-      '請在 Claude Code 中執行 /vault-analyze 進行深度分析。',
+      '請在 Claude Code 中執行 /vault analyze 進行深度分析。',
     );
     return;
   }
@@ -44,7 +44,7 @@ export async function handleKnowledge(ctx: Context, _config: AppConfig): Promise
 export async function handleGaps(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await ctx.reply('知識庫為空，請先執行 /vault analyze');
     return;
   }
   aggregateKnowledge(knowledge);
@@ -56,7 +56,7 @@ export async function handleGaps(ctx: Context, _config: AppConfig): Promise<void
 export async function handleSkills(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await ctx.reply('知識庫為空，請先執行 /vault analyze');
     return;
   }
   aggregateKnowledge(knowledge);
@@ -68,7 +68,7 @@ export async function handleSkills(ctx: Context, _config: AppConfig): Promise<vo
 export async function handleDashboard(ctx: Context, _config: AppConfig): Promise<void> {
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await ctx.reply('知識庫為空，請先執行 /vault analyze');
     return;
   }
   aggregateKnowledge(knowledge);
@@ -85,8 +85,8 @@ export async function handleAnalyze(ctx: Context, _config: AppConfig): Promise<v
     '🔍 知識分析請在 Claude Code 中執行：',
     '',
     '```',
-    '/vault-analyze              # 增量分析',
-    '/vault-analyze --full       # 全量重新分析',
+    '/vault analyze              # 增量分析',
+    '/vault analyze --full       # 全量重新分析',
     '```',
     '',
     '分析完成後會自動：',

@@ -208,7 +208,7 @@ export async function generateMocNote(vaultPath: string, knowledge: VaultKnowled
   }
 
   L.push('---');
-  L.push(`*自動產生 by ObsBot /vault-analyze — ${new Date().toISOString().slice(0, 19)}*`);
+  L.push(`*自動產生 by ObsBot /vault analyze — ${new Date().toISOString().slice(0, 19)}*`);
 
   const content = L.join('\n');
   await mkdir(dirname(outPath), { recursive: true });

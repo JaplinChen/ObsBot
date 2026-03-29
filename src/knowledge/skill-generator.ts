@@ -118,7 +118,7 @@ export function generateSkillContent(topic: TopicCluster, knowledge: VaultKnowle
   }
 
   L.push('---');
-  L.push(`*自動產生 by ObsBot /vault-analyze — ${new Date().toISOString().slice(0, 10)}*`);
+  L.push(`*自動產生 by ObsBot /vault analyze — ${new Date().toISOString().slice(0, 10)}*`);
 
   return L.join('\n');
 }
@@ -163,7 +163,7 @@ export function formatTopicsSummary(topics: TopicCluster[]): string {
     lines.push(`  ${t.noteCount} 篇 | ${t.insightCount} 洞察 | 指令：/${t.suggestedCommand}`);
   }
 
-  lines.push('', '在 Claude Code 執行 /vault-analyze 可自動產生命令檔案。');
+  lines.push('', '在 Claude Code 執行 /vault analyze 可自動產生命令檔案。');
   return lines.join('\n');
 }
 

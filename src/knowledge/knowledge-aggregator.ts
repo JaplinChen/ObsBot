@@ -177,7 +177,7 @@ export async function generateKnowledgeNote(vaultPath: string, knowledge: VaultK
   L.push('---', `title: Vault 知識庫摘要`, `date: ${now}`, 'tags: [knowledge, auto-generated]', '---');
   L.push('', '# Vault 知識庫摘要', '');
   L.push(`> 自動產生於 ${now}，基於 ${stats.analyzedNotes} 篇筆記的深度分析。`);
-  L.push('> 使用 `/vault-analyze` 更新分析，`/knowledge` 在 Telegram 查看。', '');
+  L.push('> 使用 `/vault analyze` 更新分析，`/knowledge` 在 Telegram 查看。', '');
 
   // Stats
   L.push('## 統計總覽', '');
@@ -248,7 +248,7 @@ export async function generateKnowledgeNote(vaultPath: string, knowledge: VaultK
   }
 
   L.push('---');
-  L.push(`*自動產生 by ObsBot /vault-analyze — ${new Date().toISOString().slice(0, 19)}*`);
+  L.push(`*自動產生 by ObsBot /vault analyze — ${new Date().toISOString().slice(0, 19)}*`);
 
   const content = L.join('\n');
   await mkdir(dirname(outPath), { recursive: true });

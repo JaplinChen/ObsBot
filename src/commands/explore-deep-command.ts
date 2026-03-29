@@ -32,7 +32,7 @@ export async function handleDeepSynthesis(
   try {
     const knowledge = await loadAndAggregate();
     if (!knowledge) {
-      await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+      await ctx.reply('知識庫為空，請先執行 /vault analyze');
       return;
     }
 

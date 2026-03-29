@@ -116,7 +116,7 @@ export async function handleModePicker(ctx: Context, topic: string): Promise<voi
 async function runRecommend(ctx: Context, topic: string): Promise<void> {
   const knowledge = await loadAndAggregate();
   if (!knowledge) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await ctx.reply('知識庫為空，請先執行 /vault analyze');
     return;
   }
 
@@ -151,7 +151,7 @@ async function runRecommend(ctx: Context, topic: string): Promise<void> {
 async function runBrief(ctx: Context, topic: string): Promise<void> {
   const knowledge = await loadAndAggregate();
   if (!knowledge) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await ctx.reply('知識庫為空，請先執行 /vault analyze');
     return;
   }
 
@@ -195,7 +195,7 @@ async function runCompare(ctx: Context, arg: string): Promise<void> {
 
   const knowledge = await loadAndAggregate();
   if (!knowledge) {
-    await ctx.reply('知識庫為空，請先執行 /vault-analyze');
+    await ctx.reply('知識庫為空，請先執行 /vault analyze');
     return;
   }
 
