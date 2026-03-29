@@ -15,6 +15,8 @@ interface MatchedNote {
   date: string;
   /** Number of fields that matched */
   score: number;
+  /** Short excerpt from body if body matched */
+  excerpt?: string;
 }
 
 /** Check if any frontmatter field contains the query (case-insensitive). */
@@ -35,6 +37,19 @@ function scoreMatch(fm: Map<string, string>, query: string): number {
   if (summary.includes(q)) score += 1;
 
   return score;
+}
+
+/** Extract body text (after frontmatter) and return a short excerpt around the match. */
+function bodyExcerpt(raw: string, query: string): string | undefined {
+  const fmEnd = raw.indexOf('\n---', 3);
+  if (fmEnd === -1) return undefined;
+  const body = raw.slice(fmEnd + 4).trim();
+  const idx = body.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return undefined;
+  const start = Math.max(0, idx - 30);
+  const end = Math.min(body.length, idx + query.length + 50);
+  const excerpt = body.slice(start, end).replace(/\n+/g, ' ').trim();
+  return (start > 0 ? '…' : '') + excerpt + (end < body.length ? '…' : '');
 }
 
 export async function handleFind(ctx: Context, config: AppConfig): Promise<void> {
@@ -60,14 +75,21 @@ export async function handleFind(ctx: Context, config: AppConfig): Promise<void>
       try {
         const raw = await readFile(fullPath, 'utf-8');
         const fm = parseFrontmatter(raw);
-        const score = scoreMatch(fm, query);
-        if (score === 0) continue;
+        let score = scoreMatch(fm, query);
+        let excerpt: string | undefined;
+        if (score === 0) {
+          // Fall back to body full-text search
+          excerpt = bodyExcerpt(raw, query);
+          if (!excerpt) continue;
+          score = 1;
+        }
 
         matches.push({
           title: fm.get('title') ?? relative(rootDir, fullPath),
           category: fm.get('category') ?? '其他',
           date: (fm.get('date') ?? '').slice(0, 10),
           score,
+          excerpt,
         });
       } catch { /* skip */ }
     }
@@ -84,6 +106,7 @@ export async function handleFind(ctx: Context, config: AppConfig): Promise<void>
     for (const [i, note] of top.entries()) {
       lines.push(`${i + 1}. ${note.title}`);
       lines.push(`   📁 ${note.category} | 📅 ${note.date}`);
+      if (note.excerpt) lines.push(`   "${note.excerpt}"`);
     }
     if (matches.length > 10) {
       lines.push('', `… 另有 ${matches.length - 10} 篇匹配`);

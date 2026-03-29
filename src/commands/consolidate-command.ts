@@ -8,25 +8,7 @@ import { scanVaultNotes, loadKnowledge, saveKnowledge } from '../knowledge/knowl
 import { consolidateVault } from '../knowledge/consolidator.js';
 import { formatConsolidationReport, saveConsolidationNote } from '../knowledge/consolidation-report.js';
 import { replyEmptyKnowledge } from './reply-buttons.js';
-
-const TELEGRAM_MSG_LIMIT = 4096;
-
-function splitMessage(text: string): string[] {
-  if (text.length <= TELEGRAM_MSG_LIMIT) return [text];
-  const chunks: string[] = [];
-  const lines = text.split('\n');
-  let current = '';
-  for (const line of lines) {
-    if (current.length + line.length + 1 > TELEGRAM_MSG_LIMIT) {
-      chunks.push(current);
-      current = line;
-    } else {
-      current += (current ? '\n' : '') + line;
-    }
-  }
-  if (current) chunks.push(current);
-  return chunks;
-}
+import { splitMessage } from '../utils/telegram.js';
 
 /** /consolidate handler */
 export async function handleConsolidate(ctx: Context, config: AppConfig): Promise<void> {

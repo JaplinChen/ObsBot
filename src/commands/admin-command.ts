@@ -2,6 +2,7 @@
  * /logs, /health, /restart — lightweight admin commands for bot management.
  */
 import type { Context } from 'telegraf';
+import { Markup } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -50,13 +51,29 @@ export async function handleHealth(ctx: Context, _config: AppConfig): Promise<vo
   await ctx.reply(lines.join('\n'));
 }
 
-/** /restart — graceful restart hint (actual restart handled by process manager) */
+/** /restart — show confirmation before restarting */
 export async function handleRestart(ctx: Context, _config: AppConfig): Promise<void> {
-  await ctx.reply('🔄 正在準備重啟…');
-  logger.info('admin', '收到重啟指令');
+  await ctx.reply(
+    '⚠️ 確定要重啟 Bot 嗎？',
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback('✅ 確認重啟', 'admin:restart-confirm'),
+        Markup.button.callback('❌ 取消', 'admin:cancel'),
+      ],
+    ]),
+  );
+}
 
-  // Give time for the reply to be sent, then exit — PM2/systemd will restart
-  setTimeout(() => {
-    process.exit(0);
-  }, 1000);
+/** admin:restart-confirm callback — actually restart */
+export async function handleRestartConfirm(ctx: Context): Promise<void> {
+  await ctx.answerCbQuery().catch(() => {});
+  await ctx.reply('🔄 正在準備重啟…');
+  logger.info('admin', '收到重啟確認');
+  setTimeout(() => { process.exit(0); }, 1000);
+}
+
+/** admin:cancel callback — dismiss */
+export async function handleAdminCancel(ctx: Context): Promise<void> {
+  await ctx.answerCbQuery('已取消').catch(() => {});
+  await ctx.deleteMessage().catch(() => {});
 }

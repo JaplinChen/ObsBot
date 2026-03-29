@@ -13,6 +13,7 @@ import { runLocalLlmPrompt } from '../utils/local-llm.js';
 import { saveReportToVault } from '../knowledge/report-saver.js';
 import { logger } from '../core/logger.js';
 import { replyEmptyKnowledge } from './reply-buttons.js';
+import { startTyping, stopTyping } from '../utils/typing-indicator.js';
 
 /* re-use the callback cache from the parent module */
 import { buildCallbackData, resolveCallbackToken } from './knowledge-query-command.js';
@@ -62,9 +63,11 @@ export async function handleDeepSynthesis(
       noteContext,
     ].join('\n');
 
+    const typing = startTyping(ctx);
     const synthesis = await runLocalLlmPrompt(prompt, {
       timeoutMs: 90_000, model: 'deep', maxTokens: 1536,
     });
+    stopTyping(typing);
 
     if (!synthesis) {
       await ctx.reply('深度合成生成失敗，請稍後再試。');

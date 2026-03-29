@@ -9,26 +9,7 @@ import { scanVaultNotes, loadKnowledge } from '../knowledge/knowledge-store.js';
 import { extractPreferences, formatDetailedReport } from '../knowledge/preference-extractor.js';
 import { distillVault, formatDistillReport } from '../knowledge/distiller.js';
 import { replyEmptyKnowledge } from './reply-buttons.js';
-
-const TELEGRAM_MSG_LIMIT = 4096;
-
-/** Split long message into chunks respecting Telegram's 4096 char limit */
-function splitMessage(text: string): string[] {
-  if (text.length <= TELEGRAM_MSG_LIMIT) return [text];
-  const chunks: string[] = [];
-  const lines = text.split('\n');
-  let current = '';
-  for (const line of lines) {
-    if (current.length + line.length + 1 > TELEGRAM_MSG_LIMIT) {
-      chunks.push(current);
-      current = line;
-    } else {
-      current += (current ? '\n' : '') + line;
-    }
-  }
-  if (current) chunks.push(current);
-  return chunks;
-}
+import { splitMessage } from '../utils/telegram.js';
 
 /** /preferences — user preference profile */
 export async function handlePreferences(ctx: Context, config: AppConfig): Promise<void> {

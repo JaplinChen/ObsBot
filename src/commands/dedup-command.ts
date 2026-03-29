@@ -5,6 +5,7 @@
  *   /dedup --fix  — delete duplicates, keeping the most recently modified version
  */
 import type { Context } from 'telegraf';
+import { Markup } from 'telegraf';
 import { readFile, stat, unlink } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import type { AppConfig } from '../utils/config.js';
@@ -98,10 +99,12 @@ export async function handleDedup(ctx: Context, config: AppConfig): Promise<void
   if (!fix) {
     try { await ctx.deleteMessage(status.message_id); } catch { /* */ }
     // Truncate if too long for Telegram (4096 char limit)
-    const msg = report.length > 4000
-      ? report.slice(0, 3950) + '\n\n...（太長已截斷）\n\n使用 /dedup --fix 執行刪除'
-      : report + '\n\n使用 /dedup --fix 執行刪除';
-    await ctx.reply(msg);
+    const truncated = report.length > 3900
+      ? report.slice(0, 3900) + '\n\n...（太長已截斷）'
+      : report;
+    await ctx.reply(truncated, Markup.inlineKeyboard([
+      [Markup.button.callback(`🗑 確認刪除 ${dupes.size} 組重複`, 'dedup:fix')],
+    ]));
     return;
   }
 
@@ -136,4 +139,32 @@ export async function handleDedup(ctx: Context, config: AppConfig): Promise<void
   }
   await ctx.reply(result.join('\n'));
   logger.info('dedup', '清理完成', { duplicateGroups: dupes.size, deleted, errors: errors.length });
+}
+
+/** dedup:fix callback — execute deletion from button */
+export async function handleDedupFix(ctx: Context, config: AppConfig): Promise<void> {
+  const status = await ctx.reply('正在刪除重複筆記…');
+  const dupes = await findDuplicates(config.vaultPath);
+  const rootDir = join(config.vaultPath, 'ObsBot');
+  let deleted = 0;
+  const errors: string[] = [];
+
+  for (const [, entries] of dupes) {
+    entries.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+    for (const r of entries.slice(1)) {
+      try { await unlink(r.filePath); deleted++; } catch (err) {
+        errors.push(`${relative(rootDir, r.filePath)}: ${(err as Error).message}`);
+      }
+    }
+  }
+  await cleanEmptyDirs(rootDir);
+  await ctx.deleteMessage(status.message_id).catch(() => {});
+
+  const result = [`✅ 已刪除 ${deleted} 個重複檔案`];
+  if (errors.length > 0) {
+    result.push(`\n失敗 ${errors.length} 個：`);
+    for (const e of errors.slice(0, 5)) result.push(`• ${e}`);
+  }
+  await ctx.reply(result.join('\n'));
+  logger.info('dedup', '按鈕清理完成', { deleted, errors: errors.length });
 }

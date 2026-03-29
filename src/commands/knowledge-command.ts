@@ -15,9 +15,19 @@ import { detectHighDensityTopics, formatTopicsSummary } from '../knowledge/skill
 import { buildToolDashboard, formatToolDashboard } from '../knowledge/tool-dashboard.js';
 import { runVaultAnalysis } from '../knowledge/vault-analyzer.js';
 import { replyEmptyKnowledge, replyWithNextSteps, NEXT_STEPS } from './reply-buttons.js';
+import { startTyping, stopTyping } from '../utils/typing-indicator.js';
 
-/** /knowledge — show summary + sub-function buttons */
-export async function handleKnowledge(ctx: Context, _config: AppConfig): Promise<void> {
+/** /knowledge [subcommand] — direct or menu */
+export async function handleKnowledge(ctx: Context, config: AppConfig): Promise<void> {
+  const text = (ctx.message && 'text' in ctx.message) ? ctx.message.text : '';
+  const arg = text.replace(/^\/knowledge\s*/i, '').trim().toLowerCase();
+
+  // Direct subcommand shortcuts
+  if (arg === 'gaps' || arg === '缺口') { await handleGaps(ctx, config); return; }
+  if (arg === 'skills' || arg === '技能') { await handleSkills(ctx, config); return; }
+  if (arg === 'analyze' || arg === '分析') { await handleAnalyze(ctx, config); return; }
+  if (arg === 'dashboard' || arg === '儀表板') { await handleDashboard(ctx, config); return; }
+
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
     await replyEmptyKnowledge(ctx);
@@ -80,7 +90,9 @@ export async function handleAnalyze(ctx: Context, config: AppConfig): Promise<vo
   const status = await ctx.reply('🔍 正在分析 Vault 知識庫…');
 
   try {
+    const typing = startTyping(ctx);
     const result = await runVaultAnalysis(config.vaultPath);
+    stopTyping(typing);
 
     const lines = [
       '✅ 知識分析完成',

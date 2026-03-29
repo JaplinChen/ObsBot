@@ -15,6 +15,8 @@ import { logger } from '../core/logger.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 import { saveReportToVault } from '../knowledge/report-saver.js';
+import { startTyping, stopTyping } from '../utils/typing-indicator.js';
+import { splitMessage } from '../utils/telegram.js';
 
 export interface NoteSummary {
   title: string;
@@ -119,8 +121,18 @@ function formatSimpleDigest(
   return lines.join('\n');
 }
 
-/** /digest — show report menu */
-export async function handleDigestMenu(ctx: Context, _config: AppConfig): Promise<void> {
+/** /digest [subcommand] — direct or menu */
+export async function handleDigestMenu(ctx: Context, config: AppConfig): Promise<void> {
+  const text = (ctx.message && 'text' in ctx.message) ? ctx.message.text : '';
+  const arg = text.replace(/^\/digest\s*/i, '').trim().toLowerCase();
+
+  // Direct subcommand shortcuts
+  if (arg === 'weekly' || arg === '週報') { await handleWeeklyDigest(ctx, config); return; }
+  if (arg === 'distill' || arg === '蒸餾') {
+    const { handleDistill } = await import('./distill-command.js');
+    await handleDistill(ctx, config); return;
+  }
+
   await ctx.reply(
     '選擇知識報告類型：',
     Markup.inlineKeyboard([
@@ -130,26 +142,6 @@ export async function handleDigestMenu(ctx: Context, _config: AppConfig): Promis
       [Markup.button.callback('🧠 跨筆記洞察', 'dg:consolidate')],
     ]),
   );
-}
-
-const TELEGRAM_MSG_LIMIT = 4096;
-
-/** Split long message into chunks respecting Telegram's 4096 char limit */
-function splitMessage(text: string): string[] {
-  if (text.length <= TELEGRAM_MSG_LIMIT) return [text];
-  const chunks: string[] = [];
-  const lines = text.split('\n');
-  let current = '';
-  for (const line of lines) {
-    if (current.length + line.length + 1 > TELEGRAM_MSG_LIMIT) {
-      chunks.push(current);
-      current = line;
-    } else {
-      current += (current ? '\n' : '') + line;
-    }
-  }
-  if (current) chunks.push(current);
-  return chunks;
 }
 
 /** Build deep weekly synthesis prompt */
@@ -203,11 +195,13 @@ export async function handleWeeklyDigest(ctx: Context, config: AppConfig): Promi
 
     // Generate deep synthesis via LLM
     const prompt = buildWeeklyPrompt(groups, totalNotes, days);
+    const typing = startTyping(ctx);
     const aiResult = await runLocalLlmPrompt(prompt, {
       timeoutMs: 120_000,
       model: 'deep',
       maxTokens: 2048,
     });
+    stopTyping(typing);
 
     const synthesis = aiResult ?? '（LLM 無法生成週報，請稍後再試）';
     const today = new Date().toISOString().slice(0, 10);
@@ -257,7 +251,9 @@ export async function handleDigest(ctx: Context, config: AppConfig): Promise<voi
     let aiDigest = '';
     if (notes.length >= 3) {
       try {
+        const typing = startTyping(ctx);
         aiDigest = await buildDigest(groups, days);
+        stopTyping(typing);
       } catch {
         aiDigest = '';
       }

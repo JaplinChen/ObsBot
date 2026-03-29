@@ -14,7 +14,7 @@ import { handleDiscover, resolveDiscoverToken } from './discover-command.js';
 import { processUrl } from '../messages/services/process-url-service.js';
 import { handleReprocess } from './reprocess-command.js';
 import { handleReformat } from './reformat-command.js';
-import { handleDedup } from './dedup-command.js';
+import { handleDedup, handleDedupFix } from './dedup-command.js';
 import { createRetryHandler, createRetryActionHandler } from './retry-command.js';
 import { handleSubscribe } from './subscribe-command.js';
 import { handleQuality } from './quality-command.js';
@@ -39,7 +39,7 @@ import { BOT_COMMANDS_MENU, HELP_TEXT, HELP_ALL_TEXT } from './command-help.js';
 import { registerLearningCommands } from './register-learning-commands.js';
 import { registerInfoCommands } from './register-info-commands.js';
 import type { BotStats } from '../messages/types.js';
-import { handleLogs, handleHealth, handleRestart } from './admin-command.js';
+import { handleLogs, handleHealth, handleRestart, handleRestartConfirm, handleAdminCancel } from './admin-command.js';
 import { handleDoctor } from './doctor-command.js';
 import { handleFind } from './find-command.js';
 import { handlePatrol } from './patrol-command.js';
@@ -224,6 +224,19 @@ export function registerCommands(
   });
 
   registerAsyncAction(bot, /^retry:(.+)$/, 'retry-action', createRetryActionHandler(stats, config));
+
+  // --- InlineKeyboard: admin actions ---
+  registerAsyncAction(bot, /^admin:restart-confirm$/, 'admin-restart', async (ctx) => {
+    await handleRestartConfirm(ctx);
+  });
+  registerAsyncAction(bot, /^admin:cancel$/, 'admin-cancel', async (ctx) => {
+    await handleAdminCancel(ctx);
+  });
+
+  registerAsyncAction(bot, /^dedup:fix$/, 'dedup-fix', async (ctx) => {
+    await ctx.answerCbQuery('開始刪除…').catch(() => {});
+    await handleDedupFix(ctx, config);
+  });
 
   // --- InlineKeyboard: /radar sub-actions ---
   registerAsyncAction(bot, /^radar:(.+)$/, 'radar-action', async (ctx) => {
