@@ -15,20 +15,14 @@ import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
 import { findEntity, findNotesByTopic, formatEntitySection, findDirectRelations } from './knowledge-query-helpers.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 import { replyEmptyKnowledge } from './reply-buttons.js';
+import { TtlCache } from '../utils/ttl-cache.js';
 
-const CALLBACK_CACHE_LIMIT = 500;
-const callbackPayloadCache = new Map<string, string>();
+const callbackPayloadCache = new TtlCache<string>({ maxSize: 500, ttlMs: 30 * 60_000 });
 
 function rememberCallbackPayload(command: string, payload: string): string {
   const token = createHash('sha1').update(command + ':' + payload).digest('hex').slice(0, 12);
   const key = command + ':' + token;
   callbackPayloadCache.set(key, payload);
-
-  if (callbackPayloadCache.size > CALLBACK_CACHE_LIMIT) {
-    const oldest = callbackPayloadCache.keys().next().value;
-    if (oldest) callbackPayloadCache.delete(oldest);
-  }
-
   return token;
 }
 

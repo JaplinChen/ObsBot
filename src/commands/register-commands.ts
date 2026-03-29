@@ -16,8 +16,8 @@ import { handleReprocess } from './reprocess-command.js';
 import { handleReformat } from './reformat-command.js';
 import { handleDedup, handleDedupFix } from './dedup-command.js';
 import { createRetryHandler, createRetryActionHandler } from './retry-command.js';
-import { handleSubscribe } from './subscribe-command.js';
-import { handleQuality } from './quality-command.js';
+import { handleSubscribe, handleSubscribeAction } from './subscribe-command.js';
+import { handleQuality, getLastWorstPaths } from './quality-command.js';
 import { handleDigestMenu, handleDigest, handleWeeklyDigest } from './digest-command.js';
 import { handleSuggest } from './suggest-command.js';
 import { handleRadar, handleRadarAction } from './radar-command.js';
@@ -35,7 +35,8 @@ import { runCommandTask } from './command-runner.js';
 import { formatErrorMessage } from '../core/errors.js';
 import { logger } from '../core/logger.js';
 import { registerForceReplyHandler } from '../messages/force-reply-router.js';
-import { BOT_COMMANDS_MENU, HELP_TEXT, HELP_ALL_TEXT } from './command-help.js';
+import { BOT_COMMANDS_MENU, HELP_TEXT, HELP_ALL_TEXT, HELP_KEYBOARD, handleHelpCategory } from './command-help.js';
+import { replyExpired } from './reply-buttons.js';
 import { registerLearningCommands } from './register-learning-commands.js';
 import { registerInfoCommands } from './register-info-commands.js';
 import type { BotStats } from '../messages/types.js';
@@ -43,7 +44,7 @@ import { handleLogs, handleHealth, handleRestart, handleRestartConfirm, handleAd
 import { handleDoctor } from './doctor-command.js';
 import { handleFind } from './find-command.js';
 import { handlePatrol } from './patrol-command.js';
-import { handleCode } from './code-command.js';
+import { handleCode, handleCodeAction } from './code-command.js';
 import { handleVsearch } from './vsearch-command.js';
 
 export { formatErrorMessage };
@@ -80,10 +81,11 @@ export function registerCommands(
   stats: BotStats,
   startTime: number,
 ): void {
-  bot.start((ctx) => ctx.reply(HELP_TEXT));
+  bot.start((ctx) => ctx.reply(HELP_TEXT, HELP_KEYBOARD));
   bot.command('help', (ctx) => {
     const arg = (ctx.message?.text ?? '').split(/\s+/)[1];
-    ctx.reply(arg === 'all' ? HELP_ALL_TEXT : HELP_TEXT);
+    if (arg === 'all') { ctx.reply(HELP_ALL_TEXT); return; }
+    ctx.reply(HELP_TEXT, HELP_KEYBOARD);
   });
 
   registerLearningCommands(bot, config, formatErrorMessage);
@@ -137,77 +139,35 @@ export function registerCommands(
   });
 
   // --- InlineKeyboard: navigation shortcuts ---
-  registerAsyncAction(bot, /^nav:explore$/, 'nav-explore', async (ctx) => {
+  registerAsyncAction(bot, /^nav:(.+)$/, 'nav-shortcut', async (ctx) => {
+    const target = ctx.match![1];
     await ctx.answerCbQuery().catch(() => {});
-    await handleExplore(ctx, config);
+    const navHandlers: Record<string, (c: Context, cfg: AppConfig) => Promise<void>> = {
+      explore: handleExplore,
+      discover: handleDiscover,
+      knowledge: handleKnowledge,
+      digest: handleDigestMenu,
+    };
+    const handler = navHandlers[target];
+    if (handler) await handler(ctx, config);
   });
 
-  // --- InlineKeyboard: /explore sub-actions ---
-  registerAsyncAction(bot, /^xpick:(.+)$/, 'explore-pick', async (ctx) => {
-    const token = ctx.match![1];
-    const topic = resolveCallbackToken('xpick', token);
-    await ctx.answerCbQuery().catch(() => {});
-    if (!topic) {
-      await ctx.reply('按鈕已過期，請重新執行 /explore');
-      return;
-    }
-    await handleModePicker(ctx, topic);
-  });
+  // --- InlineKeyboard: /explore sub-actions (token-based) ---
+  const resolveAndRun = (
+    cmd: string, handler: (ctx: MatchedContext, resolved: string) => Promise<void>, ack?: string,
+  ) => async (ctx: MatchedContext) => {
+    const resolved = resolveCallbackToken(cmd, ctx.match![1]);
+    await ctx.answerCbQuery(ack).catch(() => {});
+    if (!resolved) { await replyExpired(ctx, 'explore', '重新探索'); return; }
+    await handler(ctx, resolved);
+  };
 
-  registerAsyncAction(bot, /^xrec:(.+)$/, 'explore-action', async (ctx) => {
-    const token = ctx.match![1];
-    const topic = resolveCallbackToken('xrec', token);
-    await ctx.answerCbQuery().catch(() => {});
-    if (!topic) {
-      await ctx.reply('按鈕已過期，請重新執行 /explore');
-      return;
-    }
-    await handleRecommendByTopic(ctx, topic);
-  });
-
-  registerAsyncAction(bot, /^xbrf:(.+)$/, 'explore-action', async (ctx) => {
-    const token = ctx.match![1];
-    const topic = resolveCallbackToken('xbrf', token);
-    await ctx.answerCbQuery().catch(() => {});
-    if (!topic) {
-      await ctx.reply('按鈕已過期，請重新執行 /explore');
-      return;
-    }
-    await handleBriefByTopic(ctx, topic);
-  });
-
-  registerAsyncAction(bot, /^compare:(.+)$/, 'compare-action', async (ctx) => {
-    const rawArg = ctx.match![1];
-    const arg = resolveCallbackToken('compare', rawArg);
-    await ctx.answerCbQuery().catch(() => {});
-    if (!arg) {
-      await ctx.reply('按鈕已過期，請重新執行 /explore');
-      return;
-    }
-    await handleCompareByArg(ctx, arg);
-  });
-
-  registerAsyncAction(bot, /^xdeep:(.+)$/, 'explore-deep', async (ctx) => {
-    const token = ctx.match![1];
-    const topic = resolveCallbackToken('xdeep', token);
-    await ctx.answerCbQuery().catch(() => {});
-    if (!topic) {
-      await ctx.reply('按鈕已過期，請重新執行 /explore');
-      return;
-    }
-    await handleDeepSynthesis(ctx, topic, config);
-  });
-
-  registerAsyncAction(bot, /^xsave:(.+)$/, 'explore-save', async (ctx) => {
-    const token = ctx.match![1];
-    const payload = resolveCallbackToken('xsave', token);
-    await ctx.answerCbQuery('存入 Vault 中…').catch(() => {});
-    if (!payload) {
-      await ctx.reply('按鈕已過期，請重新執行 /explore');
-      return;
-    }
-    await handleSaveToVault(ctx, payload, config);
-  });
+  registerAsyncAction(bot, /^xpick:(.+)$/, 'explore-pick', resolveAndRun('xpick', (c, t) => handleModePicker(c, t)));
+  registerAsyncAction(bot, /^xrec:(.+)$/, 'explore-action', resolveAndRun('xrec', (c, t) => handleRecommendByTopic(c, t)));
+  registerAsyncAction(bot, /^xbrf:(.+)$/, 'explore-action', resolveAndRun('xbrf', (c, t) => handleBriefByTopic(c, t)));
+  registerAsyncAction(bot, /^compare:(.+)$/, 'compare-action', resolveAndRun('compare', (c, a) => handleCompareByArg(c, a)));
+  registerAsyncAction(bot, /^xdeep:(.+)$/, 'explore-deep', resolveAndRun('xdeep', (c, t) => handleDeepSynthesis(c, t, config)));
+  registerAsyncAction(bot, /^xsave:(.+)$/, 'explore-save', resolveAndRun('xsave', (c, p) => handleSaveToVault(c, p, config), '存入 Vault 中…'));
 
   // --- InlineKeyboard: /digest sub-actions ---
   registerAsyncAction(bot, /^dg:(.+)$/, 'digest-action', async (ctx) => {
@@ -222,6 +182,9 @@ export function registerCommands(
     const handler = handlers[mode];
     if (handler) await handler(ctx, config);
   });
+
+  // --- InlineKeyboard: /help category ---
+  registerAsyncAction(bot, /^help:(.+)$/, 'help-category', handleHelpCategory);
 
   registerAsyncAction(bot, /^retry:(.+)$/, 'retry-action', createRetryActionHandler(stats, config));
 
@@ -238,6 +201,26 @@ export function registerCommands(
     await handleDedupFix(ctx, config);
   });
 
+  registerAsyncAction(bot, /^quality:fix$/, 'quality-fix', async (ctx) => {
+    await ctx.answerCbQuery('開始修復…').catch(() => {});
+    const paths = getLastWorstPaths();
+    if (paths.length === 0) { await ctx.reply('沒有待修復的筆記。'); return; }
+    await ctx.reply(`🔄 正在重新處理 ${paths.length} 篇筆記…`);
+    const pathArgs = paths.join(' ');
+    const msg = ctx.message as unknown as Record<string, unknown> | undefined;
+    if (!msg) { (ctx as unknown as Record<string, unknown>).message = { text: `/reprocess ${pathArgs}` }; }
+    else { msg.text = `/reprocess ${pathArgs}`; }
+    await handleReprocess(ctx, config);
+  });
+
+  // --- InlineKeyboard: /subscribe actions ---
+  registerAsyncAction(bot, /^sub:(.+)$/, 'subscribe-action', async (ctx) => {
+    await handleSubscribeAction(ctx, config);
+  });
+
+  // --- InlineKeyboard: /code action ---
+  registerAsyncAction(bot, /^code:(.+)$/, 'code-action', handleCodeAction);
+
   // --- InlineKeyboard: /radar sub-actions ---
   registerAsyncAction(bot, /^radar:(.+)$/, 'radar-action', async (ctx) => {
     const action = ctx.match![1];
@@ -251,7 +234,7 @@ export function registerCommands(
     const url = resolveDiscoverToken(token);
     if (!url) {
       await ctx.answerCbQuery('按鈕已過期').catch(() => {});
-      await ctx.reply('按鈕已過期，請重新執行 /discover');
+      await replyExpired(ctx, 'discover', '重新探索');
       return;
     }
     await ctx.answerCbQuery('存入 Vault 中…').catch(() => {});

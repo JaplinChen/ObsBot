@@ -13,6 +13,14 @@ export async function replyEmptyKnowledge(ctx: Context): Promise<void> {
   );
 }
 
+/** Reply when a callback button has expired, with a re-trigger button */
+export async function replyExpired(ctx: Context, command: string, label: string): Promise<void> {
+  await ctx.reply(
+    '按鈕已過期，請重新操作：',
+    Markup.inlineKeyboard([[Markup.button.callback(`🔄 ${label}`, `nav:${command}`)]]),
+  );
+}
+
 /** Reply with suggested next-step buttons after an action completes */
 export async function replyWithNextSteps(
   ctx: Context, message: string, buttons: Array<{ label: string; command: string }>,

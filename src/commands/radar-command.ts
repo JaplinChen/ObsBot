@@ -30,6 +30,23 @@ export async function handleRadar(ctx: Context, config: AppConfig): Promise<void
 
   // /radar (no args) → show status with inline keyboard
   if (!arg) {
+    if (radarConfig.queries.length === 0) {
+      // First-use guide
+      await ctx.reply(
+        [
+          '🔍 內容雷達',
+          '',
+          '自動搜尋你關注的主題並存入 Vault。',
+          '首次使用請先自動生成查詢（從 Vault 分析關注方向）。',
+        ].join('\n'),
+        Markup.inlineKeyboard([
+          [Markup.button.callback('🤖 自動生成查詢', 'radar:auto')],
+          [Markup.button.callback('📖 查看完整用法', 'radar:usage')],
+        ]),
+      );
+      return;
+    }
+
     const status = radarConfig.enabled ? '✅ 啟用' : '⏸️ 停用';
     const lastRun = radarConfig.lastRunAt
       ? new Date(radarConfig.lastRunAt).toLocaleString('zh-TW')
@@ -42,14 +59,12 @@ export async function handleRadar(ctx: Context, config: AppConfig): Promise<void
       `上次執行：${lastRun}`,
     ];
 
-    if (radarConfig.queries.length > 0) {
-      lines.push('', '查詢列表：');
-      for (const q of radarConfig.queries) {
-        const src = q.source === 'auto' ? '🤖' : '✍️';
-        const typeTag = q.type === 'github' ? '🐙' : q.type === 'rss' ? '📡' : '🔍';
-        const desc = q.type === 'rss' ? q.keywords[0] : q.keywords.join(' ');
-        lines.push(`${src}${typeTag} [${q.id}] ${desc}`);
-      }
+    lines.push('', '查詢列表：');
+    for (const q of radarConfig.queries) {
+      const src = q.source === 'auto' ? '🤖' : '✍️';
+      const typeTag = q.type === 'github' ? '🐙' : q.type === 'rss' ? '📡' : '🔍';
+      const desc = q.type === 'rss' ? q.keywords[0] : q.keywords.join(' ');
+      lines.push(`${src}${typeTag} [${q.id}] ${desc}`);
     }
 
     const buttons = [
@@ -199,6 +214,22 @@ export async function handleRadarAction(ctx: Context, action: string, config: Ap
 
   if (action === 'wall') {
     await handleWall(ctx, config, '');
+    return;
+  }
+
+  if (action === 'usage') {
+    await ctx.reply(
+      '用法:\n' +
+      '/radar — 查看狀態\n' +
+      '/radar on|off — 啟用/停用\n' +
+      '/radar add <關鍵字> — 新增搜尋查詢\n' +
+      '/radar add github [語言] — 新增 GitHub Trending\n' +
+      '/radar add rss <URL> — 新增 RSS 來源\n' +
+      '/radar remove <id> — 移除查詢\n' +
+      '/radar auto — 從 Vault 自動生成\n' +
+      '/radar run — 立即執行\n' +
+      '/radar wall — 工具情報牆',
+    );
     return;
   }
 

@@ -150,8 +150,15 @@ export async function handleTimeline(ctx: Context, config: AppConfig): Promise<v
 
   if (!args) {
     await ctx.reply(
-      tagForceReply('timeline', '請輸入用戶名：\n例：@zuck 10\n目前支援 Threads 平台。'),
-      forceReplyMarkup('輸入 @username…'),
+      tagForceReply('timeline', [
+        '請輸入用戶名：',
+        '例：@zuck 10',
+        '',
+        '支援平台：',
+        '  Threads — 無需登入（預設）',
+        '  X — 需登入，暫不支援',
+      ].join('\n')),
+      forceReplyMarkup('@username [數量]'),
     );
     return;
   }

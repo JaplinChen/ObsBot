@@ -12,10 +12,10 @@ import { logger } from '../core/logger.js';
 import type { AppConfig } from '../utils/config.js';
 import { isDuplicateUrl } from '../saver.js';
 import { isBlockedDomain } from '../extractors/web-extractor.js';
+import { TtlCache } from '../utils/ttl-cache.js';
 
 const DEFAULT_TOPICS = ['ai-agent', 'obsidian', 'cli-tool'];
 const MAX_RESULTS = 8;
-const URL_CACHE_LIMIT = 200;
 
 interface GhRepo {
   fullName: string;
@@ -28,16 +28,11 @@ interface GhRepo {
 
 /* ── URL token cache (maps short hash → full URL) ──────────────────── */
 
-const urlTokenCache = new Map<string, string>();
+const urlTokenCache = new TtlCache<string>({ maxSize: 200, ttlMs: 30 * 60_000 });
 
 export function rememberUrl(url: string): string {
   const token = createHash('sha1').update(url).digest('hex').slice(0, 12);
   urlTokenCache.set(token, url);
-
-  if (urlTokenCache.size > URL_CACHE_LIMIT) {
-    const oldest = urlTokenCache.keys().next().value;
-    if (oldest) urlTokenCache.delete(oldest);
-  }
   return token;
 }
 

@@ -4,6 +4,7 @@
  * short content, missing category, HTML remnants.
  */
 import type { Context } from 'telegraf';
+import { Markup } from 'telegraf';
 import { readFile, access } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import type { AppConfig } from '../utils/config.js';
@@ -24,6 +25,13 @@ interface QualityReport {
 
 const HTML_TAG_RE = /<(?:div|span|br|p|a|img|table|tr|td|th|ul|ol|li|h[1-6])\b/i;
 const SKIP_FILES = new Set(['知識地圖.md', '知識庫摘要.md']);
+
+/** Cached worst offender paths from last quality scan (for auto-fix callback) */
+let lastWorstPaths: string[] = [];
+
+export function getLastWorstPaths(): string[] {
+  return lastWorstPaths;
+}
 
 async function scanAllNotes(rootDir: string, results: QualityIssue[]): Promise<number> {
   const files = await getAllMdFiles(rootDir);
@@ -123,10 +131,17 @@ export async function handleQuality(ctx: Context, config: AppConfig): Promise<vo
         }
       }
 
+      lastWorstPaths = report.worstOffenders.slice(0, 5).map(i => i.file);
       lines.push('', '建議：/reprocess --all --since 30d 更新 AI 豐富內容');
     }
 
-    await ctx.reply(lines.join('\n'));
+    if (lastWorstPaths.length > 0) {
+      await ctx.reply(lines.join('\n'), Markup.inlineKeyboard([
+        [Markup.button.callback(`🔄 自動修復前 ${lastWorstPaths.length} 篇`, 'quality:fix')],
+      ]));
+    } else {
+      await ctx.reply(lines.join('\n'));
+    }
     logger.info('quality', '報告完成', { total: report.totalNotes, issues: breakdownEntries.length });
   } catch (err) {
     await ctx.reply(`品質掃描失敗：${(err as Error).message}`);

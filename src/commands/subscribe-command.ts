@@ -5,6 +5,7 @@
  * /subscribe remove @user   → remove subscription
  */
 import type { Context } from 'telegraf';
+import { Markup } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
 import { logger } from '../core/logger.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
@@ -21,8 +22,10 @@ export async function handleSubscribe(ctx: Context, config: AppConfig): Promise<
 
   if (!args) {
     await ctx.reply(
-      tagForceReply('subscribe', '請輸入操作：\n• @username — 訂閱用戶\n• list — 查看訂閱清單\n• remove @username — 取消訂閱'),
-      forceReplyMarkup('@username 或 list…'),
+      '訂閱管理（目前支援 Threads）：',
+      Markup.inlineKeyboard([
+        [Markup.button.callback('📋 查看清單', 'sub:list'), Markup.button.callback('➕ 新增訂閱', 'sub:add')],
+      ]),
     );
     return;
   }
@@ -79,4 +82,32 @@ export async function handleSubscribe(ctx: Context, config: AppConfig): Promise<
     `查看清單：/subscribe list`,
   );
   logger.info('subscribe', '新增訂閱', { username });
+}
+
+/** Handle sub:list and sub:add callbacks */
+export async function handleSubscribeAction(ctx: Context & { match: RegExpExecArray }, config: AppConfig): Promise<void> {
+  const action = ctx.match[1];
+  await ctx.answerCbQuery().catch(() => {});
+
+  if (action === 'list') {
+    const store = await loadSubscriptions();
+    if (store.subscriptions.length === 0) {
+      await ctx.reply('尚未訂閱任何用戶。');
+      return;
+    }
+    const lines = [`訂閱清單（${store.subscriptions.length} 個，每 ${store.checkIntervalHours}h 檢查）：`, ''];
+    for (const sub of store.subscriptions) {
+      const checked = sub.lastCheckedAt ? `上次：${sub.lastCheckedAt.slice(0, 16)}` : '尚未檢查';
+      lines.push(`• @${sub.username} (${sub.platform}) — ${checked}`);
+    }
+    await ctx.reply(lines.join('\n'));
+    return;
+  }
+
+  if (action === 'add') {
+    await ctx.reply(
+      tagForceReply('subscribe', '請輸入要訂閱的用戶名：'),
+      forceReplyMarkup('@username'),
+    );
+  }
 }

@@ -3,17 +3,67 @@ export const HELP_TEXT = [
   'X / Threads / Reddit / YouTube / GitHub',
   '微博 / B站 / 小紅書 / 抖音 / 任何網頁',
   '',
-  '常用指令：',
-  '/find <關鍵字> — 搜尋 Vault 筆記',
-  '/search <查詢> — 網頁搜尋',
-  '/ask <問題> — 用知識庫回答問題',
-  '/explore <主題> — 知識探索',
-  '/discover <關鍵字> — GitHub 專案探索',
-  '/digest weekly — 週報深度合成',
-  '/radar — 內容雷達（自動搜尋+存入）',
-  '/status — Bot 狀態',
-  '/help all — 顯示所有指令',
+  '點擊下方分類查看指令，或 /help all 顯示完整列表',
 ].join('\n');
+
+export const HELP_CATEGORIES: Record<string, string> = {
+  content: [
+    '📥 內容收集',
+    '/find <關鍵字> — 搜尋 Vault 筆記（frontmatter + 全文）',
+    '/search <查詢> — 網頁搜尋',
+    '/monitor <關鍵字> — 跨平台搜尋提及',
+    '/timeline @用戶 — 抓取用戶最近貼文',
+    '/subscribe @用戶 — 訂閱自動追蹤',
+    '/radar — 內容雷達（自動搜尋+存入）',
+    '/patrol — 多平台內容巡邏',
+    '/discover <關鍵字> — GitHub 專案探索',
+    '/vsearch <關鍵字> — 搜尋影片筆記',
+  ].join('\n'),
+  knowledge: [
+    '🧠 知識系統',
+    '/ask <問題> — 用知識庫回答問題',
+    '/knowledge [gaps|skills|analyze] — 知識庫總覽',
+    '/explore <主題> — 知識探索（推薦/簡報/深度合成）',
+    '/explore <A> vs <B> — 主題對比分析',
+    '/digest [weekly|distill] — 知識報告',
+    '/suggest — 相關筆記推薦（自動連結）',
+    '/learn — Vault 學習（分類規則/重新分類/翻譯）',
+  ].join('\n'),
+  vault: [
+    '🔧 Vault 維護',
+    '/reprocess <路徑> — 重新 AI 豐富筆記',
+    '/reformat --dry-run — 掃描排版問題（--all 修復）',
+    '/dedup — 掃描重複筆記（按鈕確認刪除）',
+    '/quality — Vault 品質報告',
+    '/benchmark — 品質基準報告',
+    '/retry — 重試失敗的連結',
+  ].join('\n'),
+  system: [
+    '⚙️ 系統管理',
+    '/status — Bot 狀態與本次儲存',
+    '/health — 系統健康報告',
+    '/doctor — 全面即時診斷',
+    '/logs [n] [error] — 查看最近 log',
+    '/restart — 遠端重啟 Bot（需確認）',
+    '/code <action> — 遠端執行指令',
+    '/clear — 清除處理佇列',
+  ].join('\n'),
+};
+
+import type { Context } from 'telegraf';
+import { Markup } from 'telegraf';
+
+export const HELP_KEYBOARD = Markup.inlineKeyboard([
+  [Markup.button.callback('📥 內容收集', 'help:content'), Markup.button.callback('🧠 知識系統', 'help:knowledge')],
+  [Markup.button.callback('🔧 Vault 維護', 'help:vault'), Markup.button.callback('⚙️ 系統管理', 'help:system')],
+]);
+
+export async function handleHelpCategory(ctx: Context & { match: RegExpExecArray }): Promise<void> {
+  const cat = ctx.match[1];
+  await ctx.answerCbQuery().catch(() => {});
+  const text = HELP_CATEGORIES[cat];
+  if (text) await ctx.reply(text);
+}
 
 export const HELP_ALL_TEXT = [
   'ObsBot 完整指令列表',

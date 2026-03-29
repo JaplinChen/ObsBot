@@ -82,10 +82,9 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
       continue;
     }
     const icon = h.status === 'ok' ? '✅' : h.status === 'degraded' ? '⚠️' : '❌';
-    const detail = h.status === 'ok'
-      ? ''
-      : ` — ${h.lastError?.slice(0, 50) ?? h.status}`;
-    extractorLines.push(`${icon} ${ext.platform}${detail}`);
+    const detail = h.status === 'ok' ? '' : ` — ${h.lastError?.slice(0, 50) ?? h.status}`;
+    const hint = h.status === 'down' ? '（可能被封鎖或平台變更）' : '';
+    extractorLines.push(`${icon} ${ext.platform}${detail}${hint}`);
   }
 
   // 2. Check CLI dependencies
@@ -97,9 +96,16 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
     checkCli('browser-use', browserUseBin, ['doctor']),
   ]);
 
+  const installHints: Record<string, string> = {
+    'yt-dlp': '安裝：brew install yt-dlp',
+    'ffmpeg': '安裝：brew install ffmpeg',
+    'browser-use': '安裝：見 browser-use 文件',
+  };
+
   const cliLines = cliChecks.map((c) => {
     const icon = c.available ? '✅' : '❌';
-    return `${icon} ${c.name}: ${c.version}`;
+    const hint = !c.available ? ` → ${installHints[c.name] ?? ''}` : '';
+    return `${icon} ${c.name}: ${c.version}${hint}`;
   });
 
   // 3. Camoufox pool
@@ -128,7 +134,7 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
     ...cliLines,
     '',
     '━━ 瀏覽器池 ━━',
-    `🦊 ${pool.inUse}/${pool.total} 使用中`,
+    `🦊 ${pool.inUse}/${pool.total} 使用中${pool.inUse === pool.total && pool.total > 0 ? '（已滿，考慮 /restart）' : ''}`,
     '',
     '━━ Vault ━━',
     `📁 ${noteCount} 筆記 | ${attachCount} 附件`,

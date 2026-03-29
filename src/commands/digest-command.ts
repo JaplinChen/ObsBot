@@ -134,12 +134,17 @@ export async function handleDigestMenu(ctx: Context, config: AppConfig): Promise
   }
 
   await ctx.reply(
-    '選擇知識報告類型：',
+    [
+      '選擇知識報告類型：',
+      '',
+      '📋 精華摘要 — 近 7 天筆記分類概覽 + AI 摘要',
+      '📰 週報合成 — 深度分析本週知識趨勢，存入 Vault',
+      '🧪 知識蒸餾 — 萃取你的偏好模式與學習傾向',
+      '🧠 跨筆記洞察 — 發現筆記間的隱藏連結',
+    ].join('\n'),
     Markup.inlineKeyboard([
-      [Markup.button.callback('📋 精華摘要', 'dg:digest')],
-      [Markup.button.callback('📰 週報深度合成', 'dg:weekly')],
-      [Markup.button.callback('🧪 知識蒸餾', 'dg:distill')],
-      [Markup.button.callback('🧠 跨筆記洞察', 'dg:consolidate')],
+      [Markup.button.callback('📋 精華摘要', 'dg:digest'), Markup.button.callback('📰 週報合成', 'dg:weekly')],
+      [Markup.button.callback('🧪 知識蒸餾', 'dg:distill'), Markup.button.callback('🧠 跨筆記洞察', 'dg:consolidate')],
     ]),
   );
 }
