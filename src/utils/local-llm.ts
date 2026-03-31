@@ -41,20 +41,30 @@ async function runViaCli(prompt: string, timeoutMs: number, model: string): Prom
   const timeout = Math.min(timeoutMs, CLI_TIMEOUT_MS);
 
   return new Promise((resolve) => {
+    let resolved = false;
+    const done = (val: string | null) => { if (!resolved) { resolved = true; resolve(val); } };
+
     const proc = spawn(
       'opencode',
       ['run', '-m', model],
       { timeout, stdio: ['pipe', 'pipe', 'pipe'] },
     );
 
+    // Hard kill safety net: SIGKILL if spawn's timeout (SIGTERM) didn't work
+    const killTimer = setTimeout(() => {
+      try { proc.kill('SIGKILL'); } catch { /* already dead */ }
+      done(null);
+    }, timeout + 5_000);
+
     let stdout = '';
     proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
     proc.stderr.on('data', () => {});
 
-    proc.on('error', () => resolve(null));
+    proc.on('error', () => { clearTimeout(killTimer); done(null); });
     proc.on('close', () => {
+      clearTimeout(killTimer);
       const out = cleanOpenCodeOutput(stdout);
-      resolve(out || null);
+      done(out || null);
     });
 
     proc.stdin.write(prompt);
