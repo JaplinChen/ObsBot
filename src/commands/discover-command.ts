@@ -11,7 +11,6 @@ import type { Context } from 'telegraf';
 import { logger } from '../core/logger.js';
 import type { AppConfig } from '../utils/config.js';
 import { isDuplicateUrl } from '../saver.js';
-import { isBlockedDomain } from '../extractors/web-extractor.js';
 import { TtlCache } from '../utils/ttl-cache.js';
 
 const DEFAULT_TOPICS = ['ai-agent', 'obsidian', 'cli-tool'];
@@ -95,7 +94,7 @@ function getDateDaysAgo(days: number): string {
 
 /** Build inline keyboard with save buttons for unsaved repos only (2 per row) */
 function buildSaveButtons(repos: GhRepo[]) {
-  const buttons = repos.filter((r) => !isBlockedDomain(r.htmlUrl)).map((r) => {
+  const buttons = repos.map((r) => {
     const token = rememberUrl(r.htmlUrl);
     const shortName = r.fullName.split('/')[1] ?? r.fullName;
     return Markup.button.callback(
@@ -128,7 +127,7 @@ function formatSearchResults(repos: GhRepo[], query: string, savedUrls: Set<stri
   if (repos.length === 0) return `找不到與「${query}」相關的專案。`;
 
   const lines = [`GitHub 搜尋結果：「${query}」\n`];
-  for (const r of repos.filter((r) => !isBlockedDomain(r.htmlUrl))) {
+  for (const r of repos) {
     const icon = savedUrls.has(r.htmlUrl) ? '📂' : '🔹';
     const lang = r.language ? ` [${r.language}]` : '';
     lines.push(`${icon} ${r.fullName}${lang} (${formatStars(r.stargazersCount)})`);

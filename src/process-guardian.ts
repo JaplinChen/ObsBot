@@ -95,33 +95,43 @@ export class ProcessGuardian {
     }
   }
 
-  /** Kill orphaned node processes that have no parent (zombie cleanup) */
+  /** Kill orphaned ObsBot processes that have no parent (zombie cleanup).
+   *  Scoped to ObsBot-specific scripts only — never touches unrelated node processes. */
   private cleanOrphanProcesses(): number {
     try {
-      const raw = execSync('ps -eo pid,ppid,comm', { encoding: 'utf-8', timeout: 5_000 });
+      const cwd = process.cwd();
+      const raw = execSync('ps -eo pid,ppid,args', { encoding: 'utf-8', timeout: 5_000 });
       const myPid = process.pid;
       let killed = 0;
 
       for (const line of raw.split('\n')) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('PID')) continue;
-        const [pidStr, ppidStr, comm] = trimmed.split(/\s+/, 3);
-        if (!comm || !comm.includes('node')) continue;
-        const pid = Number(pidStr);
-        const parentPid = Number(ppidStr);
+        const m = trimmed.match(/^(\d+)\s+(\d+)\s+(.+)$/);
+        if (!m) continue;
+        const pid = Number(m[1]);
+        const parentPid = Number(m[2]);
+        const args = m[3];
 
         if (!pid || pid === myPid) continue;
 
+        // Only target ObsBot-related processes (same cwd or known script names)
+        const isObsBotRelated =
+          args.includes(cwd) ||
+          args.includes('loop.mjs') ||
+          args.includes('src/index.ts');
+        if (!isObsBotRelated) continue;
+
         // Check if parent is dead → orphan
         if (parentPid && !this.isProcessAlive(parentPid)) {
-          logger.info('guardian', 'killing orphan node process', { pid, parentPid });
+          logger.info('guardian', 'killing orphan ObsBot process', { pid, parentPid });
           this.killProcess(pid);
           killed++;
         }
       }
 
       if (killed > 0) {
-        logger.info('guardian', `cleaned ${killed} orphan process(es)`);
+        logger.info('guardian', `cleaned ${killed} orphan ObsBot process(es)`);
       }
       return killed;
     } catch {
@@ -129,7 +139,7 @@ export class ProcessGuardian {
     }
   }
 
-private sleep(ms: number): Promise<void> {
+  private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 

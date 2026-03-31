@@ -10,7 +10,6 @@ import { webSearch, rewriteQuery, filterRelevantResults } from '../utils/search-
 import { isDuplicateUrl } from '../saver.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
 import { rememberUrl } from './discover-command.js';
-import { isBlockedDomain } from '../extractors/web-extractor.js';
 
 /** Hosts excluded from /monitor results (auth-required, content not accessible). */
 const MONITOR_SKIP_HOSTS = new Set([
@@ -59,7 +58,7 @@ export async function handleMonitor(ctx: Context, config: AppConfig): Promise<vo
     const rawWeb = await webSearch(rewritten, 12);
 
     const domainFiltered = rawWeb.filter(g => {
-      try { return !MONITOR_SKIP_HOSTS.has(new URL(g.url).hostname) && !isBlockedDomain(g.url); }
+      try { return !MONITOR_SKIP_HOSTS.has(new URL(g.url).hostname); }
       catch { return false; }
     });
 

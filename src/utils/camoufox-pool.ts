@@ -15,7 +15,8 @@ class CamoufoxPool {
   private entries: PoolEntry[] = [];
   private idleTimer?: NodeJS.Timeout;
   private readonly MAX_SIZE = 4;
-  private readonly IDLE_MS = 10 * 60 * 1000; // 10 minutes
+  /** Count of browsers currently being created (not yet in entries) */
+  private pending = 0;
 
   /** Acquire a page from the pool. Call release() when done. */
   async acquire(): Promise<{ page: Page; release: () => Promise<void> }> {
@@ -56,12 +57,17 @@ class CamoufoxPool {
     const idle = this.entries.find(e => !e.inUse);
     if (idle) return idle;
 
-    // Spin up new browser if pool not full
-    if (this.entries.length < this.MAX_SIZE) {
-      const browser = await Camoufox({ headless: true });
-      const entry: PoolEntry = { browser, inUse: false };
-      this.entries.push(entry);
-      return entry;
+    // Spin up new browser if pool not full (include in-flight browsers in count)
+    if (this.entries.length + this.pending < this.MAX_SIZE) {
+      this.pending++;
+      try {
+        const browser = await Camoufox({ headless: true });
+        const entry: PoolEntry = { browser, inUse: false };
+        this.entries.push(entry);
+        return entry;
+      } finally {
+        this.pending--;
+      }
     }
 
     // Wait for an entry to become free (max 30 seconds)
@@ -82,9 +88,7 @@ class CamoufoxPool {
     clearTimeout(this.idleTimer);
     const allIdle = this.entries.every(e => !e.inUse);
     if (allIdle && this.entries.length > 0) {
-      this.idleTimer = setTimeout(() => {
-        this.closeAll().catch(() => { /* ignore */ });
-      }, this.IDLE_MS);
+      this.closeAll().catch(() => { /* ignore */ });
     }
   }
 

@@ -5,7 +5,6 @@
  * Also handles inline "🔄 重試" button callbacks.
  */
 import type { Context } from 'telegraf';
-import { createHash } from 'node:crypto';
 import { logger } from '../core/logger.js';
 import type { AppConfig } from '../utils/config.js';
 import { processUrl } from '../messages/services/process-url-service.js';
@@ -61,11 +60,8 @@ export function createRetryActionHandler(stats: BotStats, config: AppConfig) {
     const urlHash = ctx.match[1];
     await ctx.answerCbQuery('重試中...').catch(() => {});
 
-    // Find matching failed URL by hash
-    const target = stats.failedUrls.find(f => {
-      const hash = createHash('md5').update(f.url).digest('hex').slice(0, 12);
-      return hash === urlHash;
-    });
+    // Find matching failed URL by pre-computed hash
+    const target = stats.failedUrls.find(f => f.hash === urlHash);
 
     if (!target) {
       await ctx.reply('此連結已不在失敗清單中。');

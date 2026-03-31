@@ -5,7 +5,6 @@ import { formatErrorMessage } from '../core/errors.js';
 import { logger } from '../core/logger.js';
 import type { ExtractorWithComments, ExtractorWithSeries } from '../extractors/types.js';
 import type { AppConfig } from '../utils/config.js';
-import { isBlockedDomain } from '../extractors/web-extractor.js';
 import { extractUrls, findExtractor } from '../utils/url-parser.js';
 import {
   STAGE,
@@ -86,11 +85,6 @@ export function registerUrlProcessingHandler(
     react(ctx, '👀');
 
     for (const url of urls) {
-      if (isBlockedDomain(url)) {
-        logger.info('msg', 'skipped blocked domain', { url });
-        continue;
-      }
-
       const extractor = findExtractor(url);
       if (!extractor) {
         logger.warn('msg', 'unsupported url', { url });
@@ -155,7 +149,9 @@ export function registerUrlProcessingHandler(
         logger.info('perf', 'total', { ms: Date.now() - t0 });
 
         if (result.duplicate) {
+          stopTyping();
           await ctx.reply(formatDuplicateMessage(result.mdPath));
+          try { await ctx.deleteMessage(msgId); } catch { /* */ }
           continue;
         }
 
@@ -180,7 +176,7 @@ export function registerUrlProcessingHandler(
         stats.errors++;
         if (stats.failedUrls.length >= 50) stats.failedUrls.shift();
         const urlHash = createHash('md5').update(url).digest('hex').slice(0, 12);
-        stats.failedUrls.push({ url, error: formatErrorMessage(err), timestamp: Date.now() });
+        stats.failedUrls.push({ url, hash: urlHash, error: formatErrorMessage(err), timestamp: Date.now() });
         await ctx.reply(formatErrorMessage(err), {
           reply_markup: {
             inline_keyboard: [[{ text: '🔄 重試', callback_data: `retry:${urlHash}` }]],

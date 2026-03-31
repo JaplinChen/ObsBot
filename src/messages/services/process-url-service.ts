@@ -4,7 +4,6 @@
  */
 import type { ExtractorWithComments } from '../../extractors/types.js';
 import type { AppConfig } from '../../utils/config.js';
-import { isBlockedDomain } from '../../extractors/web-extractor.js';
 import { findExtractor } from '../../utils/url-parser.js';
 import { enrichExtractedContent } from './enrich-content-service.js';
 import { extractContentWithComments } from './extract-content-service.js';
@@ -23,7 +22,6 @@ export interface ProcessUrlResult {
 export async function processUrl(
   url: string, config: AppConfig, stats: BotStats,
 ): Promise<ProcessUrlResult> {
-  if (isBlockedDomain(url)) return { success: false, error: 'blocked-domain' };
   const extractor = findExtractor(url);
   if (!extractor) return { success: false, error: '不支援的 URL' };
 

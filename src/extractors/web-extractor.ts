@@ -4,10 +4,6 @@ import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 import { stripHtmlTags } from './web-cleaner.js';
 import { htmlToMarkdown, htmlToMarkdownWithBrowser, htmlToMarkdownWithBrowserUse } from '../utils/html-to-markdown.js';
 
-/** @deprecated — no longer used, WAF sites now handled by browser fallback */
-export function isBlockedDomain(_url: string): boolean {
-  return false;
-}
 
 function decodeHtml(s: string): string {
   return s

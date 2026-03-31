@@ -97,6 +97,19 @@ export function getOmlxTimeout(tier: ModelTier): number {
 
 const OMLX_VISION_MODEL = 'Qwen2.5-VL-7B-Instruct-4bit';
 
+/* ── Shared response parser ─────────────────────────────────────────── */
+
+async function parseOmlxContent(res: Response, label: string): Promise<string | null> {
+  const json = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = json.choices?.[0]?.message?.content?.trim();
+  if (content) {
+    console.log(`[${label}] ✓ (${content.length} chars)`);
+  }
+  return content || null;
+}
+
 /* ── Chat completion ────────────────────────────────────────────────── */
 
 interface OmlxOptions {
@@ -140,14 +153,7 @@ export async function omlxChatCompletion(
       return null;
     }
 
-    const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = json.choices?.[0]?.message?.content?.trim();
-    if (content) {
-      console.log(`[omlx] ✓ ${modelId} (${content.length} chars)`);
-    }
-    return content || null;
+    return parseOmlxContent(res, `omlx:${modelId}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     // AbortError = timeout; ECONNREFUSED = server down
@@ -200,14 +206,7 @@ export async function omlxVisionCompletion(
       return null;
     }
 
-    const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = json.choices?.[0]?.message?.content?.trim();
-    if (content) {
-      console.log(`[omlx-vision] ✓ ${OMLX_VISION_MODEL} (${content.length} chars)`);
-    }
-    return content || null;
+    return parseOmlxContent(res, `omlx-vision:${OMLX_VISION_MODEL}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('abort') || msg.includes('ECONNREFUSED')) {
