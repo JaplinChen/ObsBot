@@ -17,6 +17,13 @@ function looksLikeUrl(text: string): boolean {
   return /^[\w.-]+\.(com|net|org|io|dev|tv|me|co)\b/i.test(t) || /^https?:\/\//i.test(t);
 }
 
+/** Detect author replies to commenters (not thread continuations) */
+function isReplyToCommenter(text: string): boolean {
+  const t = text.trim();
+  if (t.length > 150) return false;
+  return /^(謝謝|感謝|感恩|不客氣|對啊|沒錯|哈哈|是的|嗯嗯|好的|🙏|❤️|😊|💪|🥰|👍)/.test(t);
+}
+
 /** Pick the best title line: skip URL-only and very short topic-tag lines */
 function pickTitle(text: string, maxLen = 80): string {
   const lines = text.split('\n');
@@ -83,39 +90,23 @@ async function extractSpanText(
 
 /** Extract scontent CDN image URLs from the page, skip avatars */
 async function extractImages(page: import('playwright-core').Page): Promise<string[]> {
-  const images: string[] = [];
   try {
     const srcs = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('img'))
-        .map(img => img.src)
-        .filter(Boolean),
-    );
-    for (const src of srcs) {
-      if (
-        src.includes('scontent') &&
-        !src.includes('s100x100') &&
-        !src.includes('s150x150') &&
-        !src.includes('s50x50')
-      ) {
-        images.push(src);
-      }
-    }
-  } catch { /* ignore */ }
-  return [...new Set(images)];
+      Array.from(document.querySelectorAll('img')).map(img => img.src).filter(Boolean));
+    const AVATAR = /s(?:50|100|150)x(?:50|100|150)/;
+    return [...new Set(srcs.filter(s => s.includes('scontent') && !AVATAR.test(s)))];
+  } catch { return []; }
 }
 
 /** Extract video URLs from the page */
 async function extractVideos(page: import('playwright-core').Page): Promise<string[]> {
-  const videos: string[] = [];
   try {
     const srcs = await page.evaluate(() =>
       Array.from(document.querySelectorAll('video source, video[src]'))
         .map(el => el.getAttribute('src') ?? '')
-        .filter(s => s.includes('.mp4') || s.includes('video')),
-    );
-    videos.push(...srcs.filter(Boolean));
-  } catch { /* ignore */ }
-  return [...new Set(videos)];
+        .filter(s => s.includes('.mp4') || s.includes('video')));
+    return [...new Set(srcs.filter(Boolean))];
+  } catch { return []; }
 }
 
 export const threadsExtractor: ExtractorWithComments = {
@@ -195,10 +186,13 @@ export const threadsExtractor: ExtractorWithComments = {
 
       const { text: mainText, tags } = await extractSpanText(targetContainer);
       // Merge self-reply thread parts from the same author (串文)
+      // Skip replies to commenters (gratitude/acknowledgement messages)
       const threadParts: string[] = mainText ? [mainText] : [];
       for (let i = 1; i < authorContainers.length; i++) {
         const { text: part } = await extractSpanText(authorContainers[i]);
-        if (part && !threadParts.includes(part)) threadParts.push(part);
+        if (part && !threadParts.includes(part) && !isReplyToCommenter(part)) {
+          threadParts.push(part);
+        }
       }
       let text = threadParts.join('\n\n---\n\n');
 

@@ -125,12 +125,16 @@ export function buildFrontmatter(
   return lines;
 }
 
+/** URLs that are badges/shields, not real content links */
+const BADGE_URL_RE = /camo\.githubusercontent\.com|img\.shields\.io|shields\.io\/badge|badge\.fury\.io|badgen\.net|forthebadge\.com/i;
+
 /** Build linked content section lines */
 export function buildLinkedContent(linkedContent?: LinkedContentMeta[]): string[] {
-  if (!linkedContent || linkedContent.length === 0) return [];
+  const filtered = linkedContent?.filter(l => !BADGE_URL_RE.test(l.url));
+  if (!filtered || filtered.length === 0) return [];
   const lines: string[] = ['## 相關連結', ''];
-  const postLinks = linkedContent.filter(l => l.source === 'post');
-  const commentLinks = linkedContent.filter(l => l.source === 'comment');
+  const postLinks = filtered.filter(l => l.source === 'post');
+  const commentLinks = filtered.filter(l => l.source === 'comment');
   if (postLinks.length > 0) {
     for (const link of postLinks) lines.push(formatLinkedMeta(link), '');
   }
@@ -152,11 +156,28 @@ export function buildStats(reposts?: number): string[] {
   return ['---', '', stats.join(' | '), ''];
 }
 
+/** Check if a comment has substantive content beyond pure praise/thanks */
+function isSubstantiveComment(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 5) return false;
+  // Strip praise/thanks phrases and emoji, check if meaningful content remains
+  const stripped = t
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1FA00}-\u{1FA9F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '')
+    .replace(/(好用|太棒|太強|太香|推推|給讚|讚讚|大推|推了|神器|超讚|超推|收藏|支持|辛苦了|加油|期待|厲害)/g, '')
+    .replace(/(謝謝|感謝|感恩|謝囉|多謝)(分享|開發|推薦|你們?|大大|作者)?/g, '')
+    .replace(/(幫助很大|受益良多|學到很多|受教了|獲益匪淺|太有用|真的有用)/g, '')
+    .replace(/[！!？?。，、～~👍🙏❤️💪🥰😊😍🔥✅💯]+/g, '')
+    .trim();
+  return stripped.length >= 10;
+}
+
 /** Build comments section lines */
 export function buildComments(comments?: ThreadComment[], commentCount?: number): string[] {
   if (!comments || comments.length === 0) return [];
+  const substantive = comments.filter(c => isSubstantiveComment(c.text));
+  if (substantive.length === 0) return [];
   const lines: string[] = ['## 評論', ''];
-  for (const c of comments.slice(0, 20)) {
+  for (const c of substantive.slice(0, 20)) {
     const likes = c.likes ? ` ❤️${c.likes}` : '';
     lines.push(`**${c.author}** \`${c.authorHandle}\`${likes}`);
     lines.push(c.text);

@@ -236,7 +236,7 @@ npx tsc --noEmit   # 型別檢查
 - **OpenCode CLI** + 多模型路由 — 依複雜度自動選 flash（MIMO v2）/ standard（MiniMax M2.5）/ deep（Nemotron 3 Super），全免費；可選 oMLX 本地推理優先
 - **知識系統** — 實體萃取、知識圖譜、缺口分析、Skill 自動生成、用戶偏好萃取、知識蒸餾、記憶整合
 - 所有長任務（timeline / monitor / learn / reclassify）採 fire-and-forget：先回覆「處理中」→ 背景執行 → 完成通知
-- 評論自動篩選：過濾純 emoji 和過短反應，只保留有意義的討論
+- 評論品質篩選：去除讚美/感謝語後不足 10 字的評論自動濾除；Threads 作者回覆感謝訊息不混入主體
 - URL 去重快取：避免重複儲存相同內容
 - 批次翻譯：opencc-js（簡轉繁）+ Google Translate（英翻中），無需 API key
 
@@ -260,7 +260,9 @@ npx tsc --noEmit   # 型別檢查
 - 所有 TypeScript 檔案 **≤ 300 行**
 - **不使用任何 API SDK**（無 Anthropic SDK、無 OpenAI SDK）
 - LLM enrichment 來源：oMLX 本地推理（選配）→ OpenCode CLI 多模型路由（flash / standard / deep，全免費）→ DDG AI Chat（免費備援）
-- Enrichment 輸出過濾廢話與廣告語，保持中性專業語氣
+- Enrichment 輸出過濾廢話與廣告語，保持中性專業語氣；GitHub badge/shield 圖片自動清除
+- GitHub 筆記 body 只顯示倉庫描述，README 內容去重至獨立區塊
+- Frontmatter 防護：`---` 關閉標記確保獨立成行，防止與後續內容黏合
 - 外部呼叫必須有 timeout（HTTP 30s / yt-dlp 120s / Obsidian 10s）
 - **輕量 Vault** — 影片預設不存入 Vault（`SAVE_VIDEOS=false`），僅保留原始 URL 連結
 
@@ -301,7 +303,7 @@ src/
 ├── formatters/                 # 按平台分離的 Markdown 格式化
 │   ├── index.ts                # Registry：platform → formatter
 │   ├── base.ts                 # 組裝器（frontmatter + body + stats）
-│   ├── shared.ts               # 共用工具（escape, linkify）
+│   ├── shared.ts               # 共用工具（escape, linkify, 評論品質篩選, badge URL 過濾）
 │   ├── x.ts / youtube.ts / ... # 各平台 formatter
 │   └── default.ts              # 預設 formatter
 ├── knowledge/                  # 知識系統

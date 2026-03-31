@@ -207,6 +207,8 @@ export function assembleNote(
   lines.push(`Category: [[${categoryLink}]]`, '');
   lines.push(`[View original](${content.url})`, '');
 
-  return lines.join('\n');
+  const result = lines.join('\n');
+  // Defensive: ensure frontmatter closing --- is on its own line
+  return result.replace(/^(---\n[\s\S]*?\n)(---)(>|\*|[^\n])/m, '$1$2\n\n$3');
 }
 
