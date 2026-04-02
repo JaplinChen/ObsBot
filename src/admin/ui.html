@@ -366,11 +366,17 @@ var PLATFORM_LABELS = {
   ithome: 'IT 之家', zhihu: '知乎', 'direct-video': '直接影片', web: '通用網頁'
 };
 
-var _userConfig = null;
+var _userConfig = {
+  features: { translation:true, linkEnrichment:true, imageAnalysis:true, videoTranscription:true, comments:true, proactive:true, monitor:true, wall:true, patrol:false, consolidation:true },
+  llm: { provider:'auto', omlx:{baseUrl:'http://127.0.0.1:8000',models:{flash:'',standard:'',deep:''}}, opencode:{models:{flash:'opencode/mimo-v2-pro-free',standard:'opencode/big-pickle',deep:'opencode/big-pickle'},timeoutMs:90000}, routing:{} },
+  extractors: { enabled:Object.keys(PLATFORM_LABELS), disabled:[] }
+};
 
 async function loadUserConfig() {
-  var res = await fetch('/api/user-config');
-  _userConfig = await res.json();
+  try {
+    var res = await fetch('/api/user-config');
+    if (res.ok) _userConfig = await res.json();
+  } catch(e) { /* use defaults */ }
   renderFeatures();
   renderPlatforms();
   renderLlm();
