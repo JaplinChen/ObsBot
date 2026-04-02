@@ -156,6 +156,23 @@
     .llm-field input { width: 100%; }
 
     .save-status { text-align: center; font-size: 14px; margin-top: 12px; min-height: 20px; }
+
+    /* Provider tabs */
+    .provider-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+    .provider-tab {
+      flex: 1; padding: 10px 8px; text-align: center; border: 2px solid #e8e8e8;
+      border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
+      color: #888; background: #fafafa; transition: all 0.2s;
+    }
+    .provider-tab:hover { border-color: #667eea; color: #667eea; }
+    .provider-tab.active { border-color: #667eea; background: #f0f2ff; color: #667eea; }
+    .provider-tab .icon { font-size: 18px; display: block; margin-bottom: 2px; }
+    .provider-panel { min-height: 120px; }
+    .model-row { display: flex; gap: 8px; align-items: center; }
+    .model-row select { flex: 1; }
+    .model-status { font-size: 12px; color: #999; margin-top: 4px; min-height: 16px; }
+    .model-status.ok { color: #27ae60; }
+    .model-status.err { color: #e74c3c; }
   </style>
 </head>
 <body>
@@ -233,32 +250,8 @@
 
     <div class="section">
       <div class="section-title">🤖 LLM 設定</div>
-      <div class="llm-field">
-        <label>Provider</label>
-        <select id="llmProvider">
-          <option value="auto">auto（自動偵測）</option>
-          <option value="omlx">oMLX（本機）</option>
-          <option value="opencode">OpenCode（遠端免費）</option>
-          <option value="ddg">DuckDuckGo Chat（備援）</option>
-          <option value="none">停用 AI</option>
-        </select>
-      </div>
-      <div class="llm-field">
-        <label>oMLX Base URL</label>
-        <input type="text" id="omlxBaseUrl" placeholder="http://127.0.0.1:8000" />
-      </div>
-      <div class="llm-field">
-        <label>OpenCode Flash 模型</label>
-        <input type="text" id="ocFlash" />
-      </div>
-      <div class="llm-field">
-        <label>OpenCode Standard 模型</label>
-        <input type="text" id="ocStandard" />
-      </div>
-      <div class="llm-field">
-        <label>OpenCode Deep 模型</label>
-        <input type="text" id="ocDeep" />
-      </div>
+      <div class="provider-tabs" id="providerTabs"></div>
+      <div class="provider-panel" id="providerPanel"></div>
     </div>
 
     <div class="divider"></div>
@@ -358,6 +351,14 @@ var FEATURE_LABELS = {
   consolidation: '記憶整合'
 };
 
+var PROVIDERS = [
+  { key: 'omlx', icon: '🖥️', label: 'oMLX', desc: '本機 Apple Silicon' },
+  { key: 'opencode', icon: '🤖', label: 'OpenCode', desc: '遠端免費模型' },
+  { key: 'ddg', icon: '🦆', label: 'DDG Chat', desc: '瀏覽器備援' },
+];
+var _activeProvider = 'omlx';
+var _detectedModels = {};
+
 var PLATFORM_LABELS = {
   x: 'X / Twitter', threads: 'Threads', youtube: 'YouTube', github: 'GitHub',
   reddit: 'Reddit', bilibili: 'Bilibili', weibo: '微博',
@@ -399,11 +400,135 @@ function renderPlatforms() {
 }
 
 function renderLlm() {
-  document.getElementById('llmProvider').value = _userConfig.llm.provider;
-  document.getElementById('omlxBaseUrl').value = _userConfig.llm.omlx.baseUrl;
-  document.getElementById('ocFlash').value = _userConfig.llm.opencode.models.flash;
-  document.getElementById('ocStandard').value = _userConfig.llm.opencode.models.standard;
-  document.getElementById('ocDeep').value = _userConfig.llm.opencode.models.deep;
+  _activeProvider = _userConfig.llm.provider === 'auto' ? 'omlx' : _userConfig.llm.provider;
+  renderProviderTabs();
+  renderProviderPanel();
+}
+
+function renderProviderTabs() {
+  var tabs = document.getElementById('providerTabs');
+  tabs.innerHTML = PROVIDERS.map(function(p) {
+    var cls = 'provider-tab' + (p.key === _activeProvider ? ' active' : '');
+    var selected = _userConfig.llm.provider === p.key;
+    var dot = selected ? ' ●' : '';
+    return '<div class="' + cls + '" onclick="switchProvider(\'' + p.key + '\')">' +
+      '<span class="icon">' + p.icon + '</span>' + p.label + dot + '</div>';
+  }).join('');
+}
+
+function switchProvider(key) {
+  _activeProvider = key;
+  renderProviderTabs();
+  renderProviderPanel();
+}
+
+function renderProviderPanel() {
+  var panel = document.getElementById('providerPanel');
+  var p = _activeProvider;
+  var cfg = _userConfig.llm;
+  var isActive = cfg.provider === p || cfg.provider === 'auto';
+  var html = '';
+
+  // Active provider selector
+  html += '<div class="llm-field"><label>啟用狀態</label>' +
+    '<select id="llmProviderSelect" onchange="onProviderSelectChange(this.value)">' +
+    '<option value="auto"' + (cfg.provider === 'auto' ? ' selected' : '') + '>auto（自動偵測優先順序）</option>';
+  PROVIDERS.forEach(function(pr) {
+    html += '<option value="' + pr.key + '"' + (cfg.provider === pr.key ? ' selected' : '') + '>' + pr.label + '（僅用此 provider）</option>';
+  });
+  html += '<option value="none"' + (cfg.provider === 'none' ? ' selected' : '') + '>停用 AI</option></select></div>';
+
+  if (p === 'omlx') {
+    html += '<div class="llm-field"><label>Base URL</label>' +
+      '<input type="text" id="provBaseUrl" value="' + esc(cfg.omlx.baseUrl) + '" placeholder="http://127.0.0.1:8000" /></div>';
+    html += renderModelFields('omlx', cfg.omlx.models);
+    html += renderDetectBtn('omlx');
+  } else if (p === 'opencode') {
+    html += renderModelFields('opencode', cfg.opencode.models);
+    html += '<div class="llm-field"><label>CLI Timeout (ms)</label>' +
+      '<input type="text" id="provTimeout" value="' + cfg.opencode.timeoutMs + '" /></div>';
+  } else if (p === 'ddg') {
+    html += '<div class="hint" style="margin-top:8px">DuckDuckGo Chat 為瀏覽器自動化備援，透過 Camoufox 操作 duck.ai。無需額外設定。</div>';
+  }
+
+  panel.innerHTML = html;
+}
+
+function renderModelFields(provider, models) {
+  var tiers = ['flash', 'standard', 'deep'];
+  var tierLabels = { flash: 'Flash（快速）', standard: 'Standard（平衡）', deep: 'Deep（深度）' };
+  var html = '';
+  tiers.forEach(function(tier) {
+    var detected = (_detectedModels[provider] || []);
+    var val = models[tier] || '';
+    html += '<div class="llm-field"><label>' + tierLabels[tier] + '</label>';
+    if (detected.length > 0) {
+      html += '<div class="model-row"><select id="model-' + provider + '-' + tier + '" onchange="onModelSelect(\'' + provider + '\',\'' + tier + '\',this.value)">';
+      html += '<option value="">（自訂）</option>';
+      detected.forEach(function(m) {
+        html += '<option value="' + esc(m) + '"' + (m === val ? ' selected' : '') + '>' + m + '</option>';
+      });
+      html += '</select></div>';
+      var isCustom = val && detected.indexOf(val) === -1;
+      if (isCustom) {
+        html += '<input type="text" id="model-custom-' + provider + '-' + tier + '" value="' + esc(val) + '" placeholder="自訂模型名稱" style="margin-top:4px" />';
+      }
+    } else {
+      html += '<input type="text" id="model-custom-' + provider + '-' + tier + '" value="' + esc(val) + '" placeholder="模型名稱" />';
+    }
+    html += '</div>';
+  });
+  return html;
+}
+
+function renderDetectBtn(provider) {
+  return '<div class="llm-field">' +
+    '<button class="btn btn-ghost" onclick="detectModels(\'' + provider + '\')">🔍 偵測可用模型</button>' +
+    '<div class="model-status" id="modelStatus"></div></div>';
+}
+
+function onModelSelect(provider, tier, val) {
+  // If "(自訂)" selected, show text input
+  if (!val) renderProviderPanel();
+}
+
+function onProviderSelectChange(val) {
+  _userConfig.llm.provider = val;
+  renderProviderTabs();
+}
+
+async function detectModels(provider) {
+  var statusEl = document.getElementById('modelStatus');
+  if (statusEl) { statusEl.textContent = '偵測中...'; statusEl.className = 'model-status'; }
+  var baseUrl = '';
+  var urlEl = document.getElementById('provBaseUrl');
+  if (urlEl) baseUrl = urlEl.value.trim();
+  try {
+    var res = await fetch('/api/llm/models', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: provider, baseUrl: baseUrl || undefined })
+    });
+    var data = await res.json();
+    if (data.ok && data.models.length > 0) {
+      _detectedModels[provider] = data.models;
+      if (statusEl) { statusEl.textContent = '✓ 偵測到 ' + data.models.length + ' 個模型'; statusEl.className = 'model-status ok'; }
+      renderProviderPanel();
+    } else {
+      if (statusEl) { statusEl.textContent = '✗ ' + (data.error || '未偵測到模型'); statusEl.className = 'model-status err'; }
+    }
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = '✗ 連線失敗'; statusEl.className = 'model-status err'; }
+  }
+}
+
+function esc(s) { return (s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+function readModelValue(provider, tier) {
+  var sel = document.getElementById('model-' + provider + '-' + tier);
+  if (sel && sel.value) return sel.value;
+  var custom = document.getElementById('model-custom-' + provider + '-' + tier);
+  if (custom) return custom.value.trim();
+  return _userConfig.llm[provider]?.models?.[tier] || '';
 }
 
 async function saveUserConfig() {
@@ -417,18 +542,30 @@ async function saveUserConfig() {
     if (!el.checked) disabled.push(el.dataset.plat);
   });
 
+  var provSelect = document.getElementById('llmProviderSelect');
+  var baseUrlEl = document.getElementById('provBaseUrl');
+  var timeoutEl = document.getElementById('provTimeout');
+
   var patch = {
     features: features,
     extractors: { disabled: disabled },
     llm: {
-      provider: document.getElementById('llmProvider').value,
-      omlx: { baseUrl: document.getElementById('omlxBaseUrl').value },
+      provider: provSelect ? provSelect.value : _userConfig.llm.provider,
+      omlx: {
+        baseUrl: baseUrlEl ? baseUrlEl.value.trim() : _userConfig.llm.omlx.baseUrl,
+        models: {
+          flash: readModelValue('omlx', 'flash'),
+          standard: readModelValue('omlx', 'standard'),
+          deep: readModelValue('omlx', 'deep')
+        }
+      },
       opencode: {
         models: {
-          flash: document.getElementById('ocFlash').value,
-          standard: document.getElementById('ocStandard').value,
-          deep: document.getElementById('ocDeep').value
-        }
+          flash: readModelValue('opencode', 'flash'),
+          standard: readModelValue('opencode', 'standard'),
+          deep: readModelValue('opencode', 'deep')
+        },
+        timeoutMs: timeoutEl ? parseInt(timeoutEl.value, 10) || 90000 : _userConfig.llm.opencode.timeoutMs
       }
     }
   };

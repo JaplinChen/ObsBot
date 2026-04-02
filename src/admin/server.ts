@@ -99,6 +99,45 @@ function openBrowser(url: string): void {
   spawn('open', [url], { stdio: 'ignore', detached: true }).unref();
 }
 
+/* ── LLM model detection ────────────────────────────────────────────── */
+
+async function detectModels(
+  provider: string, baseUrl?: string,
+): Promise<{ ok: boolean; models: string[]; error?: string }> {
+  try {
+    if (provider === 'omlx') {
+      const url = (baseUrl || 'http://127.0.0.1:8000') + '/v1/models';
+      const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+      if (!res.ok) return { ok: false, models: [], error: `HTTP ${res.status}` };
+      const data = await res.json() as { data?: Array<{ id: string }> };
+      const models = (data.data ?? []).map((m) => m.id);
+      return { ok: true, models };
+    }
+    if (provider === 'ollama') {
+      const url = (baseUrl || 'http://127.0.0.1:11434') + '/api/tags';
+      const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+      if (!res.ok) return { ok: false, models: [], error: `HTTP ${res.status}` };
+      const data = await res.json() as { models?: Array<{ name: string }> };
+      const models = (data.models ?? []).map((m) => m.name);
+      return { ok: true, models };
+    }
+    if (provider === 'openai') {
+      const apiKey = process.env['OPENAI_API_KEY'] ?? '';
+      const url = (baseUrl || 'https://api.openai.com/v1') + '/models';
+      const headers: Record<string, string> = {};
+      if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) });
+      if (!res.ok) return { ok: false, models: [], error: `HTTP ${res.status}` };
+      const data = await res.json() as { data?: Array<{ id: string }> };
+      const models = (data.data ?? []).map((m) => m.id).sort();
+      return { ok: true, models };
+    }
+    return { ok: false, models: [], error: `不支援的 provider: ${provider}` };
+  } catch (e) {
+    return { ok: false, models: [], error: (e as Error).message };
+  }
+}
+
 /* ── Request handler ────────────────────────────────────────────────── */
 
 async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -154,6 +193,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     const body = await readBody(req);
     const { token } = JSON.parse(body) as { token: string };
     res.end(JSON.stringify(await testToken(token)));
+    return;
+  }
+
+  // --- LLM model detection ---
+  if (url === '/api/llm/models' && method === 'POST') {
+    const body = await readBody(req);
+    const { provider, baseUrl } = JSON.parse(body) as { provider: string; baseUrl?: string };
+    res.end(JSON.stringify(await detectModels(provider, baseUrl)));
     return;
   }
 
