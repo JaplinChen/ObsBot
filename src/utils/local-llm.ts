@@ -6,17 +6,19 @@ import { spawn } from 'node:child_process';
 import { runViaDdgChat } from './ddg-chat.js';
 import { isOmlxAvailable, omlxChatCompletion } from './omlx-client.js';
 import { resolveModelTier, type TaskType } from './model-router.js';
+import { getUserConfig } from './user-config.js';
 
-const CLI_TIMEOUT_MS = 90_000;
+/** Read CLI timeout from user config. */
+function getCliTimeout(): number {
+  return getUserConfig().llm.opencode.timeoutMs;
+}
 
-/** OpenCode free models ranked by benchmark performance. */
-export const LLM_MODELS = {
-  flash: 'opencode/mimo-v2-pro-free',       // fastest (6.7s), clean JSON
-  standard: 'opencode/big-pickle',           // best TW Chinese, structured
-  deep: 'opencode/big-pickle',               // deep analysis fallback
-} as const;
+/** Read OpenCode model names from user config. */
+function getLlmModels(): Record<ModelTier, string> {
+  return getUserConfig().llm.opencode.models;
+}
 
-export type ModelTier = keyof typeof LLM_MODELS;
+export type ModelTier = 'flash' | 'standard' | 'deep';
 export type { TaskType } from './model-router.js';
 
 interface RunOptions {
@@ -42,7 +44,7 @@ export function cleanOpenCodeOutput(raw: string): string {
 
 /** Run prompt via OpenCode CLI using stdin pipe. */
 async function runViaCli(prompt: string, timeoutMs: number, model: string): Promise<string | null> {
-  const timeout = Math.min(timeoutMs, CLI_TIMEOUT_MS);
+  const timeout = Math.min(timeoutMs, getCliTimeout());
 
   return new Promise((resolve) => {
     let resolved = false;
@@ -85,7 +87,7 @@ export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}
   const tier = options.task
     ? resolveModelTier(options.task, options.model)
     : (options.model ?? 'standard');
-  const model = LLM_MODELS[tier];
+  const model = getLlmModels()[tier];
 
   // 1) oMLX local inference (tier-aware: flash→4B, standard→9B, deep→27B)
   if (await isOmlxAvailable()) {

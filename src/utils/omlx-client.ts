@@ -6,25 +6,24 @@
 import { fetchWithTimeout } from './fetch-with-timeout.js';
 import type { ModelTier } from './local-llm.js';
 
-const OMLX_BASE = process.env['OMLX_BASE_URL'] ?? 'http://127.0.0.1:8000';
+import { getUserConfig } from './user-config.js';
+
 const AVAILABILITY_CACHE_MS = 30_000;
+
+/** Read base URL from user config (falls back to env var → default). */
+function getOmlxBase(): string {
+  return getUserConfig().llm.omlx.baseUrl;
+}
 
 /** Read API key lazily so dotenv has time to load .env first. */
 function getApiKey(): string {
   return process.env['OMLX_API_KEY'] ?? '';
 }
 
-/**
- * Map model tiers to oMLX model directory names.
- * flash: 4B Claude-distilled (fast, structured output)
- * standard: 9B Qwen3.5 (balanced)
- * deep: 27B Qwen3.5 (high quality, user-initiated only — batch mode caps to 9B)
- */
-const OMLX_MODELS: Record<ModelTier, string> = {
-  flash: 'MLX-Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-4bit',
-  standard: 'Qwen3.5-9B-MLX-4bit',
-  deep: 'Qwen3.5-27B-4bit',
-};
+/** Read model names from user config. */
+function getOmlxModels(): Record<ModelTier, string> {
+  return getUserConfig().llm.omlx.models;
+}
 
 /** Per-tier default timeouts (ms). Deep is longer for 27B inference. */
 const OMLX_TIMEOUTS: Record<ModelTier, number> = {
@@ -55,7 +54,7 @@ export async function isOmlxAvailable(): Promise<boolean> {
   }
 
   try {
-    const res = await fetchWithTimeout(`${OMLX_BASE}/v1/models`, 3_000, {
+    const res = await fetchWithTimeout(`${getOmlxBase()}/v1/models`, 3_000, {
       headers: authHeaders(),
     });
     _available = res.ok;
@@ -85,8 +84,8 @@ export function setBatchMode(enabled: boolean): void {
 
 /** Get the oMLX model ID for a given tier. Deep caps to 9B in batch mode. */
 export function getOmlxModelId(tier: ModelTier): string {
-  if (_batchMode && tier === 'deep') return OMLX_MODELS.standard;
-  return OMLX_MODELS[tier];
+  if (_batchMode && tier === 'deep') return getOmlxModels().standard;
+  return getOmlxModels()[tier];
 }
 
 /** Get the default timeout for a given tier. */
@@ -141,7 +140,7 @@ export async function omlxChatCompletion(
   });
 
   try {
-    const res = await fetchWithTimeout(`${OMLX_BASE}/v1/chat/completions`, timeoutMs, {
+    const res = await fetchWithTimeout(`${getOmlxBase()}/v1/chat/completions`, timeoutMs, {
       method: 'POST',
       headers: authHeaders('application/json'),
       body,
@@ -194,7 +193,7 @@ export async function omlxVisionCompletion(
   });
 
   try {
-    const res = await fetchWithTimeout(`${OMLX_BASE}/v1/chat/completions`, timeoutMs, {
+    const res = await fetchWithTimeout(`${getOmlxBase()}/v1/chat/completions`, timeoutMs, {
       method: 'POST',
       headers: authHeaders('application/json'),
       body,

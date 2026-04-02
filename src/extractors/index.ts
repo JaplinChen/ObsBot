@@ -17,23 +17,43 @@ import { directVideoExtractor } from './direct-video-extractor.js';
 import { webExtractor } from './web-extractor.js';
 import { loadPlugins } from '../plugins/plugin-loader.js';
 import { logger } from '../core/logger.js';
+import { getEnabledPlatforms } from '../utils/user-config.js';
+import type { Extractor } from './types.js';
 
-/** Register all extractors — add new platforms here.
+/** Platform key → extractor mapping. */
+const PLATFORM_EXTRACTORS: Record<string, Extractor> = {
+  x: xExtractor,
+  threads: threadsExtractor,
+  youtube: youtubeExtractor,
+  github: githubExtractor,
+  reddit: redditExtractor,
+  bilibili: bilibiliExtractor,
+  weibo: weiboExtractor,
+  xiaohongshu: xiaohongshuExtractor,
+  douyin: douyinExtractor,
+  tiktok: tiktokExtractor,
+  ithome: ithomeExtractor,
+  zhihu: zhihuExtractor,
+  'direct-video': directVideoExtractor,
+};
+
+/** Register all extractors — respects user-config disabled list.
  *  Order matters: plugins before webExtractor, webExtractor last (fallback). */
 export async function registerAllExtractors(): Promise<void> {
-  registerExtractor(xExtractor);
-  registerExtractor(threadsExtractor);
-  registerExtractor(youtubeExtractor);
-  registerExtractor(githubExtractor);
-  registerExtractor(redditExtractor);
-  registerExtractor(bilibiliExtractor);
-  registerExtractor(weiboExtractor);
-  registerExtractor(xiaohongshuExtractor);
-  registerExtractor(douyinExtractor);
-  registerExtractor(tiktokExtractor);
-  registerExtractor(ithomeExtractor);
-  registerExtractor(zhihuExtractor);
-  registerExtractor(directVideoExtractor);
+  const enabled = new Set(getEnabledPlatforms());
+  const skipped: string[] = [];
+
+  for (const [key, extractor] of Object.entries(PLATFORM_EXTRACTORS)) {
+    if (enabled.has(key)) {
+      registerExtractor(extractor);
+    } else {
+      skipped.push(key);
+    }
+  }
+
+  if (skipped.length > 0) {
+    logger.info('extractors', `已停用 ${skipped.length} 個平台`, { platforms: skipped.join(', ') });
+  }
 
   // Load plugins before fallback extractor
   const plugins = await loadPlugins();
@@ -41,5 +61,8 @@ export async function registerAllExtractors(): Promise<void> {
     logger.info('extractors', `已載入 ${plugins.length} 個插件 extractor`);
   }
 
-  registerExtractor(webExtractor); // fallback — must be last
+  // web extractor is always registered as fallback (unless explicitly disabled)
+  if (enabled.has('web')) {
+    registerExtractor(webExtractor);
+  }
 }
