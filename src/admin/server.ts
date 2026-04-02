@@ -187,8 +187,11 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
   res.end(JSON.stringify({ error: 'Not found' }));
 });
 
-server.listen(PORT, '127.0.0.1', () => {
+// Docker 容器內綁定 0.0.0.0 讓外部可連線；本機開發綁定 127.0.0.1
+const BIND_HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
+
+server.listen(PORT, BIND_HOST, () => {
   console.log(`\n✅ 設定頁面已開啟：http://localhost:${PORT}/?token=${SESSION_TOKEN}`);
   console.log('   （若瀏覽器未自動開啟，請手動前往上方網址）\n');
-  openBrowser(`http://localhost:${PORT}/?token=${SESSION_TOKEN}`);
+  if (BIND_HOST === '127.0.0.1') openBrowser(`http://localhost:${PORT}/?token=${SESSION_TOKEN}`);
 });

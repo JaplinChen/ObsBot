@@ -1,5 +1,31 @@
 # ObsBot
 
+**Turn social content into your second brain.**
+
+Drop a link to the Telegram Bot — it auto-extracts articles, comments, images & videos, classifies them, and saves Markdown notes to your Obsidian Vault.
+
+<details>
+<summary><strong>Quick Start (Docker)</strong></summary>
+
+```bash
+git clone https://github.com/user/obsbot.git && cd obsbot
+cp .env.example .env
+# Edit .env → set BOT_TOKEN and HOST_VAULT_PATH
+docker compose up -d
+```
+
+Get your `BOT_TOKEN` from [@BotFather](https://t.me/BotFather) on Telegram. Set `HOST_VAULT_PATH` to your Obsidian vault directory. That's it — send any URL to your bot and it becomes a note.
+
+**Supported platforms:** X / Threads / Reddit / YouTube / GitHub / TikTok / Bilibili / Weibo / Xiaohongshu / Douyin + any webpage.
+
+See [中文文件](#obsbot-1) below for full documentation.
+
+</details>
+
+---
+
+<a id="obsbot-1"></a>
+
 **把社群內容變成你的第二大腦。**
 
 丟一個連結給 Telegram Bot，它會自動抓取文章、評論、圖片與影片，智慧分類後存成 Markdown 筆記到你的 Obsidian Vault。
