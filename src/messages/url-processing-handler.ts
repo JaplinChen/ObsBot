@@ -15,6 +15,10 @@ import {
 import { enrichExtractedContent } from './services/enrich-content-service.js';
 import { extractContentWithComments } from './services/extract-content-service.js';
 import { saveExtractedContent } from './services/save-content-service.js';
+import { isDuplicateUrl } from '../saver.js';
+import { createReclassifyButton } from '../commands/reclassify-action.js';
+import { isCircuitAllowed, recordSuccess, recordFailure } from '../monitoring/circuit-breaker.js';
+import { recordMetric } from '../core/metrics.js';
 import { processSeriesBatch } from './services/series-processing-service.js';
 import { classifyFailureReason, type BotStats } from './types.js';
 import { parseIntent, replySuggestion } from './intent-parser.js';
@@ -83,16 +87,37 @@ export function registerUrlProcessingHandler(
     ctx.sendChatAction('typing').catch(() => {});
     react(ctx, '👀');
 
-    for (const url of urls) {
+    // Batch mode: show progress summary for multi-URL messages
+    const batchMode = urls.length > 1;
+    if (batchMode) {
+      await ctx.reply(`📦 收到 ${urls.length} 個連結，並行處理中…`);
+    }
+
+    /** Process a single URL (extracted for batch parallelism) */
+    const processSingleUrl = async (url: string) => {
       const extractor = findExtractor(url);
       if (!extractor) {
         logger.warn('msg', 'unsupported url', { url });
         await ctx.reply(formatUnsupportedUrlMessage(url));
-        continue;
+        return;
       }
 
       logger.info('msg', 'extracting', { platform: extractor.platform, url });
       stats.urls++;
+
+      // Early duplicate check — avoid wasting LLM compute on known URLs
+      const existingPath = await isDuplicateUrl(url, config.vaultPath);
+      if (existingPath) {
+        logger.info('msg', 'early dedup hit', { url });
+        await ctx.reply(formatDuplicateMessage(existingPath, config.vaultPath), { parse_mode: 'HTML' });
+        return;
+      }
+
+      // Circuit breaker: skip platforms with repeated failures
+      if (!isCircuitAllowed(extractor.platform)) {
+        logger.info('msg', 'circuit breaker blocked', { platform: extractor.platform, url });
+        await ctx.reply(`⚡ ${extractor.platform} 平台暫時不可用（連續失敗中），5 分鐘後自動恢復。`);
+      }
 
       // Series detection: batch-process all articles
       if (isSeriesExtractor(extractor) && extractor.isSeries(url)) {
@@ -115,7 +140,7 @@ export function registerUrlProcessingHandler(
           await ctx.reply(formatErrorMessage(err));
         }
         try { await ctx.deleteMessage(processing.message_id); } catch { /* */ }
-        continue;
+        return;
       }
 
       // Standard single-URL processing with progress streaming
@@ -133,7 +158,10 @@ export function registerUrlProcessingHandler(
         const t0 = Date.now();
         const content = await extractContentWithComments(url, extractor as ExtractorWithComments);
         const wasFallback = extractor.platform !== 'web' && content.platform === 'web';
-        logger.info('perf', 'extract', { ms: Date.now() - t0, wasFallback });
+        const extractMs = Date.now() - t0;
+        logger.info('perf', 'extract', { ms: extractMs, wasFallback });
+        recordSuccess(wasFallback ? 'web' : extractor.platform);
+        recordMetric({ ts: Date.now(), type: 'extract', platform: extractor.platform, url, durationMs: extractMs, success: true, fallback: wasFallback }).catch(() => {});
 
         updateProgress('enriching');
         const t1 = Date.now();
@@ -151,7 +179,7 @@ export function registerUrlProcessingHandler(
           stopTyping();
           await ctx.reply(formatDuplicateMessage(result.mdPath, config.vaultPath), { parse_mode: 'HTML' });
           try { await ctx.deleteMessage(msgId); } catch { /* */ }
-          continue;
+          return;
         }
 
         stats.saved++;
@@ -161,7 +189,13 @@ export function registerUrlProcessingHandler(
         stopTyping();
         react(ctx, '✅');
         const fallbackNote = wasFallback ? '\n⚠️ 平台擷取失敗，已使用通用網頁擷取' : '';
-        await ctx.reply(formatSavedSummary(content, result, config.vaultPath) + fallbackNote, { parse_mode: 'HTML' });
+        const recatBtn = createReclassifyButton(
+          result.mdPath, content.category ?? '其他', content.title, content.enrichedKeywords ?? [],
+        );
+        await ctx.reply(formatSavedSummary(content, result, config.vaultPath) + fallbackNote, {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: [[recatBtn]] },
+        });
 
         // 回傳資訊卡圖片到 Telegram
         if (result.cardPath) {
@@ -177,6 +211,9 @@ export function registerUrlProcessingHandler(
       } catch (err) {
         stopTyping();
         react(ctx, '❌');
+        recordFailure(extractor.platform);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        recordMetric({ ts: Date.now(), type: 'extract', platform: extractor.platform, url, success: false, error: errMsg }).catch(() => {});
         logger.error('msg', 'error processing url', { url, err });
         stats.errors++;
         if (stats.failedUrls.length >= 50) stats.failedUrls.shift();
@@ -197,6 +234,17 @@ export function registerUrlProcessingHandler(
       } catch {
         // ignore
       }
+    };
+
+    // Concurrency-limited parallel processing (max 3)
+    const CONCURRENCY = batchMode ? 3 : 1;
+    for (let i = 0; i < urls.length; i += CONCURRENCY) {
+      const batch = urls.slice(i, i + CONCURRENCY);
+      await Promise.allSettled(batch.map(u => processSingleUrl(u)));
+    }
+
+    if (batchMode) {
+      await ctx.reply(`📦 ${urls.length} 個連結處理完成`);
     }
   });
 }

@@ -33,8 +33,13 @@ bot.catch((err: unknown) => {
   logger.error('bot', 'Bot error', err);
 });
 
+// Startup health tracking
+const startupResults: Array<{ name: string; ok: boolean; error?: string }> = [];
+
 // Load existing rules and knowledge immediately (fast, from disk)
-initDynamicClassifier(RULES_PATH).catch((e) => logger.warn('classify', '分類器初始化失敗', { message: (e as Error).message }));
+initDynamicClassifier(RULES_PATH)
+  .then(() => startupResults.push({ name: '分類器', ok: true }))
+  .catch((e) => { startupResults.push({ name: '分類器', ok: false, error: (e as Error).message }); logger.warn('classify', '分類器初始化失敗', { message: (e as Error).message }); });
 if (feat.consolidation) {
   loadKnowledge()
     .then(async (knowledge) => {
@@ -62,60 +67,61 @@ if (feat.consolidation) {
 
 // Re-scan vault in background to update rules (slow, but non-blocking)
 runVaultLearner(config.vaultPath, RULES_PATH)
-  .then((patterns) => refreshFromPatterns(patterns))
-  .catch((e) => logger.warn('learn', '啟動學習失敗', { message: (e as Error).message }));
+  .then((patterns) => { refreshFromPatterns(patterns); startupResults.push({ name: '學習器', ok: true }); })
+  .catch((e) => { startupResults.push({ name: '學習器', ok: false, error: (e as Error).message }); logger.warn('learn', '啟動學習失敗', { message: (e as Error).message }); });
 
 // Start subscription checker in background
 loadSubscriptions()
   .then((store) => {
-    if (store.subscriptions.length > 0) {
-      registerTimers(startSubscriptionChecker(bot, config, store));
-    }
+    if (store.subscriptions.length > 0) registerTimers(startSubscriptionChecker(bot, config, store));
+    startupResults.push({ name: '訂閱', ok: true });
   })
-  .catch((e) => logger.warn('subscribe', '載入訂閱失敗', { message: (e as Error).message }));
+  .catch((e) => { startupResults.push({ name: '訂閱', ok: false, error: (e as Error).message }); logger.warn('subscribe', '載入訂閱失敗', { message: (e as Error).message }); });
 
 // Start content radar in background
 loadRadarConfig()
   .then((radarConfig) => {
-    if (radarConfig.enabled && radarConfig.queries.length > 0) {
-      registerTimers(startRadarChecker(bot, config, radarConfig));
-    }
+    if (radarConfig.enabled && radarConfig.queries.length > 0) registerTimers(startRadarChecker(bot, config, radarConfig));
+    startupResults.push({ name: '雷達', ok: true });
   })
-  .catch((e) => logger.warn('radar', '載入雷達失敗', { message: (e as Error).message }));
+  .catch((e) => { startupResults.push({ name: '雷達', ok: false, error: (e as Error).message }); logger.warn('radar', '載入雷達失敗', { message: (e as Error).message }); });
 
 // Start async video transcription queue
 registerTimers(startVideoQueue(bot, config));
 
-// Start proactive intelligence service
-if (feat.proactive) {
-  startProactiveService(bot, config)
-    .then((ts) => registerTimers(...ts))
-    .catch((e) => logger.warn('proactive', '啟動主動推理失敗', { message: (e as Error).message }));
-}
-
-// Start self-healing monitoring service
-if (feat.monitor) {
-  startMonitorService(bot, config)
-    .then((ts) => registerTimers(...ts))
-    .catch((e) => logger.warn('monitor', '啟動監控服務失敗', { message: (e as Error).message }));
-}
-
-// Start tool wall intelligence service
-if (feat.wall) {
-  startWallService(bot, config)
-    .then((ts) => registerTimers(...ts))
-    .catch((e) => logger.warn('wall', '啟動情報牆失敗', { message: (e as Error).message }));
-}
-
-// Start content patrol service (GitHub Trending auto-fetch)
-if (feat.patrol) {
-  startPatrolService(bot, config)
-    .then((ts) => registerTimers(...ts))
-    .catch((e) => logger.warn('patrol', '啟動巡邏服務失敗', { message: (e as Error).message }));
+// Start optional background services
+const optionalServices: Array<[boolean, string, () => Promise<NodeJS.Timeout[]>]> = [
+  [feat.proactive, '主動推理', () => startProactiveService(bot, config)],
+  [feat.monitor, '監控', () => startMonitorService(bot, config)],
+  [feat.wall, '情報牆', () => startWallService(bot, config)],
+  [feat.patrol, '巡邏', () => startPatrolService(bot, config)],
+];
+for (const [enabled, name, starter] of optionalServices) {
+  if (!enabled) continue;
+  starter()
+    .then((ts) => { registerTimers(...ts); startupResults.push({ name, ok: true }); })
+    .catch((e) => { startupResults.push({ name, ok: false, error: (e as Error).message }); logger.warn(name, `啟動${name}失敗`, { message: (e as Error).message }); });
 }
 
 // Start Admin UI server (config management on port 3001)
 startAdminServer();
+
+// Send startup health summary after services settle (10s delay)
+setTimeout(async () => {
+  const ownerId = getOwnerUserId(config);
+  if (!ownerId) return;
+  const ok = startupResults.filter(r => r.ok).map(r => r.name);
+  const fail = startupResults.filter(r => !r.ok);
+  const mem = process.memoryUsage();
+  const heapMB = Math.round(mem.heapUsed / 1024 / 1024);
+  const lines = [
+    `🚀 ObsBot 啟動完成`,
+    `✅ ${ok.length} 個服務正常${ok.length > 0 ? `：${ok.join('、')}` : ''}`,
+    ...(fail.length > 0 ? [`❌ ${fail.length} 個服務失敗：${fail.map(f => `${f.name}(${f.error?.slice(0, 30)})`).join('、')}`] : []),
+    `💾 記憶體：${heapMB} MB | PID：${process.pid}`,
+  ];
+  bot.telegram.sendMessage(ownerId, lines.join('\n')).catch(() => {});
+}, 10_000);
 
 const forceMode = process.argv.includes('--force');
 new ProcessGuardian(bot, forceMode).launch();

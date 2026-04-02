@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { homedir } from 'node:os';
 import { getUserConfig, updateUserConfig } from '../utils/user-config.js';
+import { getMetricsSummary } from '../core/metrics.js';
+import { getBreakerStatus } from '../monitoring/circuit-breaker.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = 3001;
@@ -219,6 +221,26 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     const patch = JSON.parse(body) as Record<string, unknown>;
     const updated = updateUserConfig(patch);
     res.end(JSON.stringify(updated));
+    return;
+  }
+
+  // --- Dashboard endpoints (runtime monitoring) ---
+  if (url === '/api/status' && method === 'GET') {
+    const mem = process.memoryUsage();
+    res.end(JSON.stringify({
+      uptime: Math.round(process.uptime()),
+      heapMB: Math.round(mem.heapUsed / 1024 / 1024),
+      rssMB: Math.round(mem.rss / 1024 / 1024),
+      pid: process.pid,
+      nodeVersion: process.version,
+      breakers: getBreakerStatus(),
+    }));
+    return;
+  }
+
+  if (url === '/api/metrics' && method === 'GET') {
+    const hours = parseInt(new URL(`http://x${req.url}`).searchParams.get('hours') ?? '24');
+    res.end(JSON.stringify(await getMetricsSummary(hours)));
     return;
   }
 

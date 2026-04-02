@@ -43,6 +43,8 @@ import { handleCodeAction } from './code-command.js';
 import { handleVsearch } from './vsearch-command.js';
 import { handleToolkit } from './toolkit-command.js';
 import { handleMemoryExport } from './memory-export-command.js';
+import { handleConfig, handleConfigFeatureToggle, handleConfigResetConfirm, handleConfigResetCancel } from './config-command.js';
+import { handleReclassifyPicker, handleReclassifyMove } from './reclassify-action.js';
 // Hub dispatchers
 import { handleSearchHub, handleSearchCallback } from './search-hub.js';
 import { handleTrackHub, handleTrackCallback } from './track-hub.js';
@@ -85,9 +87,7 @@ export function registerCommands(
 ): void {
   bot.start((ctx) => ctx.reply(HELP_TEXT, HELP_KEYBOARD));
   bot.command('help', (ctx) => {
-    const arg = (ctx.message?.text ?? '').split(/\s+/)[1];
-    if (arg === 'all') { ctx.reply(HELP_ALL_TEXT); return; }
-    ctx.reply(HELP_TEXT, HELP_KEYBOARD);
+    ctx.reply((ctx.message?.text ?? '').includes('all') ? HELP_ALL_TEXT : HELP_TEXT, HELP_KEYBOARD);
   });
 
   registerLearningCommands(bot, config, formatErrorMessage);
@@ -128,6 +128,7 @@ export function registerCommands(
   registerAsyncCommand(bot, 'suggest', 'suggest', config, handleSuggest);
   registerAsyncCommand(bot, 'toolkit', 'toolkit', config, handleToolkit);
   registerAsyncCommand(bot, 'memory', 'memory-export', config, handleMemoryExport);
+  registerAsyncCommand(bot, 'config', 'config', config, handleConfig);
 
   // --- InlineKeyboard: /knowledge sub-actions ---
   registerAsyncAction(bot, /^kb:(.+)$/, 'knowledge-action', async (ctx) => {
@@ -236,6 +237,14 @@ export function registerCommands(
     await handleSubscribeAction(ctx, config);
   });
 
+  // --- InlineKeyboard: /config + reclassify actions ---
+  bot.action(/^cfg:feat:(.+)$/, (ctx) => { handleConfigFeatureToggle(ctx).catch(() => {}); });
+  bot.action(/^cfg:reset:(confirm|cancel)$/, (ctx) => {
+    (ctx.match![1] === 'confirm' ? handleConfigResetConfirm : handleConfigResetCancel)(ctx).catch(() => {});
+  });
+  bot.action(/^recat:(.+)$/, (ctx) => { handleReclassifyPicker(ctx).catch(() => {}); });
+  bot.action(/^rcmv:(.+)$/, (ctx) => { handleReclassifyMove(ctx).catch(() => {}); });
+
   // --- InlineKeyboard: /code action ---
   registerAsyncAction(bot, /^code:(.+)$/, 'code-action', handleCodeAction);
 
@@ -269,28 +278,18 @@ export function registerCommands(
   });
 
   // --- ForceReply dispatch ---
-  registerForceReplyHandler('search', (ctx) =>
-    runCommandTask(ctx, 'search', () => handleSearch(ctx, config), formatErrorMessage));
-  registerForceReplyHandler('monitor', (ctx) =>
-    runCommandTask(ctx, 'monitor', () => handleMonitor(ctx, config), formatErrorMessage));
-  registerForceReplyHandler('timeline', (ctx) =>
-    runCommandTask(ctx, 'timeline', () => handleTimeline(ctx, config), formatErrorMessage));
-  registerForceReplyHandler('explore', (ctx) =>
-    runCommandTask(ctx, 'explore', () => handleExplore(ctx, config), formatErrorMessage));
-  registerForceReplyHandler('ask', (ctx) =>
-    runCommandTask(ctx, 'ask', () => handleAsk(ctx, config), formatErrorMessage));
-  registerForceReplyHandler('discover', (ctx) =>
-    runCommandTask(ctx, 'discover', () => handleDiscover(ctx, config), formatErrorMessage));
-  registerForceReplyHandler('reprocess', (ctx) =>
-    runCommandTask(ctx, 'reprocess', () => handleReprocess(ctx, config), formatErrorMessage));
-  registerForceReplyHandler('reformat', (ctx) =>
-    runCommandTask(ctx, 'reformat', () => handleReformat(ctx, config), formatErrorMessage));
-  registerForceReplyHandler('subscribe', (ctx) =>
-    runCommandTask(ctx, 'subscribe', () => handleSubscribe(ctx, config), formatErrorMessage));
-  registerForceReplyHandler('find', (ctx) =>
-    runCommandTask(ctx, 'find', () => handleFind(ctx, config), formatErrorMessage));
-  registerForceReplyHandler('vsearch-hub', (ctx) =>
-    runCommandTask(ctx, 'vsearch', () => handleVsearch(ctx, config), formatErrorMessage));
+  const forceReplyMap: Record<string, [string, (c: Context, cfg: AppConfig) => Promise<void>]> = {
+    search: ['search', handleSearch], monitor: ['monitor', handleMonitor],
+    timeline: ['timeline', handleTimeline], explore: ['explore', handleExplore],
+    ask: ['ask', handleAsk], discover: ['discover', handleDiscover],
+    reprocess: ['reprocess', handleReprocess], reformat: ['reformat', handleReformat],
+    subscribe: ['subscribe', handleSubscribe], find: ['find', handleFind],
+    'vsearch-hub': ['vsearch', handleVsearch],
+  };
+  for (const [key, [tag, handler]] of Object.entries(forceReplyMap)) {
+    registerForceReplyHandler(key, (ctx) =>
+      runCommandTask(ctx, tag, () => handler(ctx, config), formatErrorMessage));
+  }
 
   registerInfoCommands(bot, stats, startTime);
 

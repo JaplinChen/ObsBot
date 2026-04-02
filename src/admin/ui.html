@@ -192,6 +192,7 @@
   <div class="tabs">
     <div class="tab active" onclick="switchTab('setup')">初始設定</div>
     <div class="tab" onclick="switchTab('config')">功能配置</div>
+    <div class="tab" onclick="switchTab('dashboard')">監控面板</div>
   </div>
 
   <!-- ===== Tab 1: Setup ===== -->
@@ -267,17 +268,92 @@
     <button class="btn btn-primary" onclick="saveUserConfig()">💾 儲存配置</button>
     <div class="save-status" id="saveStatus"></div>
   </div>
+
+  <!-- ===== Tab 3: Dashboard ===== -->
+  <div class="tab-content" id="tab-dashboard">
+    <div class="section">
+      <div class="section-title">📊 系統狀態</div>
+      <div id="sysStatus" style="font-size:14px;line-height:1.8;color:#555;">載入中…</div>
+    </div>
+    <div class="section" style="margin-top:20px;">
+      <div class="section-title">📈 24 小時指標</div>
+      <div id="metricsPanel" style="font-size:14px;line-height:1.8;color:#555;">載入中…</div>
+    </div>
+    <div class="section" style="margin-top:20px;">
+      <div class="section-title">🌐 平台統計</div>
+      <div id="platformPanel" style="font-size:13px;color:#555;"></div>
+    </div>
+    <div class="section" style="margin-top:20px;">
+      <div class="section-title">⚡ 熔斷器狀態</div>
+      <div id="breakerPanel" style="font-size:13px;color:#555;">無異常</div>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-ghost" onclick="loadDashboard()">🔄 重新整理</button>
+    </div>
+  </div>
 </div>
 
 <script>
 /* ── Tab switching ──────────────────────────────────────────────────── */
 function switchTab(name) {
+  const tabNames = ['setup', 'config', 'dashboard'];
   document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', (i === 0 && name === 'setup') || (i === 1 && name === 'config'));
+    t.classList.toggle('active', tabNames[i] === name);
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'config') loadUserConfig();
+  if (name === 'dashboard') loadDashboard();
+}
+
+/* ── Dashboard tab ─────────────────────────────────────────────────── */
+async function loadDashboard() {
+  try {
+    const [statusRes, metricsRes] = await Promise.all([
+      fetch('/api/status'), fetch('/api/metrics?hours=24'),
+    ]);
+    const status = await statusRes.json();
+    const metrics = await metricsRes.json();
+
+    const h = Math.floor(status.uptime / 3600);
+    const m = Math.floor((status.uptime % 3600) / 60);
+    document.getElementById('sysStatus').innerHTML = [
+      `⏱ 運行時間：${h}h ${m}m`,
+      `💾 記憶體：${status.heapMB} MB (Heap) / ${status.rssMB} MB (RSS)`,
+      `🔧 PID：${status.pid} | Node：${status.nodeVersion}`,
+    ].join('<br>');
+
+    document.getElementById('metricsPanel').innerHTML = [
+      `📥 總請求：${metrics.totalRequests}`,
+      `✅ 成功率：${metrics.successRate}%`,
+      `⏳ 平均耗時：${metrics.avgDurationMs} ms`,
+      metrics.recentErrors.length > 0
+        ? `❌ 近期錯誤：<br>${metrics.recentErrors.map(e => '&nbsp;&nbsp;• ' + e).join('<br>')}`
+        : '❌ 近期無錯誤',
+    ].join('<br>');
+
+    if (metrics.platformStats.length > 0) {
+      const rows = metrics.platformStats.map(p =>
+        `<tr><td>${p.platform}</td><td>${p.count}</td><td>${p.successRate}%</td><td>${p.avgMs}ms</td></tr>`
+      ).join('');
+      document.getElementById('platformPanel').innerHTML =
+        `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr style="text-align:left;border-bottom:1px solid #eee;"><th>平台</th><th>次數</th><th>成功率</th><th>平均耗時</th></tr>
+          ${rows}</table>`;
+    } else {
+      document.getElementById('platformPanel').innerHTML = '尚無資料';
+    }
+
+    if (status.breakers && status.breakers.length > 0) {
+      document.getElementById('breakerPanel').innerHTML = status.breakers.map(b =>
+        `⚡ ${b.platform}：${b.status}（${b.failures} 次失敗）`
+      ).join('<br>');
+    } else {
+      document.getElementById('breakerPanel').innerHTML = '✅ 所有平台正常';
+    }
+  } catch (err) {
+    document.getElementById('sysStatus').textContent = '載入失敗：' + err.message;
+  }
 }
 
 /* ── Setup tab (existing) ───────────────────────────────────────────── */

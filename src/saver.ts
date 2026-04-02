@@ -1,4 +1,4 @@
-import { mkdir, writeFile, readFile, copyFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, copyFile, stat } from 'node:fs/promises';
 import { join, extname, resolve, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { ExtractedContent, Platform } from './extractors/types.js';
@@ -6,9 +6,11 @@ import { formatAsMarkdown } from './formatter.js';
 import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
 import { canonicalizeUrl } from './utils/url-canonicalizer.js';
 import { getAllMdFiles } from './vault/frontmatter-utils.js';
+import { logger } from './core/logger.js';
 
 // In-memory URL index: normalizedUrl → filePath (built on first use)
 let urlIndex: Map<string, string> | null = null;
+const INDEX_FILE = join('data', 'url-index.json');
 
 // URLs currently being processed (race condition protection)
 const processingUrls = new Set<string>();
@@ -97,8 +99,41 @@ export interface SaveResult {
   cardPath?: string;
 }
 
+/** Try to load persisted URL index from disk. Returns null if stale or missing. */
+async function loadPersistedIndex(vaultPath: string): Promise<Map<string, string> | null> {
+  try {
+    const raw = await readFile(INDEX_FILE, 'utf-8');
+    const data = JSON.parse(raw) as { version: number; count: number; entries: Record<string, string> };
+    if (data.version !== 1) return null;
+    // Staleness check: if vault file count differs by >10%, rebuild
+    const rootDir = join(vaultPath, 'ObsBot');
+    const files = await getAllMdFiles(rootDir);
+    if (Math.abs(files.length - data.count) > Math.max(data.count * 0.1, 5)) {
+      logger.info('saver', 'URL 索引過期，重新掃描', { cached: data.count, actual: files.length });
+      return null;
+    }
+    return new Map(Object.entries(data.entries));
+  } catch { return null; }
+}
+
+/** Persist URL index to disk for fast cold start. */
+async function persistIndex(index: Map<string, string>): Promise<void> {
+  try {
+    await mkdir('data', { recursive: true });
+    const data = { version: 1, count: index.size, entries: Object.fromEntries(index) };
+    await writeFile(INDEX_FILE, JSON.stringify(data), 'utf-8');
+  } catch { /* best-effort */ }
+}
+
 /** Build URL index by scanning all .md files (runs once, then cached in memory). */
 async function buildUrlIndex(vaultPath: string): Promise<Map<string, string>> {
+  // Try persisted cache first
+  const cached = await loadPersistedIndex(vaultPath);
+  if (cached) {
+    logger.info('saver', 'URL 索引從快取載入', { size: cached.size });
+    return cached;
+  }
+
   const index = new Map<string, string>();
   const rootDir = join(vaultPath, 'ObsBot');
   const files = await getAllMdFiles(rootDir);
@@ -112,6 +147,8 @@ async function buildUrlIndex(vaultPath: string): Promise<Map<string, string>> {
     } catch { /* skip unreadable files */ }
   }
 
+  logger.info('saver', 'URL 索引重新掃描完成', { size: index.size });
+  await persistIndex(index);
   return index;
 }
 
@@ -231,8 +268,11 @@ export async function saveToVault(
     const mdPath = join(notesDir, mdFilename);
     await writeFile(mdPath, markdown, 'utf-8');
 
-    // Update in-memory index
-    if (urlIndex) urlIndex.set(normUrl, mdPath);
+    // Update in-memory index + persist
+    if (urlIndex) {
+      urlIndex.set(normUrl, mdPath);
+      persistIndex(urlIndex).catch(() => {});
+    }
 
     return { mdPath, imageCount: localImagePaths.length, videoCount: content.videos.length };
   } finally {
