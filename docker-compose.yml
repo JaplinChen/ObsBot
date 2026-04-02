@@ -7,6 +7,7 @@
 services:
   obsbot:
     build: .
+    image: obsbot
     container_name: obsbot
     env_file: .env
     environment:
