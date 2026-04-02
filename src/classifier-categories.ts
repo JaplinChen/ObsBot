@@ -75,6 +75,17 @@ export const CATEGORIES: CategoryRule[] = [
   // AI 功能分類兜底（無法匹配到具體工具時）
   // ══════════════════════════════════════════════════════
   {
+    name: 'AI/3D 視覺',
+    keywords: [
+      'gaussian splatting', '高斯潑灑', '3d gaussian', '3dgs',
+      'nerf', 'neural radiance', 'novel view', '新視角',
+      '3d reconstruction', '3d重建', '三維重建', '3d scene',
+      'neural rendering', '神經渲染', 'point cloud', '點雲',
+      'radiance field', 'splat', 'resplat',
+      'mesh reconstruction', 'depth estimation', '深度估計',
+    ],
+  },
+  {
     name: 'AI/圖像生成',
     keywords: [
       'image generat', '圖片生成', '圖像生成', '圖片放大', 'image enhance',
