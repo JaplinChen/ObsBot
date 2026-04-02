@@ -97,7 +97,7 @@ const DEFAULTS: UserConfig = {
       gemini: false, opencode: true, ddg: true,
     },
     omlx: {
-      baseUrl: `http://${LOCAL_HOST}:8000`,
+      baseUrl: `http://${LOCAL_HOST}:11435`,
       apiKey: '',
       model: '',
       models: {
