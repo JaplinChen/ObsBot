@@ -4,7 +4,6 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { getUserConfig, updateUserConfig } from '../utils/user-config.js';
 
@@ -13,27 +12,12 @@ const PORT = 3001;
 const ENV_PATH = join(__dirname, '../../.env');
 const RAW_HTML = readFileSync(join(__dirname, 'ui.html'), 'utf-8');
 
-// One-time session token — invalidates when the server restarts
-const SESSION_TOKEN = randomBytes(16).toString('hex');
+const UI_HTML = RAW_HTML;
 
-// Inject a fetch interceptor that forwards the token from the URL to all /api/ calls
-const TOKEN_SCRIPT = `<script>
-(function(){
-  var _tok=new URLSearchParams(location.search).get('token')||'';
-  var _orig=window.fetch.bind(window);
-  window.fetch=function(url,opts){
-    opts=opts||{};
-    if(typeof url==='string'&&url.startsWith('/api/')){
-      opts=Object.assign({},opts,{headers:Object.assign({},opts.headers,{'x-session-token':_tok})});
-    }
-    return _orig(url,opts);
-  };
-})();
-</script>`;
-const UI_HTML = RAW_HTML.replace('</head>', TOKEN_SCRIPT + '</head>');
-
-function isAuthorized(req: IncomingMessage): boolean {
-  return req.headers['x-session-token'] === SESSION_TOKEN;
+/** Only allow localhost connections (127.0.0.1 / ::1 / ::ffff:127.0.0.1). */
+function isLocalhost(req: IncomingMessage): boolean {
+  const remote = req.socket.remoteAddress ?? '';
+  return remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1';
 }
 
 function readEnv(): Record<string, string> {
@@ -152,7 +136,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  if (url.startsWith('/api/') && !isAuthorized(req)) {
+  if (url.startsWith('/api/') && !isLocalhost(req)) {
     res.statusCode = 403;
     res.end(JSON.stringify({ error: 'Unauthorized' }));
     return;
@@ -240,7 +224,7 @@ export function startAdminServer(): void {
   });
 
   server.listen(PORT, BIND_HOST, () => {
-    const url = `http://localhost:${PORT}/?token=${SESSION_TOKEN}`;
+    const url = `http://localhost:${PORT}/`;
     console.log(`[admin] 管理介面已啟動：${url}`);
     if (BIND_HOST === '127.0.0.1') openBrowser(url);
   });
