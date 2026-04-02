@@ -25,7 +25,7 @@ const CACHE_TTL = 30_000;
 
 /** Check if a provider is reachable (cached). */
 export async function isProviderAvailable(provider: LlmProviderKey): Promise<boolean> {
-  if (provider === 'opencode' || provider === 'ddg' || provider === 'none' || provider === 'auto') return false;
+  if (provider === 'opencode' || provider === 'ddg') return false;
 
   const cached = _availCache.get(provider);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.ok;

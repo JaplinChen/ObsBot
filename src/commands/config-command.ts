@@ -44,7 +44,7 @@ export async function handleConfig(ctx: Context): Promise<void> {
     '⚙️ **ObsBot 配置**',
     '',
     `🔘 功能開關：${onCount}/${totalCount} 啟用`,
-    `🤖 LLM：${cfg.llm.provider}`,
+    `🤖 LLM：${cfg.llm.order.filter(k => cfg.llm.enabled[k]).join(' → ')}`,
     `🌐 平台：${platforms.length} 個啟用`,
     '',
     '子指令：',
@@ -78,7 +78,7 @@ async function showLlm(ctx: Context): Promise<void> {
   const lines = [
     '🤖 **LLM 配置**',
     '',
-    `Provider: \`${cfg.llm.provider}\``,
+    `Provider: \`${cfg.llm.order.filter(k => cfg.llm.enabled[k]).join(' → ')}\``,
     '',
     '**oMLX**',
     `  Base URL: \`${cfg.llm.omlx.baseUrl}\``,

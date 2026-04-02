@@ -157,16 +157,25 @@
 
     .save-status { text-align: center; font-size: 14px; margin-top: 12px; min-height: 20px; }
 
-    /* Provider tabs */
-    .provider-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
-    .provider-tab {
-      flex: 1; padding: 10px 8px; text-align: center; border: 2px solid #e8e8e8;
-      border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
-      color: #888; background: #fafafa; transition: all 0.2s;
+    /* Provider list */
+    .provider-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+    .provider-row {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      border: 2px solid #e8e8e8; border-radius: 8px; background: #fafafa;
+      transition: all 0.15s; cursor: pointer;
     }
-    .provider-tab:hover { border-color: #667eea; color: #667eea; }
-    .provider-tab.active { border-color: #667eea; background: #f0f2ff; color: #667eea; }
-    .provider-tab .icon { font-size: 18px; display: block; margin-bottom: 2px; }
+    .provider-row:hover { border-color: #c0c8f0; }
+    .provider-row.active { border-color: #667eea; background: #f0f2ff; }
+    .provider-row.disabled { opacity: 0.45; }
+    .provider-row .icon { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
+    .provider-row .name { font-size: 14px; font-weight: 600; color: #444; flex: 1; }
+    .provider-row .desc { font-size: 12px; color: #999; flex: 1; }
+    .provider-row .order-btns { display: flex; flex-direction: column; gap: 0; }
+    .provider-row .order-btn {
+      background: none; border: none; cursor: pointer; font-size: 11px;
+      color: #aaa; padding: 0 4px; line-height: 1;
+    }
+    .provider-row .order-btn:hover { color: #667eea; }
     .provider-panel { min-height: 120px; }
     .model-row { display: flex; gap: 8px; align-items: center; }
     .model-row select { flex: 1; }
@@ -249,8 +258,8 @@
     </div>
 
     <div class="section">
-      <div class="section-title">🤖 LLM 設定</div>
-      <div class="provider-tabs" id="providerTabs"></div>
+      <div class="section-title">🤖 LLM Provider（拖曳排序 · 點擊設定）</div>
+      <div class="provider-list" id="providerList"></div>
       <div class="provider-panel" id="providerPanel"></div>
     </div>
 
@@ -371,7 +380,7 @@ var PLATFORM_LABELS = {
 
 var _userConfig = {
   features: { translation:true, linkEnrichment:true, imageAnalysis:true, videoTranscription:true, comments:true, proactive:true, monitor:true, wall:true, patrol:false, consolidation:true },
-  llm: { provider:'auto', omlx:{baseUrl:'http://127.0.0.1:8000',apiKey:'',model:'',models:{flash:'',standard:'',deep:''}}, ollama:{baseUrl:'http://127.0.0.1:11434',apiKey:'',model:'',models:{flash:'',standard:'',deep:''}}, openai:{baseUrl:'https://api.openai.com/v1',apiKey:'',model:'',models:{flash:'gpt-4.1-mini',standard:'gpt-4.1-mini',deep:'gpt-4.1'}}, gemini:{apiKey:'',model:'gemini-2.5-flash'}, opencode:{models:{flash:'opencode/mimo-v2-pro-free',standard:'opencode/big-pickle',deep:'opencode/big-pickle'},timeoutMs:90000}, routing:{} },
+  llm: { order:['omlx','ollama','openai','gemini','opencode','ddg'], enabled:{omlx:true,ollama:false,openai:false,gemini:false,opencode:true,ddg:true}, omlx:{baseUrl:'http://127.0.0.1:8000',apiKey:'',model:'',models:{flash:'',standard:'',deep:''}}, ollama:{baseUrl:'http://127.0.0.1:11434',apiKey:'',model:'',models:{flash:'',standard:'',deep:''}}, openai:{baseUrl:'https://api.openai.com/v1',apiKey:'',model:'',models:{flash:'gpt-4.1-mini',standard:'gpt-4.1-mini',deep:'gpt-4.1'}}, gemini:{apiKey:'',model:'gemini-2.5-flash'}, opencode:{models:{flash:'opencode/mimo-v2-pro-free',standard:'opencode/big-pickle',deep:'opencode/big-pickle'},timeoutMs:90000}, routing:{} },
   extractors: { enabled:Object.keys(PLATFORM_LABELS), disabled:[] }
 };
 
@@ -409,26 +418,58 @@ function renderPlatforms() {
 }
 
 function renderLlm() {
-  _activeProvider = _userConfig.llm.provider === 'auto' ? 'omlx' : _userConfig.llm.provider;
-  renderProviderTabs();
+  var order = _userConfig.llm.order || PROVIDERS.map(function(p) { return p.key; });
+  _activeProvider = order[0] || 'omlx';
+  renderProviderList();
   renderProviderPanel();
 }
 
-function renderProviderTabs() {
-  var tabs = document.getElementById('providerTabs');
-  tabs.innerHTML = PROVIDERS.map(function(p) {
-    var cls = 'provider-tab' + (p.key === _activeProvider ? ' active' : '');
-    var selected = _userConfig.llm.provider === p.key;
-    var dot = selected ? ' ●' : '';
-    return '<div class="' + cls + '" onclick="switchProvider(\'' + p.key + '\')">' +
-      '<span class="icon">' + p.icon + '</span>' + p.label + dot + '</div>';
+function renderProviderList() {
+  var list = document.getElementById('providerList');
+  var order = _userConfig.llm.order || PROVIDERS.map(function(p) { return p.key; });
+  var enabled = _userConfig.llm.enabled || {};
+
+  list.innerHTML = order.map(function(key, idx) {
+    var p = PROVIDERS.find(function(x) { return x.key === key; });
+    if (!p) return '';
+    var isOn = enabled[key] !== false;
+    var isActive = key === _activeProvider;
+    var cls = 'provider-row' + (isActive ? ' active' : '') + (!isOn ? ' disabled' : '');
+    var upBtn = idx > 0 ? '<button class="order-btn" onclick="event.stopPropagation();moveProvider(\'' + key + '\',-1)" title="上移">▲</button>' : '<button class="order-btn" style="visibility:hidden">▲</button>';
+    var downBtn = idx < order.length - 1 ? '<button class="order-btn" onclick="event.stopPropagation();moveProvider(\'' + key + '\',1)" title="下移">▼</button>' : '<button class="order-btn" style="visibility:hidden">▼</button>';
+
+    return '<div class="' + cls + '" onclick="switchProvider(\'' + key + '\')">' +
+      '<label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" data-llm-enable="' + key + '"' + (isOn ? ' checked' : '') + ' onchange="toggleProvider(\'' + key + '\',this.checked)"><span class="slider"></span></label>' +
+      '<span class="icon">' + p.icon + '</span>' +
+      '<span class="name">' + p.label + '</span>' +
+      '<span class="desc">' + p.desc + '</span>' +
+      '<span class="order-btns">' + upBtn + downBtn + '</span>' +
+      '</div>';
   }).join('');
 }
 
 function switchProvider(key) {
   _activeProvider = key;
-  renderProviderTabs();
+  renderProviderList();
   renderProviderPanel();
+}
+
+function toggleProvider(key, on) {
+  if (!_userConfig.llm.enabled) _userConfig.llm.enabled = {};
+  _userConfig.llm.enabled[key] = on;
+  renderProviderList();
+}
+
+function moveProvider(key, dir) {
+  var order = _userConfig.llm.order || PROVIDERS.map(function(p) { return p.key; });
+  var idx = order.indexOf(key);
+  if (idx < 0) return;
+  var newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= order.length) return;
+  order.splice(idx, 1);
+  order.splice(newIdx, 0, key);
+  _userConfig.llm.order = order;
+  renderProviderList();
 }
 
 function renderProviderPanel() {
@@ -438,15 +479,6 @@ function renderProviderPanel() {
   var pInfo = PROVIDERS.find(function(x) { return x.key === p; }) || {};
   var pCfg = cfg[p] || {};
   var html = '';
-
-  // Active provider selector
-  html += '<div class="llm-field"><label>啟用狀態</label>' +
-    '<select id="llmProviderSelect" onchange="onProviderSelectChange(this.value)">' +
-    '<option value="auto"' + (cfg.provider === 'auto' ? ' selected' : '') + '>auto（自動偵測優先順序）</option>';
-  PROVIDERS.forEach(function(pr) {
-    html += '<option value="' + pr.key + '"' + (cfg.provider === pr.key ? ' selected' : '') + '>' + pr.label + '（僅用此 provider）</option>';
-  });
-  html += '<option value="none"' + (cfg.provider === 'none' ? ' selected' : '') + '>停用 AI</option></select></div>';
 
   // API Key (OpenAI, Gemini)
   if (pInfo.hasApiKey) {
@@ -532,11 +564,6 @@ function onModelSelect(provider, tier, val) {
   if (!val) renderProviderPanel();
 }
 
-function onProviderSelectChange(val) {
-  _userConfig.llm.provider = val;
-  renderProviderTabs();
-}
-
 async function detectModels(provider) {
   var statusEl = document.getElementById('modelStatus');
   if (statusEl) { statusEl.textContent = '偵測中...'; statusEl.className = 'model-status'; }
@@ -582,7 +609,6 @@ async function saveUserConfig() {
     if (!el.checked) disabled.push(el.dataset.plat);
   });
 
-  var provSelect = document.getElementById('llmProviderSelect');
   var baseUrlEl = document.getElementById('provBaseUrl');
   var timeoutEl = document.getElementById('provTimeout');
   var apiKeyEl = document.getElementById('provApiKey');
@@ -592,9 +618,14 @@ async function saveUserConfig() {
     return { flash: readModelValue(prov, 'flash'), standard: readModelValue(prov, 'standard'), deep: readModelValue(prov, 'deep') };
   }
 
-  // Only update the currently visible provider's settings
+  // Save order + enabled from current state
+  var llmPatch = {
+    order: _userConfig.llm.order,
+    enabled: _userConfig.llm.enabled
+  };
+
+  // Save the currently visible provider's settings
   var p = _activeProvider;
-  var llmPatch = { provider: provSelect ? provSelect.value : _userConfig.llm.provider };
   var curBase = baseUrlEl ? baseUrlEl.value.trim() : '';
   var curKey = apiKeyEl ? apiKeyEl.value.trim() : '';
 

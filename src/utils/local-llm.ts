@@ -94,50 +94,39 @@ export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}
     : (options.model ?? 'standard');
   const ocModel = getLlmModels()[tier];
   const llmCfg = getUserConfig().llm;
-  const selected = llmCfg.provider;
-
-  if (selected === 'none') return null;
-
   const messages = [{ role: 'user' as const, content: prompt }];
   const compOpts = { timeoutMs, maxTokens: options.maxTokens };
 
-  // Build provider attempt chain
-  const chain: Array<() => Promise<string | null>> = [];
+  // Provider attempt functions
+  const providers: Record<string, () => Promise<string | null>> = {
+    omlx: async () => {
+      if (!await isOmlxAvailable()) return null;
+      return omlxChatCompletion(prompt, { model: tier, timeoutMs, maxTokens: options.maxTokens });
+    },
+    ollama: async () => {
+      if (!await isProviderAvailable('ollama')) return null;
+      const m = llmCfg.ollama.models[tier] || llmCfg.ollama.model;
+      return m ? openaiChatCompletion('ollama', m, messages, compOpts) : null;
+    },
+    openai: async () => {
+      if (!llmCfg.openai.apiKey) return null;
+      const m = llmCfg.openai.models[tier] || llmCfg.openai.model;
+      return m ? openaiChatCompletion('openai', m, messages, compOpts) : null;
+    },
+    gemini: async () => {
+      if (!llmCfg.gemini.apiKey) return null;
+      return geminiChatCompletion(llmCfg.gemini.model || 'gemini-2.5-flash', messages, compOpts);
+    },
+    opencode: async () => runViaCli(prompt, timeoutMs, ocModel),
+    ddg: async () => runViaDdgChat(prompt, timeoutMs),
+  };
 
-  const tryOmlx = async () => {
-    if (!await isOmlxAvailable()) return null;
-    return omlxChatCompletion(prompt, { model: tier, timeoutMs, maxTokens: options.maxTokens });
-  };
-  const tryOllama = async () => {
-    if (!await isProviderAvailable('ollama')) return null;
-    const m = llmCfg.ollama.models[tier] || llmCfg.ollama.model;
-    return m ? openaiChatCompletion('ollama', m, messages, compOpts) : null;
-  };
-  const tryOpenai = async () => {
-    if (!llmCfg.openai.apiKey) return null;
-    const m = llmCfg.openai.models[tier] || llmCfg.openai.model;
-    return m ? openaiChatCompletion('openai', m, messages, compOpts) : null;
-  };
-  const tryGemini = async () => {
-    if (!llmCfg.gemini.apiKey) return null;
-    return geminiChatCompletion(llmCfg.gemini.model || 'gemini-2.5-flash', messages, compOpts);
-  };
-  const tryCli = async () => runViaCli(prompt, timeoutMs, ocModel);
-  const tryDdg = async () => runViaDdgChat(prompt, timeoutMs);
-
-  if (selected === 'auto') {
-    chain.push(tryOmlx, tryOllama, tryOpenai, tryGemini, tryCli, tryDdg);
-  } else {
-    const providerMap: Record<string, () => Promise<string | null>> = {
-      omlx: tryOmlx, ollama: tryOllama, openai: tryOpenai,
-      gemini: tryGemini, opencode: tryCli, ddg: tryDdg,
-    };
-    if (providerMap[selected]) chain.push(providerMap[selected]);
-    chain.push(tryDdg); // always add DDG as final fallback
-  }
-
-  for (const attempt of chain) {
-    const result = await attempt();
+  // Walk the user-defined order, skip disabled providers
+  for (const key of llmCfg.order) {
+    if (!llmCfg.enabled[key]) continue;
+    const fn = providers[key];
+    if (!fn) continue;
+    const result = await fn();
     if (result) return result;
   }
 

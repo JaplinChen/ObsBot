@@ -39,10 +39,13 @@ export interface OpenAIProviderConfig {
   models: LlmTierModels;
 }
 
-export type LlmProviderKey = 'auto' | 'omlx' | 'ollama' | 'openai' | 'gemini' | 'opencode' | 'ddg' | 'none';
+export type LlmProviderKey = 'omlx' | 'ollama' | 'openai' | 'gemini' | 'opencode' | 'ddg';
 
 export interface LlmConfig {
-  provider: LlmProviderKey;
+  /** Provider priority order (first enabled provider wins). */
+  order: LlmProviderKey[];
+  /** Per-provider enabled state. */
+  enabled: Record<LlmProviderKey, boolean>;
   omlx: OpenAIProviderConfig;
   ollama: OpenAIProviderConfig;
   openai: OpenAIProviderConfig;
@@ -84,7 +87,11 @@ const DEFAULTS: UserConfig = {
     consolidation: true,
   },
   llm: {
-    provider: 'auto',
+    order: ['omlx', 'ollama', 'openai', 'gemini', 'opencode', 'ddg'],
+    enabled: {
+      omlx: true, ollama: false, openai: false,
+      gemini: false, opencode: true, ddg: true,
+    },
     omlx: {
       baseUrl: 'http://127.0.0.1:8000',
       apiKey: '',
