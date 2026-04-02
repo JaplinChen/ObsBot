@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ObsBot 設定</title>
+  <title>ObsBot 管理</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -20,16 +20,37 @@
       border-radius: 16px;
       padding: 40px;
       width: 100%;
-      max-width: 540px;
+      max-width: 640px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     }
     h1 { font-size: 26px; color: #333; margin-bottom: 6px; }
-    .subtitle { color: #888; font-size: 14px; margin-bottom: 32px; }
+    .subtitle { color: #888; font-size: 14px; margin-bottom: 24px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 28px; }
+    .tab {
+      flex: 1;
+      padding: 10px 0;
+      text-align: center;
+      border: 2px solid #e8e8e8;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: #888;
+      transition: all 0.2s;
+      background: #fafafa;
+    }
+    .tab:hover { border-color: #667eea; color: #667eea; }
+    .tab.active { border-color: #667eea; background: #f0f2ff; color: #667eea; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
     .step { margin-bottom: 26px; }
     .step-label { font-size: 12px; font-weight: 700; color: #667eea; letter-spacing: 0.8px; margin-bottom: 6px; }
     .step-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 12px; }
     .input-row { display: flex; gap: 8px; }
-    input[type=text], input[type=password] {
+    input[type=text], input[type=password], select {
       flex: 1;
       padding: 12px 14px;
       border: 2px solid #e8e8e8;
@@ -39,7 +60,7 @@
       transition: border-color 0.2s;
       min-width: 0;
     }
-    input:focus { outline: none; border-color: #667eea; }
+    input:focus, select:focus { outline: none; border-color: #667eea; }
     .btn {
       padding: 10px 14px;
       border: none;
@@ -95,173 +116,344 @@
     }
     .success-box h2 { color: #27ae60; font-size: 20px; margin-bottom: 8px; }
     .success-box p { color: #555; font-size: 15px; line-height: 1.7; }
-    .tag {
-      display: inline-block;
-      background: #eee;
-      border-radius: 4px;
-      padding: 2px 6px;
-      font-family: monospace;
-      font-size: 13px;
+    .tag { display: inline-block; background: #eee; border-radius: 4px; padding: 2px 6px; font-family: monospace; font-size: 13px; }
+
+    /* Toggle switch */
+    .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: #f8f8f8; border-radius: 8px;
     }
+    .toggle-label { font-size: 14px; color: #444; }
+    .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle .slider {
+      position: absolute; inset: 0; background: #ccc; border-radius: 24px; cursor: pointer; transition: 0.2s;
+    }
+    .toggle .slider:before {
+      content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px;
+      background: white; border-radius: 50%; transition: 0.2s;
+    }
+    .toggle input:checked + .slider { background: #667eea; }
+    .toggle input:checked + .slider:before { transform: translateX(20px); }
+
+    /* Platform grid */
+    .platform-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .platform-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; background: #f8f8f8; border-radius: 8px;
+    }
+    .platform-item input[type=checkbox] { width: 18px; height: 18px; accent-color: #667eea; }
+    .platform-item label { font-size: 14px; color: #444; cursor: pointer; }
+
+    /* Section */
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 15px; font-weight: 600; color: #555; margin-bottom: 12px; }
+
+    /* LLM inputs */
+    .llm-field { margin-bottom: 12px; }
+    .llm-field label { display: block; font-size: 13px; color: #888; margin-bottom: 4px; }
+    .llm-field input { width: 100%; }
+
+    .save-status { text-align: center; font-size: 14px; margin-top: 12px; min-height: 20px; }
   </style>
 </head>
 <body>
 <div class="card">
-  <h1>🤖 ObsBot 設定</h1>
-  <p class="subtitle">完成以下步驟，讓 Bot 開始幫你儲存內容到 Obsidian</p>
+  <h1>🤖 ObsBot 管理</h1>
+  <p class="subtitle">Bot 設定與功能配置</p>
 
-  <div class="step">
-    <div class="step-label">步驟 1</div>
-    <div class="step-title">Telegram Bot Token</div>
-    <div class="input-row">
-      <input type="password" id="token" placeholder="貼上你的 Bot Token" />
-      <button class="btn btn-ghost" onclick="togglePass('token')" title="顯示/隱藏">👁</button>
-      <button class="btn btn-ghost" onclick="testToken()">測試連線</button>
-    </div>
-    <div class="status" id="tokenStatus"></div>
-    <p class="hint">
-      沒有 Token？<a href="https://t.me/botfather" target="_blank">點我前往 @BotFather 申請</a><br>
-      傳送 <span class="tag">/newbot</span> → 輸入 Bot 名稱 → 複製 Token 貼到這裡
-    </p>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('setup')">初始設定</div>
+    <div class="tab" onclick="switchTab('config')">功能配置</div>
   </div>
 
-  <div class="step">
-    <div class="step-label">步驟 2</div>
-    <div class="step-title">Obsidian Vault 資料夾位置</div>
-    <div class="input-row">
-      <input type="text" id="vault" placeholder="例如：/Users/xxx/Documents/MyVault" />
-      <button class="btn btn-ghost" onclick="detectVaults()">自動偵測</button>
+  <!-- ===== Tab 1: Setup ===== -->
+  <div class="tab-content active" id="tab-setup">
+    <div class="step">
+      <div class="step-label">步驟 1</div>
+      <div class="step-title">Telegram Bot Token</div>
+      <div class="input-row">
+        <input type="password" id="token" placeholder="貼上你的 Bot Token" />
+        <button class="btn btn-ghost" onclick="togglePass('token')" title="顯示/隱藏">👁</button>
+        <button class="btn btn-ghost" onclick="testToken()">測試連線</button>
+      </div>
+      <div class="status" id="tokenStatus"></div>
+      <p class="hint">
+        沒有 Token？<a href="https://t.me/botfather" target="_blank">點我前往 @BotFather 申請</a><br>
+        傳送 <span class="tag">/newbot</span> → 輸入 Bot 名稱 → 複製 Token 貼到這裡
+      </p>
     </div>
-    <div class="vault-list" id="vaultList"></div>
-    <p class="hint">按「自動偵測」找看看，或直接貼上 Vault 資料夾的完整路徑</p>
+
+    <div class="step">
+      <div class="step-label">步驟 2</div>
+      <div class="step-title">Obsidian Vault 資料夾位置</div>
+      <div class="input-row">
+        <input type="text" id="vault" placeholder="例如：/Users/xxx/Documents/MyVault" />
+        <button class="btn btn-ghost" onclick="detectVaults()">自動偵測</button>
+      </div>
+      <div class="vault-list" id="vaultList"></div>
+      <p class="hint">按「自動偵測」找看看，或直接貼上 Vault 資料夾的完整路徑</p>
+    </div>
+
+    <div class="step">
+      <div class="step-label">步驟 3（建議）</div>
+      <div class="step-title">Bot 使用者白名單</div>
+      <div class="input-row">
+        <input type="text" id="allowedIds" placeholder="例如：123456789,987654321" />
+        <button class="btn btn-ghost" onclick="howToGetId()">如何取得？</button>
+      </div>
+      <div class="status" id="idsStatus"></div>
+      <p class="hint">
+        填入允許使用 Bot 的 Telegram 用戶 ID（逗號分隔）。<br>
+        不填則任何人皆可使用，<strong>建議填入以防止濫用</strong>。
+      </p>
+    </div>
+
+    <div class="divider"></div>
+    <button class="btn btn-primary" id="saveBtn" onclick="saveConfig()">✅ 儲存設定</button>
+
+    <div class="success-box" id="successBox">
+      <h2>✅ 設定完成！</h2>
+      <p>設定已儲存。請關閉此視窗，之後執行 <strong>npm run dev</strong> 即可讓 Bot 開始運作。</p>
+    </div>
   </div>
 
-  <div class="step">
-    <div class="step-label">步驟 3（建議）</div>
-    <div class="step-title">Bot 使用者白名單</div>
-    <div class="input-row">
-      <input type="text" id="allowedIds" placeholder="例如：123456789,987654321" />
-      <button class="btn btn-ghost" onclick="howToGetId()">如何取得？</button>
+  <!-- ===== Tab 2: Config ===== -->
+  <div class="tab-content" id="tab-config">
+    <div class="section">
+      <div class="section-title">🔘 功能開關</div>
+      <div class="toggle-grid" id="featureToggles"></div>
     </div>
-    <div class="status" id="idsStatus"></div>
-    <p class="hint">
-      填入允許使用 Bot 的 Telegram 用戶 ID（逗號分隔）。<br>
-      不填則任何人皆可使用，<strong>建議填入以防止濫用</strong>。
-    </p>
-  </div>
 
-  <div class="divider"></div>
-  <button class="btn btn-primary" id="saveBtn" onclick="saveConfig()">✅ 儲存設定</button>
+    <div class="section">
+      <div class="section-title">🌐 平台 Extractors</div>
+      <div class="platform-grid" id="platformGrid"></div>
+    </div>
 
-  <div class="success-box" id="successBox">
-    <h2>✅ 設定完成！</h2>
-    <p>
-      設定已儲存。<br><br>
-      請關閉此視窗，之後雙擊<br>
-      <strong>npm run dev</strong> 即可讓 Bot 開始運作。
-    </p>
+    <div class="section">
+      <div class="section-title">🤖 LLM 設定</div>
+      <div class="llm-field">
+        <label>Provider</label>
+        <select id="llmProvider">
+          <option value="auto">auto（自動偵測）</option>
+          <option value="omlx">oMLX（本機）</option>
+          <option value="opencode">OpenCode（遠端免費）</option>
+          <option value="ddg">DuckDuckGo Chat（備援）</option>
+          <option value="none">停用 AI</option>
+        </select>
+      </div>
+      <div class="llm-field">
+        <label>oMLX Base URL</label>
+        <input type="text" id="omlxBaseUrl" placeholder="http://127.0.0.1:8000" />
+      </div>
+      <div class="llm-field">
+        <label>OpenCode Flash 模型</label>
+        <input type="text" id="ocFlash" />
+      </div>
+      <div class="llm-field">
+        <label>OpenCode Standard 模型</label>
+        <input type="text" id="ocStandard" />
+      </div>
+      <div class="llm-field">
+        <label>OpenCode Deep 模型</label>
+        <input type="text" id="ocDeep" />
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <button class="btn btn-primary" onclick="saveUserConfig()">💾 儲存配置</button>
+    <div class="save-status" id="saveStatus"></div>
   </div>
 </div>
 
 <script>
+/* ── Tab switching ──────────────────────────────────────────────────── */
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && name === 'setup') || (i === 1 && name === 'config'));
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'config') loadUserConfig();
+}
+
+/* ── Setup tab (existing) ───────────────────────────────────────────── */
 function togglePass(id) {
-  const el = document.getElementById(id);
+  var el = document.getElementById(id);
   el.type = el.type === 'password' ? 'text' : 'password';
 }
 
 async function testToken() {
-  const token = document.getElementById('token').value.trim();
-  const status = document.getElementById('tokenStatus');
+  var token = document.getElementById('token').value.trim();
   if (!token) { setStatus('tokenStatus', '請先輸入 Token', false); return; }
   setStatus('tokenStatus', '測試中...', null);
-  const res = await fetch('/api/test-token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token }),
-  });
-  const data = await res.json();
-  if (data.ok) {
-    setStatus('tokenStatus', `✓ 連線成功：@${data.username}`, true);
-  } else {
-    setStatus('tokenStatus', `✗ ${data.error}`, false);
-  }
+  var res = await fetch('/api/test-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+  var data = await res.json();
+  setStatus('tokenStatus', data.ok ? '\u2713 連線成功：@' + data.username : '\u2717 ' + data.error, data.ok);
 }
 
 async function detectVaults() {
-  const list = document.getElementById('vaultList');
+  var list = document.getElementById('vaultList');
   list.innerHTML = '<p style="color:#999;font-size:13px;padding:4px 0">偵測中...</p>';
-  const res = await fetch('/api/vaults');
-  const { vaults } = await res.json();
-  if (!vaults.length) {
-    list.innerHTML = '<p style="color:#bbb;font-size:13px;padding:4px 0">找不到 Obsidian Vault，請手動輸入路徑</p>';
-    return;
-  }
-  list.innerHTML = vaults.map(v =>
-    `<div class="vault-item" onclick="selectVault(this,'${v.replace(/'/g, "\\'")}')">${v}</div>`
-  ).join('');
+  var res = await fetch('/api/vaults');
+  var data = await res.json();
+  if (!data.vaults.length) { list.innerHTML = '<p style="color:#bbb;font-size:13px">找不到 Obsidian Vault，請手動輸入路徑</p>'; return; }
+  list.innerHTML = data.vaults.map(function(v) {
+    return '<div class="vault-item" onclick="selectVault(this,\'' + v.replace(/'/g, "\\'") + '\')">' + v + '</div>';
+  }).join('');
 }
 
 function selectVault(el, path) {
-  document.querySelectorAll('.vault-item').forEach(e => e.classList.remove('selected'));
+  document.querySelectorAll('.vault-item').forEach(function(e) { e.classList.remove('selected'); });
   el.classList.add('selected');
   document.getElementById('vault').value = path;
 }
 
 function setStatus(id, msg, ok) {
-  const el = document.getElementById(id);
+  var el = document.getElementById(id);
   el.textContent = msg;
   el.className = 'status' + (ok === true ? ' ok' : ok === false ? ' err' : '');
 }
 
 function howToGetId() {
-  alert(
-    '如何取得 Telegram 用戶 ID：\n\n' +
-    '1. 啟動 Bot 後，傳送任何訊息給 Bot\n' +
-    '2. Bot 的 console 會顯示：[auth] Unauthorized message from user ID: 123456789\n' +
-    '3. 複製數字填入此欄位，重新儲存設定即可\n\n' +
-    '或直接搜尋 @userinfobot，傳送任意訊息，它會回覆你的 ID。'
-  );
+  alert('如何取得 Telegram 用戶 ID：\n\n1. 啟動 Bot 後，傳送任何訊息給 Bot\n2. Bot 的 console 會顯示：[auth] Unauthorized message from user ID: 123456789\n3. 複製數字填入此欄位\n\n或直接搜尋 @userinfobot');
 }
 
 function validateIds(raw) {
   if (!raw) return { ok: true, cleaned: '' };
-  const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
-  const invalid = parts.filter(p => !/^\d+$/.test(p));
-  if (invalid.length > 0) return { ok: false, error: `格式錯誤：${invalid.join(', ')}（只允許數字）` };
+  var parts = raw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  var invalid = parts.filter(function(p) { return !/^\d+$/.test(p); });
+  if (invalid.length > 0) return { ok: false, error: '格式錯誤：' + invalid.join(', ') };
   return { ok: true, cleaned: parts.join(',') };
 }
 
 async function saveConfig() {
-  const token = document.getElementById('token').value.trim();
-  const vault = document.getElementById('vault').value.trim();
-  const rawIds = document.getElementById('allowedIds').value.trim();
+  var token = document.getElementById('token').value.trim();
+  var vault = document.getElementById('vault').value.trim();
+  var rawIds = document.getElementById('allowedIds').value.trim();
   if (!token) { alert('請填入 Telegram Bot Token'); return; }
   if (!vault) { alert('請填入 Obsidian Vault 位置'); return; }
-  const { ok, cleaned, error } = validateIds(rawIds);
-  if (!ok) { setStatus('idsStatus', error, false); return; }
-  if (!cleaned) {
-    const proceed = confirm('未填入使用者白名單，任何人都可以使用你的 Bot。確定要繼續嗎？');
-    if (!proceed) return;
-  }
-  const btn = document.getElementById('saveBtn');
-  btn.disabled = true;
-  btn.textContent = '儲存中...';
-  await fetch('/api/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ BOT_TOKEN: token, VAULT_PATH: vault, ALLOWED_USER_IDS: cleaned }),
-  });
+  var v = validateIds(rawIds);
+  if (!v.ok) { setStatus('idsStatus', v.error, false); return; }
+  if (!v.cleaned && !confirm('未填入使用者白名單，任何人都可以使用你的 Bot。確定要繼續嗎？')) return;
+  var btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = '儲存中...';
+  await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ BOT_TOKEN: token, VAULT_PATH: vault, ALLOWED_USER_IDS: v.cleaned }) });
   btn.style.display = 'none';
   document.getElementById('successBox').style.display = 'block';
 }
 
-// 載入現有設定
-fetch('/api/config').then(r => r.json()).then(data => {
+/* ── Config tab ─────────────────────────────────────────────────────── */
+var FEATURE_LABELS = {
+  translation: '簡轉繁翻譯',
+  linkEnrichment: '連結深度抓取',
+  imageAnalysis: '圖片 AI 辨識',
+  videoTranscription: '影片逐字稿',
+  comments: '評論擷取',
+  proactive: '主動推理推送',
+  monitor: '自我修復監控',
+  wall: '情報牆',
+  patrol: '自動巡邏',
+  consolidation: '記憶整合'
+};
+
+var PLATFORM_LABELS = {
+  x: 'X / Twitter', threads: 'Threads', youtube: 'YouTube', github: 'GitHub',
+  reddit: 'Reddit', bilibili: 'Bilibili', weibo: '微博',
+  xiaohongshu: '小紅書', douyin: '抖音', tiktok: 'TikTok',
+  ithome: 'IT 之家', zhihu: '知乎', 'direct-video': '直接影片', web: '通用網頁'
+};
+
+var _userConfig = null;
+
+async function loadUserConfig() {
+  var res = await fetch('/api/user-config');
+  _userConfig = await res.json();
+  renderFeatures();
+  renderPlatforms();
+  renderLlm();
+}
+
+function renderFeatures() {
+  var grid = document.getElementById('featureToggles');
+  grid.innerHTML = Object.keys(FEATURE_LABELS).map(function(key) {
+    var on = _userConfig.features[key];
+    return '<div class="toggle-row">' +
+      '<span class="toggle-label">' + FEATURE_LABELS[key] + '</span>' +
+      '<label class="toggle"><input type="checkbox" data-feat="' + key + '"' + (on ? ' checked' : '') + '><span class="slider"></span></label>' +
+      '</div>';
+  }).join('');
+}
+
+function renderPlatforms() {
+  var disabled = new Set(_userConfig.extractors.disabled || []);
+  var grid = document.getElementById('platformGrid');
+  grid.innerHTML = Object.keys(PLATFORM_LABELS).map(function(key) {
+    var on = !disabled.has(key);
+    return '<div class="platform-item">' +
+      '<input type="checkbox" id="plat-' + key + '" data-plat="' + key + '"' + (on ? ' checked' : '') + '>' +
+      '<label for="plat-' + key + '">' + PLATFORM_LABELS[key] + '</label>' +
+      '</div>';
+  }).join('');
+}
+
+function renderLlm() {
+  document.getElementById('llmProvider').value = _userConfig.llm.provider;
+  document.getElementById('omlxBaseUrl').value = _userConfig.llm.omlx.baseUrl;
+  document.getElementById('ocFlash').value = _userConfig.llm.opencode.models.flash;
+  document.getElementById('ocStandard').value = _userConfig.llm.opencode.models.standard;
+  document.getElementById('ocDeep').value = _userConfig.llm.opencode.models.deep;
+}
+
+async function saveUserConfig() {
+  var features = {};
+  document.querySelectorAll('[data-feat]').forEach(function(el) {
+    features[el.dataset.feat] = el.checked;
+  });
+
+  var disabled = [];
+  document.querySelectorAll('[data-plat]').forEach(function(el) {
+    if (!el.checked) disabled.push(el.dataset.plat);
+  });
+
+  var patch = {
+    features: features,
+    extractors: { disabled: disabled },
+    llm: {
+      provider: document.getElementById('llmProvider').value,
+      omlx: { baseUrl: document.getElementById('omlxBaseUrl').value },
+      opencode: {
+        models: {
+          flash: document.getElementById('ocFlash').value,
+          standard: document.getElementById('ocStandard').value,
+          deep: document.getElementById('ocDeep').value
+        }
+      }
+    }
+  };
+
+  var el = document.getElementById('saveStatus');
+  el.textContent = '儲存中...';
+  el.className = 'save-status';
+  try {
+    var res = await fetch('/api/user-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+    _userConfig = await res.json();
+    el.textContent = '✅ 配置已儲存（部分變更需重啟 Bot 生效）';
+    el.className = 'save-status ok';
+  } catch(e) {
+    el.textContent = '❌ 儲存失敗：' + e.message;
+    el.className = 'save-status err';
+  }
+}
+
+/* ── Init ───────────────────────────────────────────────────────────── */
+fetch('/api/config').then(function(r) { return r.json(); }).then(function(data) {
   if (data.VAULT_PATH) document.getElementById('vault').value = data.VAULT_PATH;
   if (data.BOT_TOKEN_set) setStatus('tokenStatus', '（已設定，輸入新 Token 可覆蓋）', null);
   if (data.ALLOWED_USER_IDS) {
     document.getElementById('allowedIds').value = data.ALLOWED_USER_IDS;
-    setStatus('idsStatus', `已設定 ${data.ALLOWED_USER_IDS.split(',').length} 個用戶`, true);
+    setStatus('idsStatus', '已設定 ' + data.ALLOWED_USER_IDS.split(',').length + ' 個用戶', true);
   }
 });
 </script>

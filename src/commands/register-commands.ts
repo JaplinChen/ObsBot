@@ -48,7 +48,6 @@ import { handleSearchHub, handleSearchCallback } from './search-hub.js';
 import { handleTrackHub, handleTrackCallback } from './track-hub.js';
 import { createVaultHub, createVaultCallback } from './vault-hub.js';
 import { createAdminHub, createAdminCallback } from './admin-hub.js';
-import { handleConfig, handleConfigFeatureToggle, handleConfigResetConfirm, handleConfigResetCancel } from './config-command.js';
 
 export { formatErrorMessage };
 
@@ -111,7 +110,6 @@ export function registerCommands(
   registerAsyncCommand(bot, 'track', 'track-hub', config, handleTrackHub);
   registerAsyncCommand(bot, 'vault', 'vault-hub', config, handleVaultHub);
   registerAsyncCommand(bot, 'admin', 'admin-hub', config, handleAdminHub);
-  registerAsyncCommand(bot, 'config', 'config', config, handleConfig);
   registerAsyncCommand(bot, 'knowledge', 'knowledge', config, handleKnowledge);
 
   // === BACKWARD-COMPATIBLE ALIASES (not in menu) ===
@@ -207,17 +205,6 @@ export function registerCommands(
   registerAsyncAction(bot, /^help:(.+)$/, 'help-category', handleHelpCategory);
 
   registerAsyncAction(bot, /^retry:(.+)$/, 'retry-action', createRetryActionHandler(stats, config));
-
-  // --- InlineKeyboard: config actions ---
-  registerAsyncAction(bot, /^cfg:feat:.+$/, 'config-feat', async (ctx) => {
-    await handleConfigFeatureToggle(ctx);
-  });
-  registerAsyncAction(bot, /^cfg:reset:confirm$/, 'config-reset', async (ctx) => {
-    await handleConfigResetConfirm(ctx);
-  });
-  registerAsyncAction(bot, /^cfg:reset:cancel$/, 'config-cancel', async (ctx) => {
-    await handleConfigResetCancel(ctx);
-  });
 
   // --- InlineKeyboard: admin actions ---
   registerAsyncAction(bot, /^admin:restart-confirm$/, 'admin-restart', async (ctx) => {

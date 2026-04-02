@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
+import { getUserConfig, updateUserConfig } from '../utils/user-config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = 3001;
@@ -31,12 +32,10 @@ const TOKEN_SCRIPT = `<script>
 </script>`;
 const UI_HTML = RAW_HTML.replace('</head>', TOKEN_SCRIPT + '</head>');
 
-// Validate session token for API requests
 function isAuthorized(req: IncomingMessage): boolean {
   return req.headers['x-session-token'] === SESSION_TOKEN;
 }
 
-// 解析 .env 檔案
 function readEnv(): Record<string, string> {
   if (!existsSync(ENV_PATH)) return {};
   const content = readFileSync(ENV_PATH, 'utf-8');
@@ -48,7 +47,6 @@ function readEnv(): Record<string, string> {
   return result;
 }
 
-// 寫入 .env 檔案
 function writeEnv(data: Record<string, string>): void {
   const lines = Object.entries(data)
     .filter(([, v]) => v)
@@ -57,14 +55,9 @@ function writeEnv(data: Record<string, string>): void {
   writeFileSync(ENV_PATH, lines + '\n', 'utf-8');
 }
 
-// 掃描 Obsidian Vault（含 .obsidian 資料夾的目錄）
 function findVaults(): string[] {
   const home = homedir();
-  const searchPaths = [
-    join(home, 'Documents'),
-    join(home, 'Desktop'),
-    home,
-  ];
+  const searchPaths = [join(home, 'Documents'), join(home, 'Desktop'), home];
   const vaults: string[] = [];
   for (const base of searchPaths) {
     if (!existsSync(base)) continue;
@@ -73,16 +66,13 @@ function findVaults(): string[] {
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
         const vaultPath = join(base, entry.name);
-        if (existsSync(join(vaultPath, '.obsidian'))) {
-          vaults.push(vaultPath);
-        }
+        if (existsSync(join(vaultPath, '.obsidian'))) vaults.push(vaultPath);
       }
-    } catch { /* 跳過無權限目錄 */ }
+    } catch { /* skip */ }
   }
   return vaults;
 }
 
-// 測試 Telegram Bot Token
 async function testToken(token: string): Promise<{ ok: boolean; username?: string; error?: string }> {
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/getMe`, {
@@ -96,7 +86,6 @@ async function testToken(token: string): Promise<{ ok: boolean; username?: strin
   }
 }
 
-// 讀取 request body
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve) => {
     let body = '';
@@ -105,37 +94,32 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-// 開啟瀏覽器（macOS）— 使用 spawn 避免 shell 注入
 function openBrowser(url: string): void {
-  try {
-    new URL(url); // 驗證 URL 格式
-  } catch {
-    return;
-  }
+  try { new URL(url); } catch { return; }
   spawn('open', [url], { stdio: 'ignore', detached: true }).unref();
 }
 
-const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-  const url = (req.url ?? '/').split('?')[0]; // strip query string for routing
+/* ── Request handler ────────────────────────────────────────────────── */
+
+async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const url = (req.url ?? '/').split('?')[0];
   const method = req.method ?? 'GET';
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
-  // 設定頁面（不需 token — HTML 載入後會從 URL 取得 token）
   if (url === '/' && method === 'GET') {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.end(UI_HTML);
     return;
   }
 
-  // 所有 /api/ 端點需要有效的 session token
   if (url.startsWith('/api/') && !isAuthorized(req)) {
     res.statusCode = 403;
     res.end(JSON.stringify({ error: 'Unauthorized' }));
     return;
   }
 
-  // 讀取現有設定（Token 遮蔽顯示）
+  // --- .env config endpoints (setup) ---
   if (url === '/api/config' && method === 'GET') {
     const env = readEnv();
     res.end(JSON.stringify({
@@ -146,52 +130,76 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     return;
   }
 
-  // 儲存設定
   if (url === '/api/config' && method === 'POST') {
     const body = await readBody(req);
-    const data = JSON.parse(body) as {
-      BOT_TOKEN?: string;
-      VAULT_PATH?: string;
-      ALLOWED_USER_IDS?: string;
-    };
+    const data = JSON.parse(body) as { BOT_TOKEN?: string; VAULT_PATH?: string; ALLOWED_USER_IDS?: string };
     const existing = readEnv();
     const updated: Record<string, string> = {
       BOT_TOKEN: data.BOT_TOKEN || existing.BOT_TOKEN || '',
       VAULT_PATH: data.VAULT_PATH || existing.VAULT_PATH || '',
     };
-    // Sanitize: keep only digits and commas
     const rawIds = (data.ALLOWED_USER_IDS ?? existing.ALLOWED_USER_IDS ?? '').replace(/[^0-9,]/g, '');
     if (rawIds) updated.ALLOWED_USER_IDS = rawIds;
     writeEnv(updated);
     res.end(JSON.stringify({ ok: true }));
-    setTimeout(() => server.close(), 2000);
     return;
   }
 
-  // 掃描 Obsidian Vaults
   if (url === '/api/vaults' && method === 'GET') {
     res.end(JSON.stringify({ vaults: findVaults() }));
     return;
   }
 
-  // 測試 Telegram Token
   if (url === '/api/test-token' && method === 'POST') {
     const body = await readBody(req);
     const { token } = JSON.parse(body) as { token: string };
-    const result = await testToken(token);
-    res.end(JSON.stringify(result));
+    res.end(JSON.stringify(await testToken(token)));
+    return;
+  }
+
+  // --- User config endpoints (runtime) ---
+  if (url === '/api/user-config' && method === 'GET') {
+    res.end(JSON.stringify(getUserConfig()));
+    return;
+  }
+
+  if (url === '/api/user-config' && method === 'POST') {
+    const body = await readBody(req);
+    const patch = JSON.parse(body) as Record<string, unknown>;
+    const updated = updateUserConfig(patch);
+    res.end(JSON.stringify(updated));
     return;
   }
 
   res.statusCode = 404;
   res.end(JSON.stringify({ error: 'Not found' }));
-});
+}
 
-// Docker 容器內綁定 0.0.0.0 讓外部可連線；本機開發綁定 127.0.0.1
+/* ── Server lifecycle ───────────────────────────────────────────────── */
+
 const BIND_HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
 
-server.listen(PORT, BIND_HOST, () => {
-  console.log(`\n✅ 設定頁面已開啟：http://localhost:${PORT}/?token=${SESSION_TOKEN}`);
-  console.log('   （若瀏覽器未自動開啟，請手動前往上方網址）\n');
-  if (BIND_HOST === '127.0.0.1') openBrowser(`http://localhost:${PORT}/?token=${SESSION_TOKEN}`);
-});
+/** Start Admin Server. Safe to call multiple times — only first call binds. */
+let _started = false;
+export function startAdminServer(): void {
+  if (_started) return;
+  _started = true;
+
+  const server = createServer((req, res) => {
+    handleRequest(req, res).catch((err) => {
+      res.statusCode = 500;
+      res.end(JSON.stringify({ error: String(err) }));
+    });
+  });
+
+  server.listen(PORT, BIND_HOST, () => {
+    const url = `http://localhost:${PORT}/?token=${SESSION_TOKEN}`;
+    console.log(`[admin] 管理介面已啟動：${url}`);
+    if (BIND_HOST === '127.0.0.1') openBrowser(url);
+  });
+}
+
+// Allow standalone execution (first-time setup)
+const isMainModule = process.argv[1]?.endsWith('admin/server.js')
+  || process.argv[1]?.endsWith('admin/server.ts');
+if (isMainModule) startAdminServer();

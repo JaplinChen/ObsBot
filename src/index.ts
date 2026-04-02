@@ -20,6 +20,7 @@ import { startWallService } from './radar/wall-service.js';
 import { startPatrolService } from './patrol/patrol-service.js';
 import { registerTimers } from './core/service-registry.js';
 import { getUserConfig } from './utils/user-config.js';
+import { startAdminServer } from './admin/server.js';
 
 const config = loadConfig();
 const userConfig = getUserConfig();
@@ -112,6 +113,9 @@ if (feat.patrol) {
     .then((ts) => registerTimers(...ts))
     .catch((e) => logger.warn('patrol', '啟動巡邏服務失敗', { message: (e as Error).message }));
 }
+
+// Start Admin UI server (config management on port 3001)
+startAdminServer();
 
 const forceMode = process.argv.includes('--force');
 new ProcessGuardian(bot, forceMode).launch();
