@@ -89,19 +89,27 @@ function openBrowser(url: string): void {
 /* ── LLM model detection ────────────────────────────────────────────── */
 
 async function detectModels(
-  provider: string, baseUrl?: string,
+  provider: string, baseUrl?: string, apiKey?: string,
 ): Promise<{ ok: boolean; models: string[]; error?: string }> {
   try {
+    // Resolve API key: request param → user-config → env var
+    const cfg = getUserConfig().llm;
+    const resolveKey = (envName: string, cfgKey?: string) =>
+      apiKey || cfgKey || process.env[envName] || '';
+
     if (provider === 'omlx') {
-      const url = (baseUrl || 'http://127.0.0.1:8000') + '/v1/models';
-      const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+      const url = (baseUrl || cfg.omlx.baseUrl) + '/v1/models';
+      const key = resolveKey('OMLX_API_KEY', cfg.omlx.apiKey);
+      const headers: Record<string, string> = {};
+      if (key) headers['Authorization'] = `Bearer ${key}`;
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(5_000) });
       if (!res.ok) return { ok: false, models: [], error: `HTTP ${res.status}` };
       const data = await res.json() as { data?: Array<{ id: string }> };
       const models = (data.data ?? []).map((m) => m.id);
       return { ok: true, models };
     }
     if (provider === 'ollama') {
-      const url = (baseUrl || 'http://127.0.0.1:11434') + '/api/tags';
+      const url = (baseUrl || cfg.ollama.baseUrl) + '/api/tags';
       const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
       if (!res.ok) return { ok: false, models: [], error: `HTTP ${res.status}` };
       const data = await res.json() as { models?: Array<{ name: string }> };
@@ -109,10 +117,10 @@ async function detectModels(
       return { ok: true, models };
     }
     if (provider === 'openai') {
-      const apiKey = process.env['OPENAI_API_KEY'] ?? '';
-      const url = (baseUrl || 'https://api.openai.com/v1') + '/models';
+      const key = resolveKey('OPENAI_API_KEY', cfg.openai.apiKey);
+      const url = (baseUrl || cfg.openai.baseUrl) + '/models';
       const headers: Record<string, string> = {};
-      if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+      if (key) headers['Authorization'] = `Bearer ${key}`;
       const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) });
       if (!res.ok) return { ok: false, models: [], error: `HTTP ${res.status}` };
       const data = await res.json() as { data?: Array<{ id: string }> };
@@ -186,8 +194,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   // --- LLM model detection ---
   if (url === '/api/llm/models' && method === 'POST') {
     const body = await readBody(req);
-    const { provider, baseUrl } = JSON.parse(body) as { provider: string; baseUrl?: string };
-    res.end(JSON.stringify(await detectModels(provider, baseUrl)));
+    const { provider, baseUrl, apiKey: reqKey } = JSON.parse(body) as { provider: string; baseUrl?: string; apiKey?: string };
+    res.end(JSON.stringify(await detectModels(provider, baseUrl, reqKey)));
     return;
   }
 

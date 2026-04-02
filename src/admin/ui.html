@@ -570,10 +570,12 @@ async function detectModels(provider) {
   var baseUrl = '';
   var urlEl = document.getElementById('provBaseUrl');
   if (urlEl) baseUrl = urlEl.value.trim();
+  var keyEl = document.getElementById('provApiKey');
+  var apiKey = keyEl ? keyEl.value.trim() : '';
   try {
     var res = await fetch('/api/llm/models', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider: provider, baseUrl: baseUrl || undefined })
+      body: JSON.stringify({ provider: provider, baseUrl: baseUrl || undefined, apiKey: apiKey || undefined })
     });
     var data = await res.json();
     if (data.ok && data.models.length > 0) {
