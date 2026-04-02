@@ -23,11 +23,8 @@ npm run build
 
 ## 架構指引
 
-- 修改模組邊界前，請先閱讀 `docs/architecture.md`
-- `src/core/errors.ts`：共用錯誤分類與使用者可見的錯誤訊息
-- `src/core/logger.ts`：共用結構化日誌入口
-- `src/commands/command-runner.ts`：共用非同步指令包裝器
-- `src/messages/services/*`：訊息處理的商業邏輯
+- 專案結構詳見 `README.md` 的「開發資訊 → 專案結構」段落
+- `src/utils/local-llm.ts`：LLM 統一入口（oMLX → OpenCode → DDG Chat 三層降級）
 - `src/commands/register-commands.ts`：僅做指令/動作的編排註冊
 
 新增指令時：

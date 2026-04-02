@@ -8,7 +8,7 @@ Drop a link to the Telegram Bot — it auto-extracts articles, comments, images 
 <summary><strong>Quick Start (Docker)</strong></summary>
 
 ```bash
-git clone https://github.com/user/obsbot.git && cd obsbot
+git clone https://github.com/JaplinChen/ObsBot.git && cd ObsBot
 cp .env.example .env
 # Edit .env → set BOT_TOKEN and HOST_VAULT_PATH
 docker compose up -d
@@ -139,9 +139,7 @@ ALLOWED_USER_IDS=123456,789012      # 限制使用者（逗號分隔 Telegram us
 ENABLE_TRANSLATION=true             # 啟用簡轉繁翻譯
 MAX_LINKED_URLS=5                   # 單則貼文最多抓取的外部連結數
 SAVE_VIDEOS=false                   # 影片存入 Vault（預設 false，僅保留原始連結）
-LLM_PROVIDER=opencode                # LLM CLI（預設 OpenCode + MiniMax M2.5 Free，DDG Chat 為備援）
-OMLX_BASE_URL=http://localhost:10240/v1  # oMLX 本地推理（選配，優先於 opencode）
-OMLX_MODEL=                          # oMLX 模型名稱（如 mlx-community/Qwen2.5-7B-Instruct-4bit）
+OMLX_API_KEY=                        # oMLX 本地推理（選配，需 macOS Apple Silicon）
 ```
 
 ```bash
@@ -163,7 +161,7 @@ npx camoufox-js fetch
 #### 1. 取得原始碼
 
 ```bash
-git clone https://github.com/user/obsbot.git && cd obsbot
+git clone https://github.com/JaplinChen/ObsBot.git && cd ObsBot
 ```
 
 #### 2. 設定環境

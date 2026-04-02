@@ -27,6 +27,7 @@ claude_stderr.txt
 # Local helper scripts (not part of runtime build)
 scripts/*
 !scripts/loop.mjs
+!scripts/postinstall.sh
 test.ts
 
 # External tools and local models

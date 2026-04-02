@@ -6,7 +6,7 @@
 import { fetchWithTimeout } from './fetch-with-timeout.js';
 import type { ModelTier } from './local-llm.js';
 
-const OMLX_BASE = 'http://127.0.0.1:8000';
+const OMLX_BASE = process.env['OMLX_BASE_URL'] ?? 'http://127.0.0.1:8000';
 const AVAILABILITY_CACHE_MS = 30_000;
 
 /** Read API key lazily so dotenv has time to load .env first. */
