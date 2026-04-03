@@ -6,74 +6,131 @@
 <title>ObsBot Research</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0f1117;--card:#181c27;--border:#2e3450;--text:#eceef5;--muted:#9aa6c1;--accent:#4ec994;--accent2:#9d8fff;--hover:rgba(78,201,148,.08)}
-body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC",sans-serif;height:100vh;display:flex;flex-direction:column}
-header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-shrink:0}
-header h1{font-size:18px;color:var(--accent);font-weight:700}
-header .status{font-size:12px;color:var(--muted)}
-.main{display:grid;grid-template-columns:280px 1fr 320px;flex:1;overflow:hidden}
-/* 左欄：筆記列表 */
-.left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.search-bar{padding:10px;border-bottom:1px solid var(--border)}
-.search-bar input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;outline:none}
-.search-bar input:focus{border-color:var(--accent)}
+:root{--bg0:#f0f2f5;--bg1:#ffffff;--bg2:#f8f9fb;--bg3:#eef0f4;--bdr:#e0e3ea;--bdr2:#cdd2dc;--txt1:#1a1a2e;--txt2:#4a4a6a;--txt3:#8890a4;--gold:#667eea;--gold2:rgba(102,126,234,.12);--gold3:rgba(102,126,234,.30);--pu:#667eea;--pu2:rgba(102,126,234,.10);--pu3:rgba(102,126,234,.25);--gn:#27ae60;--gn2:rgba(39,174,96,.10);--gn3:rgba(39,174,96,.25)}
+html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.5}
+.app{display:flex;height:100vh;overflow:hidden}
+/* 左欄 sidebar */
+.left{background:var(--bg1);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;width:280px;flex-shrink:0}
+.sb-top{padding:12px 14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:9px;flex-shrink:0}
+.sb-icon{width:28px;height:28px;background:var(--pu);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;flex-shrink:0}
+.sb-name{font-size:15px;color:var(--txt1);font-weight:600;flex:1}
+.sb-sub{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.8px;margin-top:1px}
+.back-btn{background:transparent;border:1px solid var(--bdr);border-radius:6px;padding:4px 10px;color:var(--txt3);font-size:12px;cursor:pointer;text-decoration:none;font-family:inherit;transition:all .2s;flex-shrink:0}
+.back-btn:hover{border-color:var(--pu3);color:var(--pu)}
+.search-bar{padding:8px 14px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+.search-bar input{width:100%;background:var(--bg0);border:1px solid var(--bdr);border-radius:6px;padding:7px 10px;color:var(--txt1);font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+.search-bar input:focus{border-color:var(--pu)}
+.search-bar input::placeholder{color:var(--txt3)}
+/* 標籤列 */
+.tag-bar{padding:7px 14px;border-bottom:1px solid var(--bdr);flex-shrink:0;display:flex;flex-wrap:wrap;gap:5px;max-height:68px;overflow-y:auto}
+.tag-chip{background:var(--bg0);border:1px solid var(--bdr);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--txt3);cursor:pointer;transition:all .2s;font-weight:500}
+.tag-chip.on{background:var(--gold2);border-color:var(--gold3);color:var(--gold)}
+.tag-chip:hover:not(.on){color:var(--txt2)}
 .note-list{flex:1;overflow-y:auto;padding:6px}
-.note-item{padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;line-height:1.4;display:flex;align-items:center;gap:8px}
-.note-item:hover{background:var(--hover)}
-.note-item.selected{background:rgba(78,201,148,.15)}
-.note-item input[type=checkbox]{accent-color:var(--accent)}
-.note-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.note-folder{font-size:11px;color:var(--muted)}
-/* 中欄：對話 */
-.center{display:flex;flex-direction:column;overflow:hidden}
-.topic-bar{padding:10px;border-bottom:1px solid var(--border);display:flex;gap:8px}
-.topic-bar input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;outline:none}
-.topic-bar button{padding:8px 16px;border:none;border-radius:8px;background:var(--accent);color:#0f1117;font-weight:600;cursor:pointer;font-size:13px}
-.topic-bar button:hover{opacity:.9}
-.messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
-.msg{max-width:85%;padding:10px 14px;border-radius:14px;line-height:1.6;font-size:14px;white-space:pre-wrap}
-.msg.user{background:var(--accent);color:#0f1117;align-self:flex-end;border-bottom-right-radius:4px}
-.msg.assistant{background:var(--card);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:4px}
-.chat-input{padding:10px;border-top:1px solid var(--border);display:flex;gap:8px}
-.chat-input textarea{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;outline:none;resize:none;min-height:36px;max-height:120px;font-family:inherit}
-.chat-input button{padding:8px 14px;border:none;border-radius:8px;background:var(--accent2);color:white;font-weight:600;cursor:pointer;font-size:13px}
-/* 右欄：概覽+工具 */
-.right{border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.right-tabs{display:flex;border-bottom:1px solid var(--border)}
-.right-tabs button{flex:1;padding:10px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-weight:600;border-bottom:2px solid transparent}
-.right-tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+/* 資料夾 */
+.folder-hdr{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;cursor:pointer;color:var(--txt3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;user-select:none;transition:color .2s}
+.folder-hdr:hover{color:var(--txt2)}
+.folder-arrow{font-size:9px;transition:transform .2s;display:inline-block;width:14px}
+.folder-arrow.open{transform:rotate(90deg)}
+.folder-ct{font-size:11px;color:var(--txt3);margin-left:auto;font-weight:400;background:var(--bg2);padding:2px 7px;border-radius:10px}
+.folder-chk{width:16px;height:16px;border:1.5px solid var(--txt3);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px;color:transparent;background:var(--bg0)}
+.folder-chk:hover{border-color:var(--pu);color:var(--pu);background:var(--pu2)}
+.folder-chk.part{background:var(--pu2);border-color:var(--pu3);color:var(--pu)}
+.folder-chk.all{background:var(--pu);border-color:var(--pu);color:#fff}
+.folder-children{padding-left:11px}
+/* 筆記項目 */
+.note-item{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:6px;cursor:pointer;transition:all .2s;border:1px solid transparent;margin-bottom:2px;font-size:13px}
+.note-item:hover{background:var(--bg2)}
+.note-item.selected{background:var(--pu2);border-color:var(--pu3)}
+.note-chk{width:15px;height:15px;border:1.5px solid var(--bdr2);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;font-size:9px;color:transparent}
+.note-chk.on{background:var(--pu);border-color:var(--pu);color:#fff}
+.note-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2)}
+.note-item.selected .note-name{color:var(--pu)}
+.note-tags-dot{width:5px;height:5px;border-radius:50%;background:var(--pu);flex-shrink:0;opacity:.6}
+/* 底部狀態列 */
+.bot-bar{padding:9px 14px;border-top:1px solid var(--bdr);flex-shrink:0;display:flex;gap:7px;align-items:center}
+.bot-bar .sel-ct{font-size:12px;color:var(--txt2);flex:1}
+.bot-bar .sel-ct b{color:var(--pu);font-weight:700}
+.bot-bar .clr{background:none;border:none;color:var(--txt3);font-size:12px;cursor:pointer;font-family:inherit}
+.bot-bar .clr:hover{color:var(--txt2)}
+/* 中欄 */
+.center{display:flex;flex-direction:column;overflow:hidden;background:var(--bg0);flex:1;min-width:0}
+.topic-bar{padding:11px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:9px;background:var(--bg1);flex-shrink:0}
+.topic-bar input{flex:1;background:var(--bg0);border:1px solid var(--bdr2);border-radius:8px;padding:9px 13px;color:var(--txt1);font-size:15px;font-style:italic;font-family:inherit;outline:none;transition:border-color .2s}
+.topic-bar input:focus{border-color:var(--gold)}
+.topic-bar input::placeholder{color:var(--txt3);font-style:italic}
+.topic-bar button{background:var(--pu);border:none;border-radius:8px;padding:9px 16px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:opacity .2s}
+.topic-bar button:hover{opacity:.88}
+.messages{flex:1;overflow-y:auto;padding:22px 26px;display:flex;flex-direction:column;gap:24px}
+.msg{display:flex;gap:10px;animation:fu .22s ease}
+@keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.msg-ava{width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:2px}
+.msg-ava.ai{background:var(--pu2);color:var(--pu);border:1px solid var(--pu3)}
+.msg-ava.user{background:var(--bg2);color:var(--txt2);border:1px solid var(--bdr)}
+.msg-body{flex:1;min-width:0}
+.msg-role{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;color:var(--txt3)}
+.msg-text{color:var(--txt2);font-size:14px;line-height:1.85;white-space:pre-wrap}
+.chat-input{padding:11px 20px 16px;border-top:1px solid var(--bdr);flex-shrink:0}
+.chat-wrap{display:flex;gap:8px;background:var(--bg1);border:1px solid var(--bdr2);border-radius:12px;padding:8px 8px 8px 14px;align-items:flex-end;transition:border-color .2s}
+.chat-wrap:focus-within{border-color:var(--gold)}
+.chat-wrap textarea{flex:1;background:transparent;border:none;outline:none;color:var(--txt1);font-size:14px;font-family:inherit;resize:none;line-height:1.6;min-height:22px;max-height:100px}
+.chat-wrap textarea::placeholder{color:var(--txt3)}
+.chat-wrap button{background:var(--pu);border:none;border-radius:8px;width:33px;height:33px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s;color:#fff;font-size:14px;font-weight:700}
+.chat-wrap button:hover{opacity:.85}
+/* 右欄 */
+.right{background:var(--bg1);border-left:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;width:320px;flex-shrink:0}
+.right-tabs{display:flex;border-bottom:1px solid var(--bdr);flex-shrink:0}
+.right-tabs button{flex:1;padding:11px 4px;font-size:11.5px;font-weight:700;text-align:center;cursor:pointer;color:var(--txt3);border:none;background:transparent;border-bottom:2px solid transparent;transition:all .2s;text-transform:uppercase;letter-spacing:.3px;font-family:inherit}
+.right-tabs button.active{color:var(--gold);border-bottom-color:var(--gold)}
+.right-tabs button:hover:not(.active){color:var(--txt2)}
 .right-content{flex:1;overflow-y:auto;padding:14px}
-.overview-section{margin-bottom:16px}
-.overview-section h3{font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em}
-.overview-item{padding:6px 10px;background:rgba(127,127,127,.06);border-radius:8px;margin-bottom:6px;font-size:13px;cursor:pointer}
-.overview-item:hover{background:var(--hover)}
-.tool-btn{display:block;width:100%;padding:10px 12px;margin-bottom:8px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-size:13px;cursor:pointer;text-align:left}
-.tool-btn:hover{border-color:var(--accent);background:var(--hover)}
-.tool-btn .icon{margin-right:8px}
-.loading{color:var(--muted);font-size:13px;padding:10px;text-align:center}
-.empty{color:var(--muted);font-size:13px;padding:20px;text-align:center}
-@media(max-width:900px){.main{grid-template-columns:1fr}.left,.right{display:none}}
+.overview-section{margin-bottom:20px}
+.overview-section h3{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:9px}
+.overview-item{background:var(--bg0);border:1px solid var(--bdr);border-radius:8px;padding:9px 11px;margin-bottom:6px;font-size:12.5px;cursor:pointer;color:var(--txt2);transition:all .2s;line-height:1.55}
+.overview-item:hover{border-color:var(--bdr2);color:var(--txt1)}
+.tool-btn{width:100%;background:transparent;border:1px solid var(--bdr2);border-radius:8px;padding:10px 12px;color:var(--txt2);font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:9px;transition:all .2s;margin-bottom:6px;text-align:left}
+.tool-btn:hover{border-color:var(--gold3);color:var(--gold)}
+.tool-btn .icon{font-size:16px;flex-shrink:0}
+.loading{color:var(--txt3);font-size:13px;padding:10px;text-align:center}
+.empty{color:var(--txt3);font-size:13px;padding:20px;text-align:center}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--txt3)}
+@media(max-width:900px){.app{flex-direction:column}.left,.right{display:none}}
 </style>
 </head>
 <body>
-<header>
-  <h1>ObsBot Research</h1>
-  <span class="status" id="status">載入中...</span>
-</header>
-<div class="main">
+<div class="app">
   <div class="left">
-    <div class="search-bar"><input id="search" placeholder="搜尋筆記..." /></div>
-    <div class="note-list" id="noteList"><div class="empty">正在掃描 Vault...</div></div>
+    <div class="sb-top">
+      <div class="sb-icon">⚡</div>
+      <div style="flex:1;min-width:0"><div class="sb-name">Vault Research</div><div class="sb-sub">本機 AI × Obsidian</div></div>
+      <a href="/" class="back-btn">← 管理</a>
+    </div>
+    <div class="search-bar"><input id="search" placeholder="搜尋筆記…" /></div>
+    <div id="tagBar"></div>
+    <div class="note-list" id="noteList"><div class="empty">正在掃描 Vault…</div></div>
+    <div class="bot-bar">
+      <span class="sel-ct"><b id="selCount">0</b> 篇已選</span>
+      <button class="clr" onclick="clearSelection()">清除</button>
+    </div>
   </div>
   <div class="center">
     <div class="topic-bar">
-      <input id="topic" placeholder="輸入研究主題..." />
+      <input id="topic" placeholder="輸入研究主題…" onkeydown="if(event.key==='Enter')analyze()" />
+      <span id="status" style="font-size:11px;color:var(--txt3);white-space:nowrap"></span>
       <button id="analyzeBtn" onclick="analyze()">分析</button>
     </div>
-    <div class="messages" id="messages"><div class="empty">選擇筆記，輸入主題，開始研究</div></div>
+    <div class="messages" id="messages">
+      <div class="empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:9px">
+        <div style="font-size:48px;opacity:.15">⚡</div>
+        <div style="font-size:18px;font-weight:600">本機 AI 研究助手</div>
+        <div style="font-size:13px;color:var(--txt2);max-width:340px;text-align:center;line-height:1.8">開啟左側 Vault，勾選筆記，輸入研究主題後開始分析</div>
+      </div>
+    </div>
     <div class="chat-input">
-      <textarea id="chatInput" rows="1" placeholder="輸入問題..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
-      <button onclick="sendMsg()">發送</button>
+      <div class="chat-wrap">
+        <textarea id="chatInput" rows="1" placeholder="詢問問題…（Enter 送出）" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+        <button onclick="sendMsg()">▶</button>
+      </div>
     </div>
   </div>
   <div class="right">
@@ -88,27 +145,99 @@ header .status{font-size:12px;color:var(--muted)}
   </div>
 </div>
 <script>
-const S={notes:[],selected:new Set(),topic:'',history:[],overview:null,tab:'overview'};
+const S={notes:[],selected:new Set(),topic:'',history:[],overview:null,tab:'overview',folderOpen:{},activeTag:'',allTags:[]};
 const $=id=>document.getElementById(id);
 
 async function loadNotes(q){
   const url=q?'/api/research/notes?q='+encodeURIComponent(q):'/api/research/notes';
   const r=await fetch(url);const notes=await r.json();
-  S.notes=notes;renderNotes();
+  S.notes=notes;
+  // 收集所有標籤
+  const tagSet=new Set();
+  notes.forEach(n=>(n.tags||[]).forEach(t=>tagSet.add(t)));
+  S.allTags=[...tagSet].sort();
+  renderTags();renderTree();updateSelCount();
   $('status').textContent=notes.length+' 篇筆記';
 }
 
-function renderNotes(){
-  const el=$('noteList');
-  if(!S.notes.length){el.innerHTML='<div class="empty">找不到筆記</div>';return;}
-  el.innerHTML=S.notes.map(n=>{
-    const sel=S.selected.has(n.path)?'selected':'';
-    const chk=S.selected.has(n.path)?'checked':'';
-    return '<div class="note-item '+sel+'" onclick="toggleNote(\''+n.path.replace(/'/g,"\\'")+'\')"><input type="checkbox" '+chk+' onclick="event.stopPropagation();toggleNote(\''+n.path.replace(/'/g,"\\'")+'\')"><div><div class="note-name">'+esc(n.name)+'</div><div class="note-folder">'+esc(n.folder)+'</div></div></div>';
-  }).join('');
+function getFilteredNotes(){
+  if(!S.activeTag)return S.notes;
+  return S.notes.filter(n=>(n.tags||[]).includes(S.activeTag));
 }
 
-function toggleNote(p){if(S.selected.has(p))S.selected.delete(p);else S.selected.add(p);renderNotes();}
+function buildFolderMap(){
+  const map={};
+  getFilteredNotes().forEach(n=>{
+    const f=n.folder||'.';
+    if(!map[f])map[f]=[];
+    map[f].push(n);
+  });
+  return map;
+}
+
+function renderTags(){
+  const el=$('tagBar');
+  if(!S.allTags.length){el.innerHTML='';el.className='';return;}
+  el.className='tag-bar';
+  el.innerHTML='<span class="tag-chip'+(S.activeTag?'':' on')+'" onclick="setTag(\'\')">全部</span>'
+    +S.allTags.slice(0,20).map(t=>'<span class="tag-chip'+(S.activeTag===t?' on':'')+'" onclick="setTag(\''+esc(t.replace(/'/g,"\\'"))+'\')">'+esc(t)+'</span>').join('');
+}
+
+function setTag(t){S.activeTag=S.activeTag===t?'':t;renderTags();renderTree();}
+
+function renderTree(){
+  const el=$('noteList');
+  const map=buildFolderMap();
+  const folders=Object.keys(map).sort();
+  if(!folders.length){el.innerHTML='<div class="empty">找不到筆記</div>';return;}
+  let html='';
+  for(const folder of folders){
+    const files=map[folder];
+    const isOpen=S.folderOpen[folder]!==false;
+    const selCt=files.filter(f=>S.selected.has(f.path)).length;
+    const chkCls=selCt===files.length&&files.length>0?'all':selCt>0?'part':'';
+    const chkTxt=selCt===files.length&&files.length>0?'✓':selCt>0?'−':'';
+    const label=folder==='.'?'根目錄':folder.split('/').pop();
+    html+='<div>';
+    html+='<div class="folder-hdr" onclick="toggleFolder(\''+esc(folder.replace(/'/g,"\\'"))+'\')">';
+    html+='<span class="folder-arrow'+(isOpen?' open':'')+'">▶</span>';
+    html+='<span>📁</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(label)+'</span>';
+    html+='<span class="folder-ct">'+files.length+'</span>';
+    html+='<div class="folder-chk '+chkCls+'" onclick="event.stopPropagation();toggleFolderSel(\''+esc(folder.replace(/'/g,"\\'"))+'\')">'+chkTxt+'</div>';
+    html+='</div>';
+    if(isOpen){
+      html+='<div class="folder-children">';
+      for(const f of files){
+        const sel=S.selected.has(f.path);
+        html+='<div class="note-item'+(sel?' selected':'')+'" onclick="toggleNote(\''+esc(f.path.replace(/'/g,"\\'"))+'\')">';
+        html+='<div class="note-chk'+(sel?' on':'')+'">'+(sel?'✓':'')+'</div>';
+        html+='<span style="font-size:13px;flex-shrink:0">📝</span>';
+        html+='<span class="note-name" title="'+esc(f.name)+'">'+esc(f.name)+'</span>';
+        if((f.tags||[]).length>0)html+='<span class="note-tags-dot"></span>';
+        html+='</div>';
+      }
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
+function toggleFolder(f){S.folderOpen[f]=S.folderOpen[f]===false?true:false;renderTree();}
+
+function toggleFolderSel(f){
+  const map=buildFolderMap();
+  const files=map[f]||[];
+  const allSel=files.every(n=>S.selected.has(n.path));
+  files.forEach(n=>{if(allSel)S.selected.delete(n.path);else S.selected.add(n.path);});
+  renderTree();updateSelCount();
+}
+
+function toggleNote(p){if(S.selected.has(p))S.selected.delete(p);else S.selected.add(p);renderTree();updateSelCount();}
+
+function clearSelection(){S.selected.clear();renderTree();updateSelCount();}
+
+function updateSelCount(){$('selCount').textContent=S.selected.size;}
 
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
@@ -128,18 +257,22 @@ async function sendMsg(){
   const txt=$('chatInput').value.trim();if(!txt||!S.topic)return;
   $('chatInput').value='';
   S.history.push({role:'user',content:txt});renderMessages();
-  const msgEl=document.createElement('div');msgEl.className='msg assistant';msgEl.textContent='思考中...';
+  const msgEl=document.createElement('div');msgEl.className='msg';
+  msgEl.innerHTML='<div class="msg-ava ai">AI</div><div class="msg-body"><div class="msg-role">研究助手</div><div class="msg-text" style="color:var(--txt3)">思考中…</div></div>';
   $('messages').appendChild(msgEl);$('messages').scrollTop=$('messages').scrollHeight;
   try{
     const r=await fetch('/api/research/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:S.topic,paths:[...S.selected],history:S.history,message:txt})});
     const d=await r.json();
     S.history.push({role:'assistant',content:d.reply});
-    msgEl.textContent=d.reply;$('messages').scrollTop=$('messages').scrollHeight;
-  }catch(e){msgEl.textContent='錯誤：'+e.message;}
+    renderMessages();
+  }catch(e){msgEl.querySelector('.msg-text').textContent='錯誤：'+e.message;}
 }
 
 function renderMessages(){
-  $('messages').innerHTML=S.history.map(m=>'<div class="msg '+m.role+'">'+esc(m.content)+'</div>').join('');
+  $('messages').innerHTML=S.history.map(m=>{
+    const isAi=m.role==='assistant';
+    return '<div class="msg"><div class="msg-ava '+(isAi?'ai':'user')+'">'+(isAi?'AI':'我')+'</div><div class="msg-body"><div class="msg-role">'+(isAi?'研究助手':'你')+'</div><div class="msg-text">'+esc(m.content)+'</div></div></div>';
+  }).join('');
   $('messages').scrollTop=$('messages').scrollHeight;
 }
 
@@ -158,19 +291,43 @@ function renderRight(){
     h+='<div class="overview-section"><h3>核心概念</h3>'+(S.overview.keyConcepts||[]).map(c=>'<div class="overview-item">'+esc(c)+'</div>').join('')+'</div>';
     el.innerHTML=h;
   }else if(S.tab==='tools'){
-    el.innerHTML=[
-      {icon:'📊',label:'研究報告',tool:'report'},
-      {icon:'📋',label:'比較表',tool:'compare'},
-      {icon:'🃏',label:'Anki 閃卡',tool:'anki'},
-      {icon:'📚',label:'教學大綱',tool:'outline'},
-    ].map(t=>'<button class="tool-btn" onclick="runTool(\''+t.tool+'\')"><span class="icon">'+t.icon+'</span>'+t.label+'</button>').join('');
+    const apiTools=[
+      {icon:'📄',label:'生成研究報告',tool:'report'},
+      {icon:'📊',label:'比較觀點（表格）',tool:'compare'},
+      {icon:'🃏',label:'Anki 卡片',tool:'anki'},
+      {icon:'✏️',label:'生成教學大綱',tool:'outline'},
+    ];
+    const promptTools=[
+      {icon:'🗺️',label:'繪製知識地圖',prompt:'請分析筆記間的概念關聯，用階層式清單描述各主題與子主題的連結。'},
+      {icon:'❓',label:'找出知識缺口',prompt:'請分析目前筆記的覆蓋範圍，指出哪些重要面向尚未記錄。'},
+      {icon:'📝',label:'PPTX 大綱',prompt:'請生成一份 15-20 張的 PPTX 簡報大綱，每張用 ## 標題開頭，下方 3-5 個 - 要點，可直接匯出為 PPTX。'},
+      {icon:'🧠',label:'心智圖大綱',prompt:'請嚴格按以下格式輸出心智圖：\n# 主題名稱\n## 分支一\n- 子項目\n## 分支二\n- 子項目\n\n要求：6-8個主要分支，每支2-4個子項目。'},
+      {icon:'📰',label:'資訊圖表文字',prompt:'請生成適合製作資訊圖表的文字：## 標題、## 5個關鍵數據/事實、## 3個核心洞察、## 行動建議。'},
+      {icon:'🎙️',label:'Podcast 腳本',prompt:'請生成 5-8 分鐘的 Podcast 對話腳本（主持人 A 與來賓 B），討論核心議題，輕鬆對話風格，含開場與結語。'},
+      {icon:'📧',label:'執行摘要',prompt:'請生成 200 字以內的執行摘要，適合用 Email 寄給忙碌的主管或客戶，重點突出、結構清晰。'},
+    ];
+    let h='<div class="overview-section"><h3>快速匯出</h3>';
+    h+='<button class="tool-btn" onclick="exportPreview()"><span class="icon">👁</span>預覽簡報（HTML）</button>';
+    h+='<button class="tool-btn" onclick="exportPptx()"><span class="icon">📥</span>下載 PPTX</button></div>';
+    h+='<div class="overview-section"><h3>AI 操作</h3>';
+    h+=apiTools.map(t=>'<button class="tool-btn" onclick="runTool(\''+t.tool+'\')"><span class="icon">'+t.icon+'</span>'+t.label+'</button>').join('');
+    h+=promptTools.map((t,i)=>'<button class="tool-btn" onclick="sendPromptTool('+i+')"><span class="icon">'+t.icon+'</span>'+t.label+'</button>').join('');
+    h+='</div>';
+    el.innerHTML=h;
+    window._promptTools=promptTools;
   }else if(S.tab==='slides'){
-    el.innerHTML='<button class="tool-btn" onclick="exportPreview()"><span class="icon">👁</span>HTML 預覽</button>'
+    el.innerHTML='<button class="tool-btn" onclick="exportPreview()"><span class="icon">👁</span>預覽簡報（HTML）</button>'
       +'<button class="tool-btn" onclick="exportPptx()"><span class="icon">📥</span>下載 PPTX</button>';
   }
 }
 
 function askQuestion(q){$('chatInput').value=q;sendMsg();}
+
+function sendPromptTool(idx){
+  if(!S.topic){alert('請先輸入主題並分析');return;}
+  const t=window._promptTools[idx];if(!t)return;
+  $('chatInput').value=t.prompt;sendMsg();
+}
 
 async function runTool(tool){
   if(!S.topic){alert('請先輸入主題並分析');return;}
@@ -205,6 +362,7 @@ async function exportPptx(){
 let searchTimer;
 $('search').addEventListener('input',function(){clearTimeout(searchTimer);searchTimer=setTimeout(()=>loadNotes(this.value),300);});
 loadNotes();
+updateSelCount();
 </script>
 </body>
 </html>
