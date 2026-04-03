@@ -25,7 +25,7 @@ bilibili, direct-video, douyin, github, ithome, reddit, threads, tiktok, web, we
 admin, ask, benchmark, code, config, consolidate, dedup, digest, discover, distill, doctor, doctor-upgrade, explore-deep, find, knowledge, knowledge-query, memory-export, monitor, patrol, quality, radar, reformat, reprocess, retry, subscribe, suggest, timeline, toolkit, vsearch
 
 ### 處理管線
-extractor → classifier → enricher → reviewer → saver
+extractor → classifier → enricher → reviewer (Harness Evaluator→Generator) → saver
 
 ### 功能開關
 | 功能 | 狀態 |
