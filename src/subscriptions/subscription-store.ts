@@ -2,9 +2,9 @@
  * Persistent storage for user subscriptions.
  * Data stored in data/subscriptions.json.
  */
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 import { logger } from '../core/logger.js';
+import { safeWriteJSON, safeReadJSON } from '../core/safe-write.js';
 import type { SubscriptionStore, Subscription } from './types.js';
 
 const STORE_PATH = join(process.cwd(), 'data', 'subscriptions.json');
@@ -14,17 +14,11 @@ function createEmpty(): SubscriptionStore {
 }
 
 export async function loadSubscriptions(): Promise<SubscriptionStore> {
-  try {
-    const raw = await readFile(STORE_PATH, 'utf-8');
-    return JSON.parse(raw) as SubscriptionStore;
-  } catch {
-    return createEmpty();
-  }
+  return safeReadJSON<SubscriptionStore>(STORE_PATH, createEmpty());
 }
 
 export async function saveSubscriptions(store: SubscriptionStore): Promise<void> {
-  await mkdir(dirname(STORE_PATH), { recursive: true });
-  await writeFile(STORE_PATH, JSON.stringify(store, null, 2), 'utf-8');
+  await safeWriteJSON(STORE_PATH, store);
   logger.info('subscribe', '已儲存訂閱', { count: store.subscriptions.length });
 }
 

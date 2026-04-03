@@ -4,8 +4,7 @@
  * instead of blocking the Radar cycle. A background worker processes one video
  * at a time and sends a Telegram notification when done.
  */
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 import type { Telegraf } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
 import { getOwnerUserId } from '../utils/config.js';
@@ -13,6 +12,7 @@ import { findExtractor } from '../utils/url-parser.js';
 import { classifyContent } from '../classifier.js';
 import { saveToVault, isDuplicateUrl } from '../saver.js';
 import { logger } from '../core/logger.js';
+import { safeWriteJSON, safeReadJSON } from '../core/safe-write.js';
 
 /** Video platforms whose extraction is moved to the async queue. */
 export const VIDEO_PLATFORMS = new Set(['youtube', 'bilibili', 'tiktok', 'douyin']);
@@ -34,17 +34,11 @@ interface VideoQueue {
 }
 
 async function loadQueue(): Promise<VideoQueue> {
-  try {
-    const raw = await readFile(QUEUE_PATH, 'utf-8');
-    return JSON.parse(raw) as VideoQueue;
-  } catch {
-    return { items: [] };
-  }
+  return safeReadJSON<VideoQueue>(QUEUE_PATH, { items: [] });
 }
 
 async function saveQueue(q: VideoQueue): Promise<void> {
-  await mkdir(dirname(QUEUE_PATH), { recursive: true });
-  await writeFile(QUEUE_PATH, JSON.stringify(q, null, 2), 'utf-8');
+  await safeWriteJSON(QUEUE_PATH, q);
 }
 
 /** Add a video URL to the queue if not already queued or done. */

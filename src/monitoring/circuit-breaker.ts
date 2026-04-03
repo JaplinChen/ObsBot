@@ -6,6 +6,14 @@
  */
 import { logger } from '../core/logger.js';
 
+/** Callback invoked when a breaker opens. Set externally to send Telegram alerts. */
+let onBreakerOpen: ((platform: string, failures: number) => void) | null = null;
+
+/** Register a callback for breaker-open events (e.g., Telegram notification). */
+export function setOnBreakerOpen(cb: (platform: string, failures: number) => void): void {
+  onBreakerOpen = cb;
+}
+
 interface BreakerState {
   status: 'closed' | 'open' | 'half_open';
   failures: number;
@@ -75,6 +83,7 @@ export function recordFailure(platform: string): void {
     state.status = 'open';
     state.openedAt = Date.now();
     logger.warn('breaker', `${platform} 連續 ${state.failures} 次失敗，熔斷器開啟`);
+    onBreakerOpen?.(platform, state.failures);
   }
 }
 

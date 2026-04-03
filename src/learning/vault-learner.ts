@@ -1,6 +1,7 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { logger } from '../core/logger.js';
+import { safeWriteJSON } from '../core/safe-write.js';
 import { parseFrontmatter, parseArrayField, getAllMdFiles } from '../vault/frontmatter-utils.js';
 import { getFeedbackWeight, loadFeedbackStore } from './feedback-tracker.js';
 
@@ -190,8 +191,7 @@ export async function runVaultLearner(vaultPath: string, outputPath: string): Pr
     formatting,
   };
 
-  await mkdir(dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, JSON.stringify(patterns, null, 2), 'utf-8');
+  await safeWriteJSON(outputPath, patterns);
   logger.info('learn', '掃描完成', { notes: notes.length, rules: classificationRules.length });
   return patterns;
 }

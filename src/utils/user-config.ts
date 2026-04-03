@@ -3,7 +3,7 @@
  * Reads `data/user-config.json` with deep-merge defaults.
  * Zero-config: works out of the box without any config file.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '../core/logger.js';
 import type { TaskType } from './model-router.js';
@@ -193,7 +193,10 @@ export function updateUserConfig(patch: Record<string, unknown>): UserConfig {
   const current = getUserConfig();
   const merged = deepMerge(current as unknown as Record<string, unknown>, patch) as unknown as UserConfig;
   try {
-    writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
+    const content = JSON.stringify(merged, null, 2) + '\n';
+    const tmp = `${CONFIG_PATH}.tmp`;
+    writeFileSync(tmp, content, 'utf-8');
+    renameSync(tmp, CONFIG_PATH);
     logger.info('config', '配置已更新', { path: CONFIG_PATH });
   } catch (e) {
     logger.warn('config', '寫入配置失敗', { message: (e as Error).message });

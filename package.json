@@ -16,6 +16,7 @@
     "format:check": "prettier . --check",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
+    "setup": "node scripts/setup.mjs",
     "postinstall": "bash scripts/postinstall.sh"
   },
   "keywords": [],

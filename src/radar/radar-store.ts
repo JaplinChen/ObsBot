@@ -2,10 +2,10 @@
  * Persistent storage for radar configuration.
  * Pattern: mirrors subscription-store.ts
  */
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { logger } from '../core/logger.js';
+import { safeWriteJSON, safeReadJSON } from '../core/safe-write.js';
 import { scanVaultNotes } from '../learning/vault-learner.js';
 import { computeFormattingPatterns } from '../learning/vault-learner.js';
 import type { RadarConfig, RadarQuery, RadarQueryType } from './radar-types.js';
@@ -20,17 +20,11 @@ const SKIP_KEYWORDS = new Set([
 ]);
 
 export async function loadRadarConfig(): Promise<RadarConfig> {
-  try {
-    const raw = await readFile(STORE_PATH, 'utf-8');
-    return JSON.parse(raw) as RadarConfig;
-  } catch {
-    return createEmptyConfig();
-  }
+  return safeReadJSON<RadarConfig>(STORE_PATH, createEmptyConfig());
 }
 
 export async function saveRadarConfig(config: RadarConfig): Promise<void> {
-  await mkdir(dirname(STORE_PATH), { recursive: true });
-  await writeFile(STORE_PATH, JSON.stringify(config, null, 2), 'utf-8');
+  await safeWriteJSON(STORE_PATH, config);
   logger.info('radar', '已儲存設定', { queries: config.queries.length });
 }
 

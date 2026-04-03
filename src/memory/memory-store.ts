@@ -2,9 +2,9 @@
  * Persistent storage for user save events and preference summaries.
  * JSON file at data/user-memory.json with in-memory cache.
  */
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 import { logger } from '../core/logger.js';
+import { safeWriteJSON, safeReadJSON } from '../core/safe-write.js';
 import type { SaveEvent, UserMemoryStore, PreferenceSummary } from './memory-types.js';
 import { EMPTY_STORE, SUMMARY_THRESHOLD } from './memory-types.js';
 import { generatePreferenceSummary } from './preference-summarizer.js';
@@ -17,20 +17,15 @@ let dirty = false;
 
 async function load(): Promise<UserMemoryStore> {
   if (cache) return cache;
-  try {
-    const raw = await readFile(STORE_PATH, 'utf-8');
-    cache = { ...EMPTY_STORE, ...JSON.parse(raw) as Partial<UserMemoryStore> };
-  } catch {
-    cache = { ...EMPTY_STORE };
-  }
+  const loaded = await safeReadJSON<Partial<UserMemoryStore>>(STORE_PATH, {});
+  cache = { ...EMPTY_STORE, ...loaded };
   return cache;
 }
 
 async function persist(): Promise<void> {
   if (!cache || !dirty) return;
   try {
-    await mkdir(dirname(STORE_PATH), { recursive: true });
-    await writeFile(STORE_PATH, JSON.stringify(cache, null, 2), 'utf-8');
+    await safeWriteJSON(STORE_PATH, cache);
     dirty = false;
   } catch (err) {
     logger.warn('memory', '儲存失敗', { error: (err as Error).message });

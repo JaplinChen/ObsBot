@@ -2,10 +2,11 @@
  * Persistent knowledge store — reads/writes vault-knowledge.json
  * with incremental update support via content hashing.
  */
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { logger } from '../core/logger.js';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
+import { safeWriteJSON, safeReadJSON } from '../core/safe-write.js';
 import { canonicalizeUrl } from '../utils/url-canonicalizer.js';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 import type {
@@ -34,22 +35,17 @@ function createEmpty(): VaultKnowledge {
 /** Load knowledge from disk (or return cached). Silent fallback on missing file. */
 export async function loadKnowledge(path = KNOWLEDGE_PATH): Promise<VaultKnowledge> {
   if (cachedKnowledge) return cachedKnowledge;
-  try {
-    const raw = await readFile(path, 'utf-8');
-    cachedKnowledge = JSON.parse(raw) as VaultKnowledge;
-    logger.info('knowledge', '載入知識快取', { notes: Object.keys(cachedKnowledge.notes).length });
-    return cachedKnowledge;
-  } catch {
-    cachedKnowledge = createEmpty();
-    return cachedKnowledge;
-  }
+  cachedKnowledge = await safeReadJSON<VaultKnowledge>(path, createEmpty());
+  const noteCount = Object.keys(cachedKnowledge.notes).length;
+  if (noteCount > 0) logger.info('knowledge', '載入知識快取', { notes: noteCount });
+  return cachedKnowledge;
 }
 
 /** Persist knowledge to disk and update cache */
 export async function saveKnowledge(knowledge: VaultKnowledge, path = KNOWLEDGE_PATH): Promise<void> {
   knowledge.generatedAt = new Date().toISOString();
   cachedKnowledge = knowledge;
-  await writeFile(path, JSON.stringify(knowledge, null, 2), 'utf-8');
+  await safeWriteJSON(path, knowledge);
 }
 
 /** Compute content hash (MD5 of first 2500 chars) for change detection */

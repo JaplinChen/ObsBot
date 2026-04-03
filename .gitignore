@@ -28,6 +28,7 @@ claude_stderr.txt
 scripts/*
 !scripts/loop.mjs
 !scripts/postinstall.sh
+!scripts/setup.mjs
 test.ts
 
 # External tools and local models

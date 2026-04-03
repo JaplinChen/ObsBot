@@ -1,8 +1,8 @@
 /**
  * Benchmark data persistence — tracks enrichment scores and platform stats.
  */
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
+import { safeWriteJSON, safeReadJSON } from '../core/safe-write.js';
 import type { BenchmarkData, BenchmarkReport, PlatformStats } from './benchmark-types.js';
 
 const DATA_PATH = join('data', 'benchmark-data.json');
@@ -16,14 +16,9 @@ function defaultData(): BenchmarkData {
 
 export async function loadBenchmarkData(): Promise<BenchmarkData> {
   if (cached) return cached;
-  try {
-    const raw = await readFile(DATA_PATH, 'utf-8');
-    cached = { ...defaultData(), ...JSON.parse(raw) };
-    return cached!;
-  } catch {
-    cached = defaultData();
-    return cached;
-  }
+  const loaded = await safeReadJSON<Partial<BenchmarkData>>(DATA_PATH, {});
+  cached = { ...defaultData(), ...loaded };
+  return cached;
 }
 
 export async function saveBenchmarkData(data: BenchmarkData): Promise<void> {
@@ -40,8 +35,7 @@ export async function saveBenchmarkData(data: BenchmarkData): Promise<void> {
 
   data.lastUpdatedAt = new Date().toISOString();
   cached = data;
-  await mkdir(dirname(DATA_PATH), { recursive: true });
-  await writeFile(DATA_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  await safeWriteJSON(DATA_PATH, data);
 }
 
 /** Record platform extraction attempt */

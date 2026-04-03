@@ -119,9 +119,9 @@ async function loadPersistedIndex(vaultPath: string): Promise<Map<string, string
 /** Persist URL index to disk for fast cold start. */
 async function persistIndex(index: Map<string, string>): Promise<void> {
   try {
-    await mkdir('data', { recursive: true });
+    const { safeWriteJSON } = await import('./core/safe-write.js');
     const data = { version: 1, count: index.size, entries: Object.fromEntries(index) };
-    await writeFile(INDEX_FILE, JSON.stringify(data), 'utf-8');
+    await safeWriteJSON(INDEX_FILE, data);
   } catch { /* best-effort */ }
 }
 

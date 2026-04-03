@@ -21,6 +21,13 @@ import { startPatrolService } from './patrol/patrol-service.js';
 import { registerTimers } from './core/service-registry.js';
 import { getUserConfig } from './utils/user-config.js';
 import { startAdminServer } from './admin/server.js';
+import { runDataIntegrityCheck } from './core/safe-write.js';
+import { setOnBreakerOpen } from './monitoring/circuit-breaker.js';
+import { runMigrations } from './core/migrator.js';
+
+// 啟動前資料完整性檢查 + schema 遷移
+const integrityIssues = await runDataIntegrityCheck();
+await runMigrations();
 
 const config = loadConfig();
 const userConfig = getUserConfig();
@@ -33,8 +40,24 @@ bot.catch((err: unknown) => {
   logger.error('bot', 'Bot error', err);
 });
 
+// 熔斷器告警：平台連續失敗時主動通知 owner
+setOnBreakerOpen((platform, failures) => {
+  const userId = getOwnerUserId(config);
+  if (userId) {
+    bot.telegram.sendMessage(
+      userId,
+      `⚡ 熔斷器警報：${platform} 連續 ${failures} 次失敗，已暫停 5 分鐘。`,
+    ).catch(() => {});
+  }
+});
+
 // Startup health tracking
 const startupResults: Array<{ name: string; ok: boolean; error?: string }> = [];
+if (integrityIssues.length > 0) {
+  startupResults.push({ name: '資料完整性', ok: false, error: `${integrityIssues.length} 個檔案需修復` });
+} else {
+  startupResults.push({ name: '資料完整性', ok: true });
+}
 
 // Load existing rules and knowledge immediately (fast, from disk)
 initDynamicClassifier(RULES_PATH)

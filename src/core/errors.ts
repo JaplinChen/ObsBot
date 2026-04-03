@@ -26,8 +26,9 @@ export function classifyError(err: unknown): ErrorCode {
   if (/timeout|timed?\s*out|abort/i.test(msg)) return 'TIMEOUT';
   if (/login|sign.?in|登入|登录|visitor/i.test(msg)) return 'AUTH_REQUIRED';
   if (/403|forbidden|blocked/i.test(msg)) return 'FORBIDDEN';
+  if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT/i.test(msg)) return 'NETWORK';
   if (/404|not.?found/i.test(msg)) return 'NOT_FOUND';
-  if (/ENOTFOUND|ECONNREFUSED|network/i.test(msg)) return 'NETWORK';
+  if (/network/i.test(msg)) return 'NETWORK';
   return 'UNKNOWN';
 }
 

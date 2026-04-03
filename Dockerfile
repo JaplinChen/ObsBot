@@ -95,6 +95,10 @@ EXPOSE 3001
 ENV VAULT_PATH=/vault
 ENV NODE_ENV=production
 
+# Health check via admin API
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+  CMD node -e "fetch('http://localhost:3001/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+
 # Use tini as PID 1 for proper signal handling
 ENTRYPOINT ["tini", "--"]
 

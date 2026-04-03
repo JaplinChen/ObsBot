@@ -5,9 +5,9 @@
  * When users manually reclassify notes, the correction is recorded and used
  * to boost/penalize classifier rules in future vault-learner runs.
  */
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { logger } from '../core/logger.js';
+import { safeWriteJSON, safeReadJSON } from '../core/safe-write.js';
 
 export interface ClassificationFeedback {
   /** Original classified category */
@@ -40,20 +40,14 @@ function defaultStore(): FeedbackStore {
 
 export async function loadFeedbackStore(): Promise<FeedbackStore> {
   if (cached) return cached;
-  try {
-    const raw = await readFile(STORE_PATH, 'utf-8');
-    cached = { ...defaultStore(), ...JSON.parse(raw) };
-    return cached!;
-  } catch {
-    cached = defaultStore();
-    return cached;
-  }
+  const loaded = await safeReadJSON<Partial<FeedbackStore>>(STORE_PATH, {});
+  cached = { ...defaultStore(), ...loaded };
+  return cached;
 }
 
 async function saveFeedbackStore(store: FeedbackStore): Promise<void> {
   cached = store;
-  await mkdir(dirname(STORE_PATH), { recursive: true });
-  await writeFile(STORE_PATH, JSON.stringify(store, null, 2), 'utf-8');
+  await safeWriteJSON(STORE_PATH, store);
 }
 
 /** Record a user correction and update aggregated weights */

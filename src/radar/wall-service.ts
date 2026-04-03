@@ -9,8 +9,8 @@ import { DEFAULT_WALL_CONFIG } from './wall-types.js';
 import { buildToolIndex, computeToolActivity, matchNewTool } from './wall-index.js';
 import { loadKnowledge } from '../knowledge/knowledge-store.js';
 import { logger } from '../core/logger.js';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { safeWriteJSON, safeReadJSON } from '../core/safe-write.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 
 const WALL_CONFIG_PATH = join(process.cwd(), 'data', 'wall-config.json');
@@ -18,18 +18,13 @@ const MAX_PENDING_MATCHES = 20;
 
 /** Load wall config from disk */
 export async function loadWallConfig(): Promise<WallConfig> {
-  try {
-    const raw = await readFile(WALL_CONFIG_PATH, 'utf-8');
-    return { ...DEFAULT_WALL_CONFIG, ...JSON.parse(raw) };
-  } catch {
-    return { ...DEFAULT_WALL_CONFIG };
-  }
+  const loaded = await safeReadJSON<Partial<WallConfig>>(WALL_CONFIG_PATH, {});
+  return { ...DEFAULT_WALL_CONFIG, ...loaded };
 }
 
 /** Save wall config to disk */
 export async function saveWallConfig(config: WallConfig): Promise<void> {
-  await mkdir(join(process.cwd(), 'data'), { recursive: true });
-  await writeFile(WALL_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+  await safeWriteJSON(WALL_CONFIG_PATH, config);
 }
 
 /** Generate a full wall report */

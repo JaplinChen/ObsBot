@@ -244,6 +244,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
+  // --- Health check endpoint (for external monitoring / Docker HEALTHCHECK) ---
+  if (url === '/api/health' && method === 'GET') {
+    const mem = process.memoryUsage();
+    const openBreakers = getBreakerStatus().filter(b => b.status === 'open');
+    const healthy = openBreakers.length < 5 && mem.heapUsed < 1024 * 1024 * 1024; // < 1GB heap
+    res.statusCode = healthy ? 200 : 503;
+    res.end(JSON.stringify({
+      status: healthy ? 'healthy' : 'degraded',
+      uptime: Math.round(process.uptime()),
+      heapMB: Math.round(mem.heapUsed / 1024 / 1024),
+      openBreakers: openBreakers.length,
+    }));
+    return;
+  }
+
   res.statusCode = 404;
   res.end(JSON.stringify({ error: 'Not found' }));
 }

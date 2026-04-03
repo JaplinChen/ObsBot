@@ -20,6 +20,7 @@ import { isDuplicateUrl } from '../saver.js';
 import { createReclassifyButton } from '../commands/reclassify-action.js';
 import { isCircuitAllowed, recordSuccess, recordFailure } from '../monitoring/circuit-breaker.js';
 import { recordMetric } from '../core/metrics.js';
+import { checkRateLimit } from '../core/rate-limiter.js';
 import { processSeriesBatch } from './services/series-processing-service.js';
 import { classifyFailureReason, type BotStats } from './types.js';
 import { parseIntent, replySuggestion } from './intent-parser.js';
@@ -82,6 +83,17 @@ export function registerUrlProcessingHandler(
         }
       }
       return;
+    }
+
+    // 速率限制檢查
+    const userId = ctx.from?.id;
+    if (userId) {
+      const limit = checkRateLimit(userId);
+      if (!limit.allowed) {
+        const retryMin = Math.ceil((limit.retryAfterMs ?? 0) / 60_000);
+        await ctx.reply(`⏳ 已達每小時處理上限，請 ${retryMin} 分鐘後再試。`);
+        return;
+      }
     }
 
     // 收到 URL 立刻回饋：typing 指示器 + 👀 反應
