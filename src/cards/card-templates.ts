@@ -39,7 +39,7 @@ export function renderCardHtml(data: CardData): string {
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     width: 800px; height: 420px;
-    font-family: "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
+    font-family: "Noto Sans TC", "PingFang TC", "Hiragino Sans GB", "STHeiti", "Microsoft JhengHei", system-ui, sans-serif;
     background: #0f172a;
     color: #e2e8f0;
     overflow: hidden;

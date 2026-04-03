@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
+    "guardian:start": "tsx src/guardian/index.ts start",
+    "guardian:check": "tsx src/guardian/index.ts check",
+    "guardian:status": "tsx src/guardian/index.ts status",
+    "guardian:install-agent": "npm run build && node dist/guardian/index.js install-agent",
     "dev:loop": "node scripts/loop.mjs --dev",
     "start:loop": "node scripts/loop.mjs",
     "restart": "tsx scripts/restart-bot.ts",

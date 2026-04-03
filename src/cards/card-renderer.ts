@@ -63,6 +63,15 @@ export async function generateInfoCard(
     try {
       await page.setViewportSize({ width: 800, height: 420 });
       await page.setContent(html, { waitUntil: 'networkidle' });
+      // 等待 Google Fonts 中文字型完全載入，避免截圖時出現亂碼方塊
+      await page.waitForFunction(
+        () => document.fonts.check('28px "Noto Sans TC"'),
+        { timeout: 8000 },
+      ).catch(() => {
+        logger.warn('card', 'Noto Sans TC 字型載入逾時，嘗試備用方案');
+      });
+      // 額外等待確保字型渲染完成
+      await page.waitForTimeout(500);
       const screenshot = await page.screenshot({
         clip: { x: 0, y: 0, width: 800, height: 420 },
         type: 'png',

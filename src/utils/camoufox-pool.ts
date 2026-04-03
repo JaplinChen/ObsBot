@@ -61,7 +61,10 @@ class CamoufoxPool {
     if (this.entries.length + this.pending < this.MAX_SIZE) {
       this.pending++;
       try {
-        const browser = await Camoufox({ headless: true });
+        const browser = await Camoufox({
+          headless: true,
+          fonts: ['Noto Sans CJK TC', 'Hiragino Sans GB', 'STHeiti'],
+        });
         const entry: PoolEntry = { browser, inUse: false };
         this.entries.push(entry);
         return entry;
