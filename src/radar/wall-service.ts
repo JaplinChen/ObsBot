@@ -141,6 +141,17 @@ export function formatWallSummaryForDigest(wallConfig: WallConfig): string[] {
   return lines;
 }
 
+/** Strip LLM thinking/reasoning blocks from output, keep only the actual content. */
+function stripThinkingBlocks(text: string): string {
+  // Remove <think>...</think> blocks
+  let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  // Remove "Thinking Process:" or similar English reasoning headers and everything after
+  cleaned = cleaned.replace(/\n*(?:Thinking Process|思考過程|Reasoning|Analysis):[\s\S]*/i, '');
+  // Remove markdown bold/header artifacts
+  cleaned = cleaned.replace(/^[#*\s]+/gm, '').trim();
+  return cleaned;
+}
+
 /** Generate optional AI insight for the wall report */
 async function generateWallInsight(report: WallReport): Promise<string | undefined> {
   if (report.totalTools < 5) return undefined;
@@ -148,7 +159,9 @@ async function generateWallInsight(report: WallReport): Promise<string | undefin
   const rising = report.risingTools.slice(0, 3).map(t => t.name).join('、');
   const dormant = report.dormantTools.slice(0, 3).map(t => t.name).join('、');
   const prompt = [
-    '你是知識管理助手。根據以下工具追蹤資料，寫 80 字以內的洞察。繁體中文。',
+    '你是知識管理助手。請直接用繁體中文回覆，不要輸出任何思考過程或分析步驟。',
+    '根據以下工具追蹤資料，寫一段 80 字以內的洞察摘要。只輸出摘要本身，不要加標題或前綴。',
+    '',
     rising ? `快速上升工具：${rising}` : '',
     dormant ? `沉睡工具：${dormant}` : '',
     `追蹤中工具總數：${report.totalTools}`,
@@ -156,7 +169,10 @@ async function generateWallInsight(report: WallReport): Promise<string | undefin
   ].filter(Boolean).join('\n');
 
   try {
-    return (await runLocalLlmPrompt(prompt, { timeoutMs: 20_000, model: 'flash', maxTokens: 256 })) ?? undefined;
+    const raw = await runLocalLlmPrompt(prompt, { timeoutMs: 20_000, model: 'flash', maxTokens: 256 });
+    if (!raw) return undefined;
+    const cleaned = stripThinkingBlocks(raw);
+    return cleaned || undefined;
   } catch {
     return undefined;
   }
