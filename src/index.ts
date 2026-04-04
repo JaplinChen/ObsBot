@@ -1,3 +1,6 @@
+// 設定 process 顯示名稱（Activity Monitor 顯示為 ObsBot）
+process.title = 'ObsBot';
+
 import { loadConfig, getOwnerUserId } from './utils/config.js';
 import { logger } from './core/logger.js';
 import { registerAllExtractors } from './extractors/index.js';
