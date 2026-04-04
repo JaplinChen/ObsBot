@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ObsBot Research</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg0:#f0f2f5;--bg1:#ffffff;--bg2:#f8f9fb;--bg3:#eef0f4;--bdr:#e0e3ea;--bdr2:#cdd2dc;--txt1:#1a1a2e;--txt2:#4a4a6a;--txt3:#8890a4;--gold:#667eea;--gold2:rgba(102,126,234,.12);--gold3:rgba(102,126,234,.30);--pu:#667eea;--pu2:rgba(102,126,234,.10);--pu3:rgba(102,126,234,.25);--gn:#27ae60;--gn2:rgba(39,174,96,.10);--gn3:rgba(39,174,96,.25)}
@@ -77,7 +78,64 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .msg-ava.user{background:var(--bg2);color:var(--txt2);border:1px solid var(--bdr)}
 .msg-body{flex:1;min-width:0}
 .msg-role{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;color:var(--txt3)}
-.msg-text{color:var(--txt2);font-size:14px;line-height:1.85;white-space:pre-wrap}
+.msg-text{color:var(--txt2);font-size:14px;line-height:1.85}
+/* Markdown 渲染樣式 */
+.msg-text h1,.msg-text h2,.msg-text h3,.msg-text h4{color:var(--txt1);margin:16px 0 8px;line-height:1.4}
+.msg-text h1{font-size:1.4em;border-bottom:1px solid var(--bdr);padding-bottom:6px}
+.msg-text h2{font-size:1.2em;border-bottom:1px solid var(--bdr);padding-bottom:4px}
+.msg-text h3{font-size:1.05em}
+.msg-text h4{font-size:1em}
+.msg-text p{margin:8px 0}
+.msg-text ul,.msg-text ol{margin:8px 0;padding-left:24px}
+.msg-text li{margin:3px 0}
+.msg-text li>p{margin:2px 0}
+.msg-text strong{color:var(--txt1);font-weight:600}
+.msg-text em{font-style:italic}
+.msg-text blockquote{border-left:3px solid var(--pu);margin:10px 0;padding:6px 14px;background:var(--pu2);border-radius:0 6px 6px 0;color:var(--txt2)}
+.msg-text code{background:var(--bg3);padding:1px 5px;border-radius:4px;font-size:0.9em;font-family:'SF Mono',Monaco,Menlo,monospace}
+.msg-text pre{background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:12px;margin:10px 0;overflow-x:auto}
+.msg-text pre code{background:none;padding:0;font-size:0.85em}
+.msg-text a{color:var(--pu);text-decoration:none}
+.msg-text a:hover{text-decoration:underline}
+.msg-text table{border-collapse:collapse;margin:10px 0;width:100%;font-size:13px}
+.msg-text th,.msg-text td{border:1px solid var(--bdr);padding:6px 10px;text-align:left}
+.msg-text th{background:var(--bg3);font-weight:600;color:var(--txt1)}
+.msg-text tr:nth-child(even){background:var(--bg2)}
+.msg-text hr{border:none;border-top:1px solid var(--bdr);margin:16px 0}
+.msg-text .wikilink{color:var(--pu);background:var(--pu2);padding:1px 6px;border-radius:4px;font-size:0.92em;cursor:pointer;text-decoration:none;display:inline}
+.msg-text .wikilink:hover{background:var(--pu3);text-decoration:underline}
+/* 筆記預覽 modal */
+.note-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;justify-content:center;align-items:center}
+.note-modal-overlay.open{display:flex}
+.note-modal{background:var(--bg1);border-radius:12px;width:min(800px,90vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.note-modal-hdr{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+.note-modal-hdr h2{flex:1;font-size:16px;color:var(--txt1);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.note-modal-hdr button{background:none;border:none;font-size:20px;cursor:pointer;color:var(--txt3);padding:4px 8px;border-radius:6px}
+.note-modal-hdr button:hover{background:var(--bg0);color:var(--txt1)}
+.note-modal-body{flex:1;overflow-y:auto;padding:20px 24px;color:var(--txt2);font-size:14px;line-height:1.85}
+.note-modal-body h1,.note-modal-body h2,.note-modal-body h3,.note-modal-body h4{color:var(--txt1);margin:16px 0 8px;line-height:1.4}
+.note-modal-body h1{font-size:1.4em;border-bottom:1px solid var(--bdr);padding-bottom:6px}
+.note-modal-body h2{font-size:1.2em;border-bottom:1px solid var(--bdr);padding-bottom:4px}
+.note-modal-body p{margin:8px 0}
+.note-modal-body ul,.note-modal-body ol{margin:8px 0;padding-left:24px}
+.note-modal-body li{margin:3px 0}
+.note-modal-body strong{color:var(--txt1);font-weight:600}
+.note-modal-body blockquote{border-left:3px solid var(--pu);margin:10px 0;padding:6px 14px;background:var(--pu2);border-radius:0 6px 6px 0}
+.note-modal-body code{background:var(--bg3);padding:1px 5px;border-radius:4px;font-size:0.9em;font-family:'SF Mono',Monaco,Menlo,monospace}
+.note-modal-body pre{background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:12px;margin:10px 0;overflow-x:auto}
+.note-modal-body pre code{background:none;padding:0}
+.note-modal-body table{border-collapse:collapse;margin:10px 0;width:100%;font-size:13px}
+.note-modal-body th,.note-modal-body td{border:1px solid var(--bdr);padding:6px 10px;text-align:left}
+.note-modal-body th{background:var(--bg3);font-weight:600;color:var(--txt1)}
+.note-modal-body a{color:var(--pu);text-decoration:none}
+.note-modal-body a:hover{text-decoration:underline}
+.note-modal-body .wikilink{color:var(--pu);background:var(--pu2);padding:1px 6px;border-radius:4px;font-size:0.92em;cursor:pointer}
+.note-modal-body .wikilink:hover{background:var(--pu3);text-decoration:underline}
+/* 右欄 markdown */
+.overview-item h1,.overview-item h2,.overview-item h3{font-size:12px;color:var(--txt1);margin:6px 0 3px}
+.overview-item p{margin:4px 0}
+.overview-item ul,.overview-item ol{padding-left:18px;margin:4px 0}
+.overview-item strong{color:var(--txt1)}
 .chat-input{padding:11px 20px 16px;border-top:1px solid var(--bdr);flex-shrink:0}
 .chat-wrap{display:flex;gap:8px;background:var(--bg1);border:1px solid var(--bdr2);border-radius:12px;padding:8px 8px 8px 14px;align-items:flex-end;transition:border-color .2s}
 .chat-wrap:focus-within{border-color:var(--gold)}
@@ -158,6 +216,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
     <div class="right-content" id="rightContent">
       <div class="empty" data-i18n="research.emptyOverview">分析後顯示概覽</div>
     </div>
+  </div>
+</div>
+<div class="note-modal-overlay" id="noteModal" onclick="if(event.target===this)closeNoteModal()">
+  <div class="note-modal">
+    <div class="note-modal-hdr"><h2 id="noteModalTitle"></h2><button onclick="closeNoteModal()">✕</button></div>
+    <div class="note-modal-body" id="noteModalBody"></div>
   </div>
 </div>
 <script>
@@ -281,6 +345,36 @@ function updateSelCount(){$('selCount').textContent=S.selected.size;}
 
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
+function renderMd(s){
+  if(!s)return'';
+  // 將 Obsidian wikilink [[...]] 轉為可點擊連結
+  var t=(s||'').replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,function(_,link,alias){
+    var display=alias||link;
+    return '<a class="wikilink" href="javascript:void(0)" onclick="openNoteModal(\''+link.replace(/'/g,"\\'")+'\')">'+(display)+'</a>';
+  });
+  if(typeof marked!=='undefined'){
+    marked.setOptions({breaks:true,gfm:true});
+    return marked.parse(t);
+  }
+  return'<p>'+esc(s).replace(/\n/g,'<br>')+'</p>';
+}
+
+async function openNoteModal(name){
+  var modal=$('noteModal');
+  $('noteModalTitle').textContent=name;
+  $('noteModalBody').innerHTML='<div class="loading">載入中…</div>';
+  modal.classList.add('open');
+  try{
+    var r=await fetch('/api/research/note-view?name='+encodeURIComponent(name));
+    var d=await r.json();
+    if(d.error){$('noteModalBody').innerHTML='<div class="empty">'+esc(d.error)+'</div>';return;}
+    $('noteModalTitle').textContent=d.name;
+    $('noteModalBody').innerHTML=renderMd(d.body);
+  }catch(e){$('noteModalBody').innerHTML='<div class="empty">載入失敗：'+esc(e.message)+'</div>';}
+}
+
+function closeNoteModal(){$('noteModal').classList.remove('open');}
+
 async function analyze(){
   const topic=$('topic').value.trim();if(!topic)return;
   S.topic=topic;S.history=[];
@@ -311,7 +405,7 @@ async function sendMsg(){
 function renderMessages(){
   $('messages').innerHTML=S.history.map(m=>{
     const isAi=m.role==='assistant';
-    return '<div class="msg"><div class="msg-ava '+(isAi?'ai':'user')+'">'+(isAi?t('research.avatarAI'):t('research.avatarUser'))+'</div><div class="msg-body"><div class="msg-role">'+(isAi?t('research.roleAI'):t('research.roleUser'))+'</div><div class="msg-text">'+esc(m.content)+'</div></div></div>';
+    return '<div class="msg"><div class="msg-ava '+(isAi?'ai':'user')+'">'+(isAi?t('research.avatarAI'):t('research.avatarUser'))+'</div><div class="msg-body"><div class="msg-role">'+(isAi?t('research.roleAI'):t('research.roleUser'))+'</div><div class="msg-text">'+(isAi?renderMd(m.content):esc(m.content))+'</div></div></div>';
   }).join('');
   $('messages').scrollTop=$('messages').scrollHeight;
 }
@@ -326,7 +420,7 @@ function renderRight(){
   const el=$('rightContent');
   if(S.tab==='overview'){
     if(!S.overview){el.innerHTML='<div class="empty">'+t('research.emptyOverview')+'</div>';return;}
-    let h='<div class="overview-section"><h3>'+t('research.summary')+'</h3><div class="overview-item">'+esc(S.overview.summary)+'</div></div>';
+    let h='<div class="overview-section"><h3>'+t('research.summary')+'</h3><div class="overview-item">'+renderMd(S.overview.summary)+'</div></div>';
     h+='<div class="overview-section"><h3>'+t('research.keyQuestions')+'</h3>'+(S.overview.keyQuestions||[]).map(q=>'<div class="overview-item" onclick="askQuestion(\''+esc(q.replace(/'/g,"\\'"))+'\')">' +esc(q)+'</div>').join('')+'</div>';
     h+='<div class="overview-section"><h3>'+t('research.keyConcepts')+'</h3>'+(S.overview.keyConcepts||[]).map(c=>'<div class="overview-item">'+esc(c)+'</div>').join('')+'</div>';
     el.innerHTML=h;
@@ -376,7 +470,7 @@ async function runTool(tool){
     const r=await fetch('/api/research/tools/'+tool,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:S.topic,paths:[...S.selected]})});
     const d=await r.json();
     S.history.push({role:'assistant',content:d.result});renderMessages();
-    $('rightContent').innerHTML='<div class="overview-item" style="white-space:pre-wrap">'+esc(d.result).slice(0,500)+'...</div>';
+    $('rightContent').innerHTML='<div class="overview-item">'+renderMd(d.result)+'</div>';
   }catch(e){$('rightContent').innerHTML='<div class="empty">'+t('research.generateFail')+esc(e.message)+'</div>';}
 }
 

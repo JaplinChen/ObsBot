@@ -12,7 +12,7 @@
     "dev:loop": "node scripts/loop.mjs --dev",
     "start:loop": "node scripts/loop.mjs",
     "restart": "tsx scripts/restart-bot.ts",
-    "build": "tsc",
+    "build": "tsc && cp src/research/research-ui.html dist/research/research-ui.html && cp src/admin/ui.html dist/admin/ui.html && cp -r src/admin/locales dist/admin/locales",
     "start": "node dist/index.js",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",

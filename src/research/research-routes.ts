@@ -183,6 +183,39 @@ export async function handleResearchRequest(req: IncomingMessage, res: ServerRes
     return true;
   }
 
+  // 筆記 HTML 預覽（wikilink 點擊用）
+  if (url === '/api/research/note-view' && method === 'GET') {
+    const params = new URL(`http://x${req.url}`).searchParams;
+    const noteName = params.get('name') ?? '';
+    if (!noteName) { json(res, { error: '缺少 name 參數' }, 400); return true; }
+    const notes = await getNotes();
+    const vp = getVaultPath();
+    const q = noteName.toLowerCase();
+    // 精確 → 不分大小寫 → 包含 → 被包含
+    let note = notes.find((n) => n.name === noteName)
+      || notes.find((n) => n.name.toLowerCase() === q)
+      || notes.find((n) => n.name.toLowerCase().includes(q))
+      || notes.find((n) => q.includes(n.name.toLowerCase()));
+    // 關鍵字模糊搜尋：將查詢拆成片段，找最多匹配的筆記
+    if (!note) {
+      const keywords = q.split(/[-_\s]+/).filter((w) => w.length >= 2);
+      if (keywords.length > 0) {
+        let bestScore = 0;
+        for (const n of notes) {
+          const nl = n.name.toLowerCase();
+          const score = keywords.filter((kw) => nl.includes(kw)).length;
+          if (score > bestScore) { bestScore = score; note = n; }
+        }
+        if (bestScore < Math.ceil(keywords.length * 0.4)) note = undefined;
+      }
+    }
+    if (!note) { json(res, { error: `找不到筆記：${noteName}` }, 404); return true; }
+    if (!note.body) note.body = await loadNoteBody(vp, note.path);
+    const body = note.body || '';
+    json(res, { name: note.name, path: note.path, body });
+    return true;
+  }
+
   // 快取統計
   if (url === '/api/research/cache-stats' && method === 'GET') {
     json(res, await getCacheStats());
