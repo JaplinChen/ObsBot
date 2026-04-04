@@ -47,3 +47,4 @@ Desktop.ini
 release/
 electron/dist/
 electron/node_modules/
+electron/certs/
