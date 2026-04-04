@@ -161,6 +161,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .empty{color:var(--txt3);font-size:13px;padding:20px;text-align:center}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--txt3)}
 @media(max-width:900px){.app{flex-direction:column}.left,.right{display:none}}
+/* Theme toggle */
+.theme-sw-btn{background:transparent;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:15px;line-height:1;transition:all .2s;flex-shrink:0}
+.theme-sw-btn:hover{border-color:var(--pu3);transform:scale(1.08)}
+/* Dark mode tokens */
+[data-theme="dark"]{--bg0:#0f0f1a;--bg1:#1c1c2e;--bg2:#252538;--bg3:#2e2e48;--bdr:#383858;--bdr2:#4a4a6a;--txt1:#e2e4f0;--txt2:#9094b0;--txt3:#606880}
 </style>
 </head>
 <body>
@@ -169,6 +174,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
     <div class="sb-top">
       <div class="sb-icon">⚡</div>
       <div style="flex:1;min-width:0"><div class="sb-name" data-i18n="research.title">Vault Research</div><div class="sb-sub" data-i18n="research.subtitle">本機 AI × Obsidian</div></div>
+      <button class="theme-sw-btn" onclick="toggleDarkMode()" id="themeBtn" title="切換深色／淺色">🌙</button>
       <div class="lang-sw">
         <button class="lang-sw-btn" onclick="toggleRLangMenu()" id="rLangBtn" title="Language">🇹🇼</button>
         <div class="lang-sw-menu" id="rLangMenu">
@@ -227,6 +233,18 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 <script>
 /* ── i18n engine ── */
 /* __LOCALES_INJECT__ */
+/* ── Dark mode (sync with admin) ── */
+var _darkMode = localStorage.getItem('obsbot-theme') === 'dark';
+function applyDarkMode() {
+  document.documentElement.setAttribute('data-theme', _darkMode ? 'dark' : 'light');
+  var btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = _darkMode ? '☀️' : '🌙';
+}
+function toggleDarkMode() {
+  _darkMode = !_darkMode;
+  localStorage.setItem('obsbot-theme', _darkMode ? 'dark' : 'light');
+  applyDarkMode();
+}
 var _lang = localStorage.getItem('obsbot-lang') || 'zh-TW';
 var _langFlags = {'zh-TW':'🇹🇼','en':'🇺🇸','vi':'🇻🇳'};
 function t(key, params) {
@@ -493,8 +511,9 @@ async function exportPptx(){
   }catch(e){alert(t('research.exportFail')+e.message);}
 }
 
-// Apply saved language on load
+// Apply saved theme + language on load
 (function(){
+  applyDarkMode();
   var f=_langFlags[_lang];
   if(f) $('rLangBtn').textContent=f;
   document.querySelectorAll('.lang-sw-opt').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-lang')===_lang);});

@@ -6,9 +6,17 @@
   <title>ObsBot 管理</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #667eea;
+      --primary-hover: #5a6fd6;
+      --primary-end: #764ba2;
+      --primary-light: #f0f2ff;
+      --primary-light-hover: #eef0fa;
+      --primary-shadow: rgba(102,126,234,0.10);
+    }
     body {
       font-family: -apple-system, 'Microsoft JhengHei', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-end) 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -41,13 +49,13 @@
       transition: all 0.2s;
       background: #fafafa;
     }
-    .tab:hover { border-color: #667eea; color: #667eea; }
-    .tab.active { border-color: #667eea; background: #f0f2ff; color: #667eea; }
+    .tab:hover { border-color: var(--primary); color: var(--primary); }
+    .tab.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
     .step { margin-bottom: 26px; }
-    .step-label { font-size: 12px; font-weight: 700; color: #667eea; letter-spacing: 0.8px; margin-bottom: 6px; }
+    .step-label { font-size: 12px; font-weight: 700; color: var(--primary); letter-spacing: 0.8px; margin-bottom: 6px; }
     .step-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 12px; }
     .input-row { display: flex; gap: 8px; }
     input[type=text], input[type=password], select {
@@ -60,7 +68,7 @@
       transition: border-color 0.2s;
       min-width: 0;
     }
-    input:focus, select:focus { outline: none; border-color: #667eea; }
+    input:focus, select:focus { outline: none; border-color: var(--primary); }
     .btn {
       padding: 10px 14px;
       border: none;
@@ -75,7 +83,7 @@
     .btn-ghost { background: #f4f4f4; color: #555; }
     .btn-ghost:hover { background: #e8e8e8; }
     .btn-primary {
-      background: #667eea;
+      background: var(--primary);
       color: white;
       width: 100%;
       padding: 15px;
@@ -83,10 +91,10 @@
       font-weight: 600;
       margin-top: 4px;
     }
-    .btn-primary:hover { background: #5a6fd6; }
+    .btn-primary:hover { background: var(--primary-hover); }
     .btn-primary:disabled { background: #bbb; cursor: not-allowed; }
     .hint { font-size: 13px; color: #999; margin-top: 8px; line-height: 1.6; }
-    .hint a { color: #667eea; }
+    .hint a { color: var(--primary); }
     .status { font-size: 13px; margin-top: 8px; min-height: 18px; }
     .ok { color: #27ae60; }
     .err { color: #e74c3c; }
@@ -102,8 +110,8 @@
       word-break: break-all;
       transition: all 0.15s;
     }
-    .vault-item:hover { border-color: #667eea; background: #f0f2ff; }
-    .vault-item.selected { border-color: #667eea; background: #f0f2ff; color: #555a9e; font-weight: 600; }
+    .vault-item:hover { border-color: var(--primary); background: var(--primary-light); }
+    .vault-item.selected { border-color: var(--primary); background: var(--primary-light); color: #555a9e; font-weight: 600; }
     .divider { height: 1px; background: #f0f0f0; margin: 24px 0; }
     .success-box {
       display: none;
@@ -134,7 +142,7 @@
       content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px;
       background: white; border-radius: 50%; transition: 0.2s;
     }
-    .toggle input:checked + .slider { background: #667eea; }
+    .toggle input:checked + .slider { background: var(--primary); }
     .toggle input:checked + .slider:before { transform: translateX(20px); }
 
     /* Platform grid */
@@ -143,7 +151,7 @@
       display: flex; align-items: center; gap: 8px;
       padding: 8px 12px; background: #f8f8f8; border-radius: 8px;
     }
-    .platform-item input[type=checkbox] { width: 18px; height: 18px; accent-color: #667eea; }
+    .platform-item input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary); }
     .platform-item label { font-size: 14px; color: #444; cursor: pointer; }
 
     /* Section */
@@ -156,17 +164,17 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 16px;
       transition: box-shadow 0.2s; overflow: hidden;
     }
-    .section:has(> .section-title.collapsible):hover { box-shadow: 0 4px 12px rgba(102,126,234,0.10); }
+    .section:has(> .section-title.collapsible):hover { box-shadow: 0 4px 12px var(--primary-shadow); }
     .section-title.collapsible {
       cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;
-      padding: 14px 18px; margin: 0; border-left: 3px solid #667eea;
+      padding: 14px 18px; margin: 0; border-left: 3px solid var(--primary);
       background: linear-gradient(to right, #f7f8fc, #fff); border-radius: 0;
       transition: background 0.2s;
     }
     .section-title.collapsible:hover { background: linear-gradient(to right, #eef0fa, #f7f8fc); }
     .section-title.collapsible::before {
       content: ''; display: inline-block; width: 8px; height: 8px;
-      border-right: 2px solid #667eea; border-bottom: 2px solid #667eea;
+      border-right: 2px solid var(--primary); border-bottom: 2px solid var(--primary);
       transform: rotate(45deg); transition: transform 0.25s; flex-shrink: 0;
       margin-top: -2px;
     }
@@ -191,7 +199,7 @@
       background: #fafafa; cursor: pointer; font-size: 13px; font-family: inherit;
       color: #555; transition: all 0.2s;
     }
-    .lang-btn:hover { border-color: #667eea; color: #667eea; }
+    .lang-btn:hover { border-color: var(--primary); color: var(--primary); }
     .lang-menu {
       display: none; position: absolute; right: 0; top: 100%; margin-top: 4px;
       background: white; border: 2px solid #e8e8e8; border-radius: 8px;
@@ -205,9 +213,72 @@
       transition: background 0.15s; border: none; background: none; width: 100%;
       font-family: inherit; text-align: left;
     }
-    .lang-option:hover { background: #f0f2ff; }
-    .lang-option.active { background: #f0f2ff; color: #667eea; font-weight: 600; }
+    .lang-option:hover { background: var(--primary-light); }
+    .lang-option.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
     .lang-flag { font-size: 18px; line-height: 1; }
+
+    /* Theme toggle */
+    .header-controls { display: flex; align-items: center; gap: 6px; }
+    .theme-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border: 2px solid #e8e8e8; border-radius: 8px;
+      background: #fafafa; cursor: pointer; font-size: 16px; font-family: inherit;
+      transition: all 0.2s; padding: 0; flex-shrink: 0;
+    }
+    .theme-btn:hover { border-color: var(--primary); transform: scale(1.08); }
+
+    /* ── Dark mode token overrides ──────────────────────────────────── */
+    [data-theme="dark"] body { background: linear-gradient(135deg, #1a1a2e 0%, #0d0d1a 100%); }
+    [data-theme="dark"] .card { background: #1c1c2e; color: #e2e4f0; box-shadow: 0 20px 60px rgba(0,0,0,0.65); }
+    [data-theme="dark"] h1 { color: #e2e4f0; }
+    [data-theme="dark"] .subtitle { color: #7074a0; }
+    [data-theme="dark"] .tab { background: #252538; border-color: #383858; color: #7074a0; }
+    [data-theme="dark"] .tab:hover { border-color: var(--primary); color: var(--primary); }
+    [data-theme="dark"] .tab.active { border-color: var(--primary); background: #1e1e38; color: var(--primary); }
+    [data-theme="dark"] .step-title { color: #e2e4f0; }
+    [data-theme="dark"] .section-title { color: #9094b0; }
+    [data-theme="dark"] input[type=text],
+    [data-theme="dark"] input[type=password],
+    [data-theme="dark"] select { background: #252538; border-color: #383858; color: #e2e4f0; }
+    [data-theme="dark"] .btn-ghost { background: #252538; color: #9094b0; }
+    [data-theme="dark"] .btn-ghost:hover { background: #2e2e48; }
+    [data-theme="dark"] .hint { color: #606890; }
+    [data-theme="dark"] .hint a { color: var(--primary); }
+    [data-theme="dark"] .divider { background: #2e2e48; }
+    [data-theme="dark"] .vault-item { background: #252538; border-color: transparent; color: #9094b0; }
+    [data-theme="dark"] .vault-item:hover { border-color: var(--primary); background: #1e1e38; }
+    [data-theme="dark"] .vault-item.selected { border-color: var(--primary); background: #1e1e38; color: #b0b4d0; }
+    [data-theme="dark"] .success-box { background: #0d2018; border-color: #27ae60; }
+    [data-theme="dark"] .success-box p { color: #8ab8a0; }
+    [data-theme="dark"] .toggle-row { background: #252538; }
+    [data-theme="dark"] .toggle-label { color: #9094b0; }
+    [data-theme="dark"] .toggle .slider { background: #383858; }
+    [data-theme="dark"] .platform-item { background: #252538; }
+    [data-theme="dark"] .platform-item label { color: #9094b0; }
+    [data-theme="dark"] .section:has(> .section-title.collapsible) { background: #1c1c2e; border-color: #383858; }
+    [data-theme="dark"] .section-title.collapsible { background: linear-gradient(to right, #1e1e38, #252538); color: #d0d4f0; }
+    [data-theme="dark"] .section-title.collapsible:hover { background: linear-gradient(to right, #222240, #282848); }
+    [data-theme="dark"] .section-body { background: #1c1c2e; }
+    [data-theme="dark"] .llm-field label { color: #7074a0; }
+    [data-theme="dark"] .lang-btn { background: #252538; border-color: #383858; color: #9094b0; }
+    [data-theme="dark"] .lang-menu { background: #1c1c2e; border-color: #383858; }
+    [data-theme="dark"] .lang-option { color: #9094b0; }
+    [data-theme="dark"] .lang-option:hover { background: #252550; }
+    [data-theme="dark"] .lang-option.active { background: #252550; }
+    [data-theme="dark"] .theme-btn { background: #252538; border-color: #383858; }
+    [data-theme="dark"] .provider-row { background: #252538; border-color: #383858; }
+    [data-theme="dark"] .provider-row:hover { border-color: #5a5d80; }
+    [data-theme="dark"] .provider-row.active { border-color: var(--primary); background: #1e1e38; }
+    [data-theme="dark"] .provider-row .name { color: #d0d4f0; }
+    [data-theme="dark"] .provider-row .desc { color: #626888; }
+    [data-theme="dark"] .provider-row .order-btn { color: #626888; }
+    [data-theme="dark"] .tag { background: #383858; color: #c0c4e0; }
+    [data-theme="dark"] .status { color: #9094b0; }
+    [data-theme="dark"] #sysStatus,
+    [data-theme="dark"] #metricsPanel,
+    [data-theme="dark"] #platformPanel,
+    [data-theme="dark"] #breakerPanel { color: #b0b4d0 !important; }
+    [data-theme="dark"] .save-status { color: #7074a0; }
 
     /* Provider list */
     .provider-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
@@ -217,7 +288,7 @@
       transition: all 0.15s; cursor: pointer;
     }
     .provider-row:hover { border-color: #c0c8f0; }
-    .provider-row.active { border-color: #667eea; background: #f0f2ff; }
+    .provider-row.active { border-color: var(--primary); background: var(--primary-light); }
     .provider-row.disabled { opacity: 0.45; }
     .provider-row .icon { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
     .provider-row .name { font-size: 14px; font-weight: 600; color: #444; flex: 1; }
@@ -227,7 +298,7 @@
       background: none; border: none; cursor: pointer; font-size: 11px;
       color: #aaa; padding: 0 4px; line-height: 1;
     }
-    .provider-row .order-btn:hover { color: #667eea; }
+    .provider-row .order-btn:hover { color: var(--primary); }
     .provider-panel { min-height: 120px; }
     .model-row { display: flex; gap: 8px; align-items: center; }
     .model-row select { flex: 1; }
@@ -243,22 +314,27 @@
       <h1>🤖 <span data-i18n="app.title">ObsBot 管理</span></h1>
       <p class="subtitle" data-i18n="app.subtitle">Bot 設定與功能配置</p>
     </div>
-    <div class="lang-switcher">
-      <button class="lang-btn" onclick="toggleLangMenu()" id="langBtn">
-        <span class="lang-flag" id="langFlag">🇹🇼</span>
-        <span id="langLabel">繁體中文</span>
-        <span style="font-size:10px">▼</span>
+    <div class="header-controls">
+      <button class="theme-btn" onclick="toggleDarkMode()" id="themeBtn" title="切換深色／淺色">
+        <span id="themeIcon">🌙</span>
       </button>
-      <div class="lang-menu" id="langMenu">
-        <button class="lang-option active" data-lang="zh-TW" onclick="changeLang('zh-TW')">
-          <span class="lang-flag">🇹🇼</span> 繁體中文
+      <div class="lang-switcher">
+        <button class="lang-btn" onclick="toggleLangMenu()" id="langBtn">
+          <span class="lang-flag" id="langFlag">🇹🇼</span>
+          <span id="langLabel">繁體中文</span>
+          <span style="font-size:10px">▼</span>
         </button>
-        <button class="lang-option" data-lang="en" onclick="changeLang('en')">
-          <span class="lang-flag">🇺🇸</span> English
-        </button>
-        <button class="lang-option" data-lang="vi" onclick="changeLang('vi')">
-          <span class="lang-flag">🇻🇳</span> Tiếng Việt
-        </button>
+        <div class="lang-menu" id="langMenu">
+          <button class="lang-option active" data-lang="zh-TW" onclick="changeLang('zh-TW')">
+            <span class="lang-flag">🇹🇼</span> 繁體中文
+          </button>
+          <button class="lang-option" data-lang="en" onclick="changeLang('en')">
+            <span class="lang-flag">🇺🇸</span> English
+          </button>
+          <button class="lang-option" data-lang="vi" onclick="changeLang('vi')">
+            <span class="lang-flag">🇻🇳</span> Tiếng Việt
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -385,6 +461,21 @@
 <script>
 /* ── i18n engine ───────────────────────────────────────────────────── */
 /* __LOCALES_INJECT__ */
+/* ── Dark mode toggle ──────────────────────────────────────────────── */
+var _darkMode = localStorage.getItem('obsbot-theme') === 'dark';
+
+function applyDarkMode() {
+  document.documentElement.setAttribute('data-theme', _darkMode ? 'dark' : 'light');
+  document.getElementById('themeIcon').textContent = _darkMode ? '☀️' : '🌙';
+}
+
+function toggleDarkMode() {
+  _darkMode = !_darkMode;
+  localStorage.setItem('obsbot-theme', _darkMode ? 'dark' : 'light');
+  applyDarkMode();
+}
+
+/* ── i18n engine ───────────────────────────────────────────────────── */
 var _lang = localStorage.getItem('obsbot-lang') || 'zh-TW';
 var _langMeta = {
   'zh-TW': { flag: '🇹🇼', label: '繁體中文' },
@@ -884,8 +975,9 @@ async function saveUserConfig() {
 }
 
 /* ── Init ───────────────────────────────────────────────────────────── */
-// Apply saved language on load
+// Apply saved dark mode + language on load
 (function() {
+  applyDarkMode();
   var meta = _langMeta[_lang];
   if (meta) {
     document.getElementById('langFlag').textContent = meta.flag;
