@@ -58,7 +58,8 @@
         { "target": "nsis", "arch": ["x64"] }
       ],
       "icon": "assets/icon.ico",
-      "artifactName": "ObsBot-Setup-${version}-x64.exe"
+      "artifactName": "ObsBot-Setup-${version}-x64.exe",
+      "publisherName": "ObsBot"
     },
     "nsis": {
       "oneClick": false,
