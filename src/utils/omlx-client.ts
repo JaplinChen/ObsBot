@@ -10,59 +10,6 @@ import { getUserConfig } from './user-config.js';
 
 const AVAILABILITY_CACHE_MS = 30_000;
 
-/* ── Admin idle unload ──────────────────────────────────────────────── */
-
-const IDLE_UNLOAD_MS = 15 * 60 * 1000; // 15 分鐘無請求自動卸載
-let _idleTimer: ReturnType<typeof setTimeout> | null = null;
-
-/** Login to oMLX admin API, return session cookie string. */
-async function adminLogin(): Promise<string | null> {
-  try {
-    const res = await fetch(`${getOmlxBase()}/admin/api/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key: getApiKey() }),
-    });
-    if (!res.ok) return null;
-    const cookie = res.headers.get('set-cookie');
-    return cookie ? cookie.split(';')[0] : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Unload all currently loaded models via admin API. */
-async function unloadIdleModels(): Promise<void> {
-  const cookie = await adminLogin();
-  if (!cookie) return;
-
-  try {
-    const res = await fetch(`${getOmlxBase()}/admin/api/models`, {
-      headers: { Cookie: cookie },
-    });
-    if (!res.ok) return;
-    const { models } = (await res.json()) as { models: Array<{ id: string; loaded: boolean }> };
-    const loaded = models.filter((m) => m.loaded);
-    for (const m of loaded) {
-      await fetch(`${getOmlxBase()}/admin/api/models/${encodeURIComponent(m.id)}/unload`, {
-        method: 'POST',
-        headers: { Cookie: cookie },
-      });
-      console.log(`[omlx] 閒置 15 分鐘，已卸載模型: ${m.id}`);
-    }
-    invalidateCache();
-  } catch { /* 靜默失敗 */ }
-}
-
-/** Reset idle unload timer (call on every oMLX request). */
-function resetIdleTimer(): void {
-  if (_idleTimer) clearTimeout(_idleTimer);
-  _idleTimer = setTimeout(() => { void unloadIdleModels(); }, IDLE_UNLOAD_MS);
-}
-
-// 模組載入時立即啟動計時器——讓已載入的模型在閒置 15 分鐘後自動卸載
-resetIdleTimer();
-
 /** Read base URL from user config (falls back to env var → default). */
 function getOmlxBase(): string {
   return getUserConfig().llm.omlx.baseUrl;
@@ -183,8 +130,6 @@ export async function omlxChatCompletion(
   const modelId = getOmlxModelId(tier);
   const timeoutMs = options.timeoutMs ?? getOmlxTimeout(tier);
 
-  resetIdleTimer();
-
   const body = JSON.stringify({
     model: modelId,
     messages: [{ role: 'user', content: prompt }],
@@ -232,8 +177,6 @@ export async function omlxVisionCompletion(
   prompt: string,
   timeoutMs = 30_000,
 ): Promise<string | null> {
-  resetIdleTimer();
-
   const dataUrl = `data:${mimeType};base64,${imageBase64}`;
 
   const body = JSON.stringify({
