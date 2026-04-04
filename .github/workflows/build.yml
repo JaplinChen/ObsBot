@@ -80,12 +80,12 @@ jobs:
           WIN_CERT_BASE64: ${{ secrets.WIN_CERT_BASE64 }}
         run: |
           $bytes = [Convert]::FromBase64String($env:WIN_CERT_BASE64)
-          [IO.File]::WriteAllBytes("$env:TEMP\obsbot-win.pfx", $bytes)
+          [IO.File]::WriteAllBytes("C:\obsbot-win.pfx", $bytes)
 
       - name: 打包 Windows（x64）
         run: npm run app:pack:win
         env:
-          WIN_CSC_LINK: ${{ runner.temp }}\obsbot-win.pfx
+          WIN_CSC_LINK: C:\obsbot-win.pfx
           WIN_CSC_KEY_PASSWORD: ${{ secrets.CERT_PASSWORD }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
