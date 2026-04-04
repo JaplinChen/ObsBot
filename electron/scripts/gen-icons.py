@@ -5,8 +5,12 @@ ObsBot 圖示產生器
 
 用法: python3 electron/scripts/gen-icons.py
 """
-import struct, zlib, math
+import struct, zlib, math, sys
 from pathlib import Path
+
+# Windows 預設 cp1252，強制 UTF-8 輸出
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 ASSETS = Path(__file__).parent.parent / 'assets'
 ASSETS.mkdir(exist_ok=True)
