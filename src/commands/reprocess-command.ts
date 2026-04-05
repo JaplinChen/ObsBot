@@ -40,7 +40,10 @@ function parseArgs(text: string): ParsedArgs | null {
     return { mode: 'batch', sinceDays, refetch };
   }
 
-  return { mode: 'single', path: args };
+  // Single mode — optionally with --refetch flag
+  const refetch = args.includes('--refetch');
+  const path = args.replace('--refetch', '').trim();
+  return { mode: 'single', path, refetch };
 }
 
 /** Re-extract content from source URL (for GitHub: gets fresh stars/language/topics) */
@@ -167,6 +170,7 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
       tagForceReply('reprocess', [
         '請輸入筆記路徑或批次選項：',
         '• 單篇：AI/Claude-Code/xxx.md',
+        '• 單篇重新抓取：AI/Claude-Code/xxx.md --refetch',
         '• 全部重新豐富：--all',
         '• 近 N 天：--all --since 7d',
         '• 重新抓取（含 GitHub 元資料）：--refetch',
@@ -182,7 +186,7 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
     const filePath = join(vaultNotesDir, parsed.path!);
     const status = await ctx.reply(`正在重新處理：${parsed.path}...`);
 
-    const result = await reprocessSingle(filePath, config);
+    const result = await reprocessSingle(filePath, config, parsed.refetch);
     try { await ctx.deleteMessage(status.message_id); } catch { /* */ }
 
     if (result.success) {
