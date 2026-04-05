@@ -58,6 +58,19 @@ function absolutizeImage(url: string, pageUrl: string): string {
   }
 }
 
+const YOUTUBE_EMBED_RE = /(?:youtube\.com\/embed\/|youtu\.be\/)([A-Za-z0-9_-]{11})/i;
+
+/** Extract YouTube video URLs from <iframe> embeds in HTML */
+function extractEmbeddedVideoUrls(html: string): string[] {
+  const urls: string[] = [];
+  const iframeRe = /<iframe[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  for (const m of html.matchAll(iframeRe)) {
+    const vid = m[1].match(YOUTUBE_EMBED_RE)?.[1];
+    if (vid) urls.push(`https://www.youtube.com/watch?v=${vid}`);
+  }
+  return [...new Set(urls)].slice(0, 3);
+}
+
 export const webExtractor: Extractor = {
   platform: 'web',
 
@@ -163,6 +176,8 @@ export const webExtractor: Extractor = {
       // keep original
     }
 
+    const embeddedVideos = html ? extractEmbeddedVideoUrls(html) : [];
+
     return {
       platform: 'web',
       author: domain,
@@ -170,7 +185,7 @@ export const webExtractor: Extractor = {
       title,
       text,
       images: [...imageSet],
-      videos: [],
+      videos: embeddedVideos.map(url => ({ url, type: 'video' as const })),
       date: new Date().toISOString().split('T')[0],
       url,
     };

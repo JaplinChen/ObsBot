@@ -11,6 +11,8 @@ import { computeEnrichmentScore } from '../../monitoring/benchmark-scorer.js';
 import { loadBenchmarkData, saveBenchmarkData, recordPlatformAttempt } from '../../monitoring/benchmark-store.js';
 import { ocrContentImages, isLikelyScreenshot } from '../../enrichment/ocr-service.js';
 import { cleanTitle } from '../../utils/content-cleaner.js';
+import { getUserConfig } from '../../utils/user-config.js';
+import { fetchYouTubeTranscript } from '../../utils/transcript-service.js';
 
 /** For GitHub repos, build classification text from description + topics only (not README body) */
 function buildGithubClassifyText(content: ExtractedContent): string {
@@ -37,19 +39,21 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
     .replace(/\s+/g, ' ')
     .trim();
 
-  // OCR + Vision: run in parallel when images present and text is minimal
+  const features = getUserConfig().features;
+
+  // OCR + Vision: run whenever images are present and imageAnalysis is enabled
   let ocrText = '';
   let imageContext = '';
-  if (content.images.length > 0 && cleanText.length < 200) {
+  if (content.images.length > 0 && features.imageAnalysis) {
     const needOcr = isLikelyScreenshot(content.url, cleanText);
     const [ocrResult, visionResult] = await Promise.all([
       needOcr
-        ? ocrContentImages(content.images, cleanText, 2).catch((err: Error) => {
+        ? ocrContentImages(content.images, cleanText, 3).catch((err: Error) => {
             logger.warn('msg', 'ocr failed', { message: err.message });
             return '';
           })
         : Promise.resolve(''),
-      analyzeContentImages(content.images, 2).catch((err: Error) => {
+      analyzeContentImages(content.images, 5).catch((err: Error) => {
         logger.warn('msg', 'vision-analysis failed', { message: err.message });
         return '';
       }),
@@ -60,6 +64,23 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
     if (imageContext) {
       content.imageDescriptions = imageContext;
       logger.info('msg', 'vision-analysis', { chars: imageContext.length });
+    }
+  }
+
+  // Embedded video transcripts: fetch subtitles for YouTube videos found in web articles
+  if (content.platform === 'web' && content.videos.length > 0 && features.videoTranscription) {
+    const transcriptResults = await Promise.allSettled(
+      content.videos.slice(0, 2).map(v => fetchYouTubeTranscript(v.url)),
+    );
+    const transcripts = transcriptResults
+      .map((r, i) => ({ url: content.videos[i].url, result: r }))
+      .filter((t): t is { url: string; result: PromiseFulfilledResult<string> } =>
+        t.result.status === 'fulfilled' && t.result.value !== null,
+      )
+      .map(t => ({ url: t.url, transcript: (t.result as PromiseFulfilledResult<string>).value }));
+    if (transcripts.length > 0) {
+      content.embeddedVideoTranscripts = transcripts;
+      logger.info('msg', 'embedded-video-transcripts', { count: transcripts.length });
     }
   }
 
@@ -76,6 +97,12 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
     ? `${cleanText}${AI_TRANSCRIPT_PREFIX}${content.transcript.slice(0, 2500)}`
     : cleanText;
   if (ocrText) textForAI += `\n\n[OCR 文字辨識]\n${ocrText.slice(0, 1500)}`;
+  if (content.embeddedVideoTranscripts?.length) {
+    const videoText = content.embeddedVideoTranscripts
+      .map((v, i) => `[內嵌影片${i + 1}逐字稿]\n${v.transcript.slice(0, 1500)}`)
+      .join('\n\n');
+    textForAI += `\n\n${videoText}`;
+  }
   const finalText = imageContext
     ? `${textForAI}\n\n[圖片視覺描述]\n${imageContext}`
     : textForAI;

@@ -92,6 +92,8 @@ export interface ExtractedContent {
   subFolder?: string;
   /** Temp directory to clean up after saving (used by TikTok extractor for local screenshots) */
   tempDir?: string;
+  /** Transcripts for YouTube videos embedded in web articles */
+  embeddedVideoTranscripts?: Array<{ url: string; transcript: string }>;
 }
 
 /** Metadata fetched from a URL found in content or comments */

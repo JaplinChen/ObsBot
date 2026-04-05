@@ -158,10 +158,25 @@ export function buildStats(reposts?: number): string[] {
   return ['---', '', stats.join(' | '), ''];
 }
 
-/** Check if a comment has substantive content beyond pure praise/thanks */
+/** Detect promotional / ad content in comments */
+function isAdComment(text: string): boolean {
+  const t = text.toLowerCase();
+  // Self-promotion / affiliate patterns
+  if (/(追蹤|關注)(我|我們|頻道|帳號|主頁)/.test(t)) return true;
+  if (/(商務合作|商業合作|合作邀約|業配|贊助|廣告)/.test(t)) return true;
+  if (/(私訊|dm\s*me|加我|聯繫我|contact\s*me)/.test(t)) return true;
+  if (/(點我|點擊|連結在|link in|bio|promo|折扣碼|discount\s*code)/.test(t)) return true;
+  if (/(免費領取|限時優惠|立即搶購|下載app|掃碼)/.test(t)) return true;
+  // Spam patterns
+  if (/https?:\/\/\S{30,}/.test(text) && text.replace(/https?:\/\/\S+/g, '').trim().length < 20) return true;
+  return false;
+}
+
+/** Check if a comment has substantive content beyond pure praise/thanks/ads */
 function isSubstantiveComment(text: string): boolean {
   const t = text.trim();
   if (t.length < 5) return false;
+  if (isAdComment(t)) return false;
   // Strip praise/thanks phrases and emoji, check if meaningful content remains
   const stripped = t
     .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1FA00}-\u{1FA9F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '')
@@ -173,13 +188,39 @@ function isSubstantiveComment(text: string): boolean {
   return stripped.length >= 10;
 }
 
-/** Build comments section lines */
+/** Check if a comment has enough depth to be in "精選討論" */
+function isFeaturedComment(c: ThreadComment): boolean {
+  if (!isSubstantiveComment(c.text)) return false;
+  // High engagement
+  if ((c.likes ?? 0) >= 10) return true;
+  // Technical depth signals: code blocks, specific technical discussion
+  if (/```|`[^`]+`/.test(c.text)) return true;
+  if (c.text.length >= 120 && /[a-zA-Z]{3,}/.test(c.text)) return true;
+  if (/為什麼|原因|比較|差異|建議|問題|怎麼|如何|vs\.?|versus|因為|所以/.test(c.text) && c.text.length >= 60) return true;
+  return false;
+}
+
+/** Build image descriptions section */
+export function buildImageDescriptions(imageDescriptions?: string): string[] {
+  if (!imageDescriptions?.trim()) return [];
+  return ['## 插圖說明', '', imageDescriptions.trim(), ''];
+}
+
+/** Build comments section lines — sorted by likes, ad-filtered, with 精選討論 */
 export function buildComments(comments?: ThreadComment[], commentCount?: number): string[] {
   if (!comments || comments.length === 0) return [];
-  const substantive = comments.filter(c => isSubstantiveComment(c.text));
+
+  const substantive = comments
+    .filter(c => isSubstantiveComment(c.text))
+    .sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0));
+
   if (substantive.length === 0) return [];
-  const lines: string[] = ['## 評論', ''];
-  for (const c of substantive.slice(0, 20)) {
+
+  const featured = substantive.filter(isFeaturedComment);
+  const regular = substantive.filter(c => !isFeaturedComment(c));
+  const lines: string[] = [];
+
+  function renderComment(c: ThreadComment): void {
     const likes = c.likes ? ` ❤️${c.likes}` : '';
     lines.push(`**${c.author}** \`${c.authorHandle}\`${likes}`);
     lines.push(c.text);
@@ -190,6 +231,17 @@ export function buildComments(comments?: ThreadComment[], commentCount?: number)
     }
     lines.push('');
   }
+
+  if (featured.length > 0) {
+    lines.push('## 精選討論', '');
+    for (const c of featured.slice(0, 8)) renderComment(c);
+  }
+
+  if (regular.length > 0) {
+    lines.push('## 評論', '');
+    for (const c of regular.slice(0, 15)) renderComment(c);
+  }
+
   if (commentCount && commentCount > comments.length) {
     lines.push(`_共 ${commentCount} 則，顯示前 ${comments.length} 則_`, '');
   }

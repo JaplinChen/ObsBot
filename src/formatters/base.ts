@@ -5,6 +5,7 @@ import {
   buildLinkedContent,
   buildStats,
   buildComments,
+  buildImageDescriptions,
 } from './shared.js';
 import { cleanAdSpeak } from '../utils/content-cleaner.js';
 import { reformatBody } from './body-reformatter.js';
@@ -179,6 +180,16 @@ export function assembleNote(
     lines.push('## 重點整理（條列）', '');
     for (const point of keyTakeaways) lines.push(`- ${point}`);
     lines.push('');
+  }
+
+  lines.push(...buildImageDescriptions(content.imageDescriptions));
+
+  if (content.embeddedVideoTranscripts?.length) {
+    lines.push('## 內嵌影片逐字稿', '');
+    for (const v of content.embeddedVideoTranscripts) {
+      lines.push(`**[${v.url}](${v.url})**`, '');
+      lines.push(v.transcript.slice(0, 1500) + (v.transcript.length > 1500 ? '…' : ''), '');
+    }
   }
 
   lines.push(...formatter.extraSections(content));

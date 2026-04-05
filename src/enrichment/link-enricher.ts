@@ -90,9 +90,44 @@ async function enrichWebPage(url: string): Promise<Omit<LinkedContentMeta, 'url'
   };
 }
 
+/** Fetch GitHub repo metadata: stars, language, topics from HTML */
+async function enrichGithubPage(url: string): Promise<Omit<LinkedContentMeta, 'url' | 'source' | 'mentionedBy'>> {
+  const res = await fetchWithTimeout(url, 15_000, {
+    headers: {
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    },
+    redirect: 'follow',
+  });
+  if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+  const html = await res.text();
+
+  const title = extractMeta(html, 'og:title') || decodeHtml((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '').trim()) || new URL(url).pathname.slice(1);
+  const desc = extractMeta(html, 'og:description') || extractMeta(html, 'description') || '';
+
+  // Stars
+  const starsMatch = html.match(/"stargazerCount"\s*:\s*(\d+)/) ?? html.match(/aria-label="(\d[\d,]*)\s*star/i);
+  const stars = starsMatch ? parseInt(starsMatch[1].replace(/,/g, ''), 10) : undefined;
+
+  // Language
+  const langMatch = html.match(/itemprop="programmingLanguage"[^>]*>([^<]+)</) ?? html.match(/<span[^>]*class="[^"]*color-fg-default[^"]*"[^>]*>([A-Za-z+#]+)<\/span>/);
+  const language = langMatch?.[1]?.trim() || undefined;
+
+  // Topics → append to description
+  const topicMatches = [...html.matchAll(/data-octo-click="topic_click"[^>]*>([^<]+)</g)];
+  const topics = topicMatches.map(m => m[1].trim()).filter(Boolean).slice(0, 8);
+  const topicSuffix = topics.length > 0 ? ` | Topics: ${topics.join(', ')}` : '';
+  const description = desc ? `${desc.replace(/\s+/g, ' ').trim().slice(0, 250)}${topicSuffix}` : topicSuffix.slice(3) || undefined;
+
+  return { title: title.slice(0, 200), description: description || undefined, platform: 'github', stars, language };
+}
+
 async function enrichSingleUrl(entry: UrlEntry): Promise<LinkedContentMeta> {
   const { url, source, mentionedBy } = entry;
-  const meta = await enrichWebPage(url);
+  const platform = detectPlatform(url);
+  const meta = platform === 'github'
+    ? await enrichGithubPage(url)
+    : await enrichWebPage(url);
   return { url, source, mentionedBy, ...meta };
 }
 

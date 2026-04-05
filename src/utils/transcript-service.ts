@@ -5,7 +5,9 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
-import { rm } from 'node:fs/promises';
+import { rm, mkdir, readdir, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { randomBytes } from 'node:crypto';
 import { logger } from '../core/logger.js';
 
 const execFileAsync = promisify(execFile);
@@ -115,6 +117,37 @@ export async function getPlainTranscript(
 ): Promise<string | null> {
   const result = await getTimedTranscript(videoPath, tmpDir);
   return result?.fullText ?? null;
+}
+
+/**
+ * Fetch YouTube subtitles via yt-dlp (no video download).
+ * Tries auto-generated subtitles in zh-Hant/zh-TW/zh/en order.
+ * Returns cleaned transcript text or null if unavailable.
+ */
+export async function fetchYouTubeTranscript(url: string): Promise<string | null> {
+  const id = randomBytes(4).toString('hex');
+  const dir = join(tmpdir(), `obsbot-subs-${id}`);
+  await mkdir(dir, { recursive: true });
+  try {
+    await execFileAsync('yt-dlp', [
+      '--skip-download', '--write-auto-sub', '--sub-lang', 'zh-Hant,zh-TW,zh,en',
+      '--convert-subs', 'srt', '-o', join(dir, 'subs'), '--no-playlist', '--no-warnings', url,
+    ], { timeout: 30_000 });
+    const files = await readdir(dir);
+    const srt = files.find(f => f.startsWith('subs.') && f.endsWith('.srt'));
+    if (!srt) return null;
+    const text = (await readFile(join(dir, srt), 'utf-8'))
+      .split(/\r?\n/)
+      .filter(l => l.trim() && !/^\d+$/.test(l.trim()) && !l.includes('-->'))
+      .map(l => l.replace(/<[^>]+>/g, '').trim())
+      .filter((l, i, a) => l && (i === 0 || l !== a[i - 1]))
+      .join(' ').replace(/\s+/g, ' ').trim();
+    return text.length >= 50 ? text : null;
+  } catch {
+    return null;
+  } finally {
+    rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 /** Format seconds as HH:MM:SS */
