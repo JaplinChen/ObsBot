@@ -1,97 +1,26 @@
 import type { ExtractedContent, ExtractorWithComments, ThreadComment } from './types.js';
-import { fetchWithTimeout, retry } from '../utils/fetch-with-timeout.js';
 import { camoufoxPool } from '../utils/camoufox-pool.js';
+import {
+  BROWSER_UA,
+  firstNonEmpty,
+  normalizeDate,
+  extractPostId,
+  extractVideoPostId,
+  resolveShortUrl,
+  extractViaArcticShift,
+  extractViaOldReddit,
+  extractViaJson,
+  extractViaWiki,
+  fetchCommentsViaArcticShift,
+  fetchCommentsViaJson,
+} from './reddit-api.js';
 
 const REDDIT_PATTERN = /reddit\.com\/r\/([\w]+)\/comments\/([\w]+)/i;
 const REDDIT_SHORT_PATTERN = /reddit\.com\/r\/[\w]+\/s\/([\w]+)/i;
+const REDDIT_WIKI_PATTERN = /reddit\.com\/r\/([\w]+)\/wiki\//i;
+const REDDIT_VIDEO_PATTERN = /reddit\.com\/video\/([\w]+)/i;
 
-const BROWSER_UA =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-
-function normalizeDate(iso?: string | null): string {
-  if (!iso) return new Date().toISOString().split('T')[0];
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
-  return d.toISOString().split('T')[0];
-}
-
-function normalizeDateFromEpoch(epoch?: number | null): string {
-  if (!epoch) return new Date().toISOString().split('T')[0];
-  return new Date(epoch * 1000).toISOString().split('T')[0];
-}
-
-function firstNonEmpty(values: Array<string | null | undefined>): string {
-  for (const v of values) {
-    if (v && v.trim()) return v.trim();
-  }
-  return '';
-}
-
-/** Extract via Reddit's public .json API (no browser needed) */
-async function extractViaJson(url: string): Promise<ExtractedContent | null> {
-  try {
-    // Normalize URL: strip trailing slash, append .json
-    const jsonUrl = url.replace(/\/+$/, '') + '.json';
-    const res = await retry(async () => {
-      return await fetchWithTimeout(jsonUrl, 15_000, {
-        headers: {
-          'User-Agent': BROWSER_UA,
-          Accept: 'application/json',
-        },
-        redirect: 'follow',
-      });
-    }, 3, 1000);
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    if (!Array.isArray(data) || !data[0]?.data?.children?.[0]?.data) return null;
-
-    const post = data[0].data.children[0].data;
-    const title = post.title;
-    if (!title?.trim()) return null;
-
-    const subreddit = post.subreddit || '';
-    const author = post.author || 'unknown';
-    const selftext = post.selftext || '';
-    const date = normalizeDateFromEpoch(post.created_utc);
-    const commentCount = post.num_comments || undefined;
-
-    const images: string[] = [];
-    if (post.url_overridden_by_dest &&
-        /\.(jpg|jpeg|png|gif|webp)/i.test(post.url_overridden_by_dest)) {
-      images.push(post.url_overridden_by_dest);
-    }
-    if (post.preview?.images) {
-      for (const img of post.preview.images) {
-        const src = img.source?.url?.replace(/&amp;/g, '&');
-        if (src) images.push(src);
-      }
-    }
-
-    const text = [
-      subreddit ? `**r/${subreddit}**` : '**Reddit**',
-      '',
-      selftext || '[No body text]',
-    ].join('\n');
-
-    return {
-      platform: 'reddit',
-      author,
-      authorHandle: `u/${author}`,
-      title: title.trim(),
-      text,
-      images: [...new Set(images)].slice(0, 8),
-      videos: [],
-      date,
-      url,
-      commentCount,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** Fallback: extract via Camoufox browser rendering */
+/** Tier 3 (最終備用): Camoufox 瀏覽器渲染 */
 async function extractViaBrowser(url: string): Promise<ExtractedContent> {
   const { page, release } = await camoufoxPool.acquire();
   try {
@@ -160,97 +89,121 @@ async function extractViaBrowser(url: string): Promise<ExtractedContent> {
   }
 }
 
+/** Camoufox 瀏覽器留言擷取 */
+async function fetchCommentsViaBrowser(url: string, limit: number): Promise<ThreadComment[]> {
+  const { page, release } = await camoufoxPool.acquire();
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await page.waitForTimeout(1500);
+
+    for (let i = 0; i < 3; i++) {
+      await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+      await page.waitForTimeout(800);
+    }
+
+    const nodes = await page.locator('shreddit-comment, [data-testid="comment"]').all();
+    const comments: ThreadComment[] = [];
+
+    for (const node of nodes) {
+      if (comments.length >= limit) break;
+
+      const text = firstNonEmpty([
+        await node.locator('[slot="comment"] p').allInnerTexts().then((arr) => arr.join('\n')).catch(() => ''),
+        await node.locator('p').first().innerText().catch(() => ''),
+      ]);
+      if (!text || text.length < 3) continue;
+
+      const author = firstNonEmpty([
+        await node.locator('a[href*="/user/"]').first().innerText().catch(() => ''),
+        await node.getAttribute('author').catch(() => ''),
+      ]) || 'unknown';
+
+      const timeIso = await node.locator('time').first().getAttribute('datetime').catch(() => null);
+
+      comments.push({
+        author: author.replace(/^u\//, ''),
+        authorHandle: author.startsWith('u/') ? author : `u/${author}`,
+        text: text.trim().slice(0, 3000),
+        date: normalizeDate(timeIso),
+      });
+    }
+
+    return comments;
+  } finally {
+    await release();
+  }
+}
+
 export const redditExtractor: ExtractorWithComments = {
   platform: 'reddit',
 
   match(url: string): boolean {
-    return REDDIT_PATTERN.test(url) || REDDIT_SHORT_PATTERN.test(url);
+    return (
+      REDDIT_PATTERN.test(url) ||
+      REDDIT_SHORT_PATTERN.test(url) ||
+      REDDIT_WIKI_PATTERN.test(url) ||
+      REDDIT_VIDEO_PATTERN.test(url)
+    );
   },
 
   parseId(url: string): string | null {
-    return url.match(REDDIT_PATTERN)?.[2] ?? url.match(REDDIT_SHORT_PATTERN)?.[1] ?? null;
+    return (
+      url.match(REDDIT_PATTERN)?.[2] ??
+      url.match(REDDIT_SHORT_PATTERN)?.[1] ??
+      url.match(REDDIT_VIDEO_PATTERN)?.[1] ??
+      null
+    );
   },
 
   async extract(url: string): Promise<ExtractedContent> {
-    // Tier 1: Reddit .json API (fast, no browser)
-    const jsonResult = await extractViaJson(url);
+    // Wiki 頁面走專用路徑
+    if (REDDIT_WIKI_PATTERN.test(url)) {
+      const wikiResult = await extractViaWiki(url);
+      if (wikiResult) return wikiResult;
+      throw new Error(`Reddit wiki 擷取失敗: ${url}`);
+    }
+
+    const resolvedUrl = await resolveShortUrl(url);
+    // video URL 的 id 即 postId
+    const postId = extractPostId(resolvedUrl) ?? extractVideoPostId(resolvedUrl);
+
+    // Tier 0: Arctic Shift（最快，不需瀏覽器，無認證）
+    if (postId) {
+      const result = await extractViaArcticShift(postId, resolvedUrl);
+      if (result) return result;
+    }
+
+    // Tier 1: old.reddit.com JSON
+    const oldResult = await extractViaOldReddit(resolvedUrl);
+    if (oldResult) return oldResult;
+
+    // Tier 2: www.reddit.com JSON（帶退避重試）
+    const jsonResult = await extractViaJson(resolvedUrl);
     if (jsonResult) return jsonResult;
 
-    // Tier 2: Camoufox browser rendering (fallback)
-    return extractViaBrowser(url);
+    // Tier 3: Camoufox 瀏覽器
+    return extractViaBrowser(resolvedUrl);
   },
 
   async extractComments(url: string, limit = 20): Promise<ThreadComment[]> {
-    // Try JSON API first for comments
-    try {
-      const jsonUrl = url.replace(/\/+$/, '') + '.json';
-      const res = await fetchWithTimeout(jsonUrl, 15_000, {
-        headers: { 'User-Agent': BROWSER_UA, Accept: 'application/json' },
-        redirect: 'follow',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data[1]?.data?.children) {
-          const comments: ThreadComment[] = [];
-          for (const child of data[1].data.children) {
-            if (comments.length >= limit) break;
-            if (child.kind !== 't1' || !child.data?.body) continue;
-            const author = child.data.author || 'unknown';
-            comments.push({
-              author,
-              authorHandle: `u/${author}`,
-              text: child.data.body.trim().slice(0, 3000),
-              date: normalizeDateFromEpoch(child.data.created_utc),
-            });
-          }
-          if (comments.length > 0) return comments;
-        }
+    const resolvedUrl = await resolveShortUrl(url);
+    const postId = extractPostId(resolvedUrl);
+
+    // Tier 0: Arctic Shift 留言
+    if (postId) {
+      try {
+        const items = await fetchCommentsViaArcticShift(postId, limit);
+        if (items.length > 0) return items;
+      } catch {
+        // 繼續下一層
       }
-    } catch {
-      // fall through to browser
     }
 
-    // Fallback: browser-based comment extraction
-    const { page, release } = await camoufoxPool.acquire();
-    try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-      await page.waitForTimeout(1500);
+    // Tier 1/2: old.reddit / www.reddit JSON 留言
+    const jsonComments = await fetchCommentsViaJson(resolvedUrl, limit);
+    if (jsonComments.length > 0) return jsonComments;
 
-      for (let i = 0; i < 3; i++) {
-        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-        await page.waitForTimeout(800);
-      }
-
-      const nodes = await page.locator('shreddit-comment, [data-testid="comment"]').all();
-      const comments: ThreadComment[] = [];
-
-      for (const node of nodes) {
-        if (comments.length >= limit) break;
-
-        const text = firstNonEmpty([
-          await node.locator('[slot="comment"] p').allInnerTexts().then((arr) => arr.join('\n')).catch(() => ''),
-          await node.locator('p').first().innerText().catch(() => ''),
-        ]);
-        if (!text || text.length < 3) continue;
-
-        const author = firstNonEmpty([
-          await node.locator('a[href*="/user/"]').first().innerText().catch(() => ''),
-          await node.getAttribute('author').catch(() => ''),
-        ]) || 'unknown';
-
-        const timeIso = await node.locator('time').first().getAttribute('datetime').catch(() => null);
-
-        comments.push({
-          author: author.replace(/^u\//, ''),
-          authorHandle: author.startsWith('u/') ? author : `u/${author}`,
-          text: text.trim().slice(0, 3000),
-          date: normalizeDate(timeIso),
-        });
-      }
-
-      return comments;
-    } finally {
-      await release();
-    }
+    // Tier 3: Camoufox 瀏覽器留言
+    return fetchCommentsViaBrowser(resolvedUrl, limit);
   },
 };
