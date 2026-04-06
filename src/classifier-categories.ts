@@ -31,21 +31,15 @@ export const CATEGORIES: CategoryRule[] = [
   // ── 1. 研究對話：具體工具 ──
   {
     name: 'AI/研究對話/Claude',
-    keywords: [
-      'claude code', 'claude', 'anthropic',
-    ],
+    keywords: ['claude code', 'claude', 'anthropic'],
   },
   {
     name: 'AI/研究對話/OpenAI',
-    keywords: [
-      'chatgpt', 'openai', 'codex', 'openai codex', 'gpt-5', 'gpt-4o',
-    ],
+    keywords: ['chatgpt', 'openai', 'codex', 'openai codex', 'gpt-5', 'gpt-4o'],
   },
   {
     name: 'AI/研究對話/Gemini',
-    keywords: [
-      'gemini', 'notebooklm', 'notebook lm', 'nano banana', 'google ai',
-    ],
+    keywords: ['gemini', 'notebooklm', 'notebook lm', 'nano banana', 'google ai'],
   },
   { name: 'AI/研究對話/DeepSeek', keywords: ['deepseek'] },
   {
@@ -61,14 +55,16 @@ export const CATEGORIES: CategoryRule[] = [
   // ── 2-14. AI 具體工具（由 classifier-categories-tools.ts 管理）──
   ...AI_TOOL_CATEGORIES,
 
-  // ── 11b. 自動化：具體工具（非 AI 工具分類，保留此處）──
+  // ── 開發工具：IDE 與 Coding Assistant ──
+  { name: 'AI/開發工具/Cursor', keywords: ['cursor'] },
+  { name: 'AI/開發工具/Windsurf', keywords: ['windsurf'] },
+  { name: 'AI/開發工具/Cline', keywords: ['cline'] },
+
+  // ── 自動化：工作流工具 ──
   { name: 'AI/自動化/Make', keywords: ['make.com'] },
   { name: 'AI/自動化/Zapier', keywords: ['zapier'] },
   { name: 'AI/自動化/Xembly', keywords: ['xembly'] },
   { name: 'AI/自動化/Bardeen', keywords: ['bardeen'] },
-  { name: 'AI/自動化/Cursor', keywords: ['cursor'] },
-  { name: 'AI/自動化/Windsurf', keywords: ['windsurf'] },
-  { name: 'AI/自動化/Cline', keywords: ['cline'] },
   { name: 'AI/自動化/n8n', keywords: ['n8n'] },
 
   // ══════════════════════════════════════════════════════
@@ -86,7 +82,7 @@ export const CATEGORIES: CategoryRule[] = [
     ],
   },
   {
-    name: 'AI/圖像生成',
+    name: 'AI/多模態生成/圖像',
     keywords: [
       'image generat', '圖片生成', '圖像生成', '圖片放大', 'image enhance',
       'comfyui', '放大', 'text to image', '文生圖',
@@ -94,7 +90,7 @@ export const CATEGORIES: CategoryRule[] = [
     ],
   },
   {
-    name: 'AI/影片製作',
+    name: 'AI/多模態生成/影片',
     keywords: [
       'video generat', '影片生成', '影片製作', '視頻生成', '视频生成',
       'text to video', '文生影片', '文生視頻',
@@ -102,15 +98,28 @@ export const CATEGORIES: CategoryRule[] = [
       'ffmpeg', '短影音', '剪輯',
     ],
   },
+  {
+    name: 'AI/多模態生成/語音',
+    keywords: [
+      '語音輸入', '語音識別', '語音轉文字', '語音轉錄',
+      'speech-to-text', 'speech to text', 'speech recognition',
+      'whisper', 'stt', '轉錄', '聽寫', 'dictation',
+      'voice input', 'voice typing', '語音打字',
+      'sherpaonnx', 'sherpa-onnx', 'macparakeet', 'type4me', 'typeno',
+    ],
+  },
   { name: 'AI/文案撰寫', keywords: ['copywriting', '文案', 'ad copy', '廣告文案'] },
   {
-    name: 'AI/寫作輔助',
+    name: 'AI/Prompt 工程',
     keywords: [
       'prompt engineering', 'system prompt', '提示词', '提示詞',
       '调教', '調教', '角色扮演', 'role play', 'jailbreak',
       'few-shot', 'zero-shot', 'chain of thought',
-      '寫作', 'writing assist', '優化技巧', '細節優化', '生成技巧',
     ],
+  },
+  {
+    name: 'AI/寫作輔助',
+    keywords: ['寫作', 'writing assist', '優化技巧', '細節優化', '生成技巧'],
   },
   { name: 'AI/網站搭建', keywords: ['website builder', '網站搭建', 'ai 建站', 'ai建站'] },
   { name: 'AI/會議記錄', keywords: ['會議記錄', 'meeting note', 'meeting transcript', '會議摘要'] },
@@ -145,16 +154,6 @@ export const CATEGORIES: CategoryRule[] = [
   { name: 'AI/設計工具', keywords: ['設計工具', 'design tool', '平面設計'] },
   { name: 'AI/Logo生成', keywords: ['logo生成', 'logo 生成', 'logo design', 'logo設計'] },
   {
-    name: 'AI/多模態生成/語音',
-    keywords: [
-      '語音輸入', '語音識別', '語音轉文字', '語音轉錄',
-      'speech-to-text', 'speech to text', 'speech recognition',
-      'whisper', 'stt', '轉錄', '聽寫', 'dictation',
-      'voice input', 'voice typing', '語音打字',
-      'sherpaonnx', 'sherpa-onnx', 'macparakeet', 'type4me', 'typeno',
-    ],
-  },
-  {
     name: 'AI/研究對話',
     keywords: [
       '完全教程', '教程', '小白', '新手',
@@ -182,10 +181,10 @@ export const CATEGORIES: CategoryRule[] = [
   },
 
   // ══════════════════════════════════════════════════════
-  // 其他頂層分類（不變）
+  // 其他頂層分類
   // ══════════════════════════════════════════════════════
   {
-    name: '生產力/Obsidian',
+    name: '知識管理/Obsidian',
     keywords: [
       'obsidian', 'pkm', 'zettelkasten',
       '第二大腦', '第二大脑', '筆記軟體', '笔记软件', '筆記工具', '笔记工具',
@@ -196,8 +195,16 @@ export const CATEGORIES: CategoryRule[] = [
     ],
   },
   {
-    name: '科技/Apple',
-    keywords: ['mac', 'macbook', 'iphone', 'ipad', 'macos', 'apple silicon', 'apple watch', 'ios ', 'mac mini', 'mac studio', 'mac pro', 'imac', 'macwhisper', 'orbstack'],
+    name: 'macOS 生態/oMLX',
+    keywords: ['omlx', 'mlx', 'apple silicon model', 'local llm mac'],
+  },
+  {
+    name: 'macOS 生態',
+    keywords: [
+      'mac', 'macbook', 'iphone', 'ipad', 'macos', 'apple silicon', 'apple watch',
+      'ios ', 'mac mini', 'mac studio', 'mac pro', 'imac',
+      'macwhisper', 'orbstack', 'ghostty', 'raycast',
+    ],
   },
   { name: '科技', keywords: ['hardware', 'chip', 'semiconductor', '晶片', '半導體', '硬體', '科技新聞', '休眠機制'] },
   {

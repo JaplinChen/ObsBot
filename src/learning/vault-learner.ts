@@ -36,6 +36,17 @@ export interface LearnedPatterns {
   formatting: FormattingPatterns;
 }
 
+/** 合法分類的頂層前綴；不符合的 frontmatter category 視為關鍵字污染，跳過 */
+const VALID_CATEGORY_PREFIXES = [
+  'AI/', 'AI', '知識管理', '程式設計', '科技', '投資理財',
+  '創業商業', '設計', '行銷', '中文媒體', '生產力', '新聞時事',
+  '生活', '其他', 'macOS 生態',
+];
+
+function isValidCategory(cat: string): boolean {
+  return VALID_CATEGORY_PREFIXES.some((prefix) => cat.startsWith(prefix));
+}
+
 const STOP_WORDS = new Set([
   // English
   'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 'but',
@@ -78,7 +89,7 @@ export async function scanVaultNotes(vaultPath: string): Promise<NoteStats[]> {
       const raw = await readFile(f, 'utf-8');
       const fields = parseFrontmatter(raw);
       const category = fields.get('category');
-      if (!category || category === '其他') continue;
+      if (!category || category === '其他' || !isValidCategory(category)) continue;
 
       const title = fields.get('title') ?? '';
       const keywords = parseArrayField(fields.get('keywords') ?? '');

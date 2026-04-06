@@ -2,14 +2,14 @@
 
 import type { CategoryRule } from './classifier-categories.js';
 
-/** 圖像生成、影片製作、文案、寫作、網站、會議、SEO、客服、簡報、UI、設計、Logo 工具 */
+/** 多模態生成（圖像/影片）、文案、寫作、網站、會議、SEO、客服、簡報、UI、設計、Logo 工具 */
 export const AI_TOOL_CATEGORIES: CategoryRule[] = [
-  // ── 圖像生成：具體工具 ──
-  { name: 'AI/圖像生成/Midjourney', keywords: ['midjourney'] },
-  { name: 'AI/圖像生成/Dall-E', keywords: ['dall-e', 'dalle', 'dall e'] },
-  { name: 'AI/圖像生成/Flux', keywords: ['flux'] },
-  { name: 'AI/圖像生成/Stability AI', keywords: ['stability ai', 'stable diffusion', 'stablediffusion'] },
-  { name: 'AI/圖像生成/Grok', keywords: ['grok'] },
+  // ── 多模態生成/圖像：具體工具 ──
+  { name: 'AI/多模態生成/圖像/Midjourney', keywords: ['midjourney'] },
+  { name: 'AI/多模態生成/圖像/Dall-E', keywords: ['dall-e', 'dalle', 'dall e'] },
+  { name: 'AI/多模態生成/圖像/Flux', keywords: ['flux'] },
+  { name: 'AI/多模態生成/圖像/Stability AI', keywords: ['stability ai', 'stable diffusion', 'stablediffusion'] },
+  { name: 'AI/多模態生成/圖像/Grok', keywords: ['grok'] },
 
   // ── 文案撰寫：具體工具 ──
   { name: 'AI/文案撰寫/Rytr', keywords: ['rytr'] },
@@ -32,16 +32,16 @@ export const AI_TOOL_CATEGORIES: CategoryRule[] = [
   { name: 'AI/網站搭建/Style AI', keywords: ['style ai'] },
   { name: 'AI/網站搭建/Landingsite', keywords: ['landingsite'] },
 
-  // ── 影片製作：具體工具 ──
-  { name: 'AI/影片製作/Sora', keywords: ['sora'] },
-  { name: 'AI/影片製作/Luma', keywords: ['luma'] },
-  { name: 'AI/影片製作/Kling', keywords: ['kling'] },
-  { name: 'AI/影片製作/Pika', keywords: ['pika'] },
-  { name: 'AI/影片製作/InVideo', keywords: ['invideo'] },
-  { name: 'AI/影片製作/HeyGen', keywords: ['heygen'] },
-  { name: 'AI/影片製作/Runway', keywords: ['runway'] },
-  { name: 'AI/影片製作/ImgCreator', keywords: ['imgcreator'] },
-  { name: 'AI/影片製作/Morphstudio', keywords: ['morphstudio'] },
+  // ── 多模態生成/影片：具體工具 ──
+  { name: 'AI/多模態生成/影片/Sora', keywords: ['sora'] },
+  { name: 'AI/多模態生成/影片/Luma', keywords: ['luma'] },
+  { name: 'AI/多模態生成/影片/Kling', keywords: ['kling'] },
+  { name: 'AI/多模態生成/影片/Pika', keywords: ['pika'] },
+  { name: 'AI/多模態生成/影片/InVideo', keywords: ['invideo'] },
+  { name: 'AI/多模態生成/影片/HeyGen', keywords: ['heygen'] },
+  { name: 'AI/多模態生成/影片/Runway', keywords: ['runway'] },
+  { name: 'AI/多模態生成/影片/ImgCreator', keywords: ['imgcreator'] },
+  { name: 'AI/多模態生成/影片/Morphstudio', keywords: ['morphstudio'] },
 
   // ── 會議記錄：具體工具 ──
   { name: 'AI/會議記錄/Tldv', keywords: ['tldv'] },
