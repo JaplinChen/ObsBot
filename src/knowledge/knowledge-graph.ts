@@ -39,6 +39,7 @@ export function buildEntityGraph(knowledge: VaultKnowledge): EntityGraph {
   const notesByEntity = new Map<string, string[]>();
 
   for (const note of Object.values(knowledge.notes)) {
+    if (!note.noteId) continue;
     const entityKeys = note.entities.map(e => e.name.toLowerCase().trim());
 
     for (const key of entityKeys) {
@@ -69,7 +70,7 @@ export function findRelatedNotes(knowledge: VaultKnowledge, noteId: string, limi
   const candidates = new Map<string, string[]>();
 
   for (const other of Object.values(knowledge.notes)) {
-    if (other.noteId === noteId) continue;
+    if (!other.noteId || other.noteId === noteId) continue;
     const shared: string[] = [];
     for (const e of other.entities) {
       if (myEntities.has(e.name.toLowerCase().trim())) shared.push(e.name);
@@ -78,12 +79,17 @@ export function findRelatedNotes(knowledge: VaultKnowledge, noteId: string, limi
   }
 
   return [...candidates.entries()]
-    .map(([id, shared]) => ({
-      noteId: id,
-      title: knowledge.notes[id].title,
-      sharedEntities: shared,
-      qualityScore: knowledge.notes[id].qualityScore,
-    }))
+    .map(([id, shared]) => {
+      const target = knowledge.notes[id];
+      if (!target) return null;
+      return {
+        noteId: id,
+        title: target.title,
+        sharedEntities: shared,
+        qualityScore: target.qualityScore,
+      };
+    })
+    .filter((r): r is RelatedNote => r !== null)
     .sort((a, b) => b.sharedEntities.length - a.sharedEntities.length || b.qualityScore - a.qualityScore)
     .slice(0, limit);
 }
