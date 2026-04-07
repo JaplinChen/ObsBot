@@ -63,7 +63,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .bot-bar .clr{background:none;border:none;color:var(--txt3);font-size:12px;cursor:pointer;font-family:inherit}
 .bot-bar .clr:hover{color:var(--txt2)}
 /* 中欄 */
-.center{display:flex;flex-direction:column;overflow:hidden;background:var(--bg0);flex:1;min-width:0}
+.center{display:flex;flex-direction:column;overflow:hidden;background:var(--bg0);flex:1;min-width:0;position:relative}
 .topic-bar{padding:11px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:9px;background:var(--bg1);flex-shrink:0}
 .topic-bar input{flex:1;background:var(--bg0);border:1px solid var(--bdr2);border-radius:8px;padding:9px 13px;color:var(--txt1);font-size:15px;font-style:italic;font-family:inherit;outline:none;transition:border-color .2s}
 .topic-bar input:focus{border-color:var(--gold)}
@@ -201,6 +201,27 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .restore-banner .rb-topic{color:var(--txt1);font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .restore-banner .rb-btn{background:var(--pu);border:none;border-radius:6px;color:#fff;padding:4px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600}
 .restore-banner .rb-x{background:none;border:none;color:var(--txt3);font-size:16px;cursor:pointer;padding:0 2px;line-height:1}
+/* ── Sessions history panel ── */
+.sessions-panel{display:none;position:absolute;left:0;right:0;top:0;bottom:0;z-index:200;background:var(--bg1);flex-direction:column;overflow:hidden;animation:fu .18s ease}
+.sessions-panel.open{display:flex}
+.sessions-hdr{padding:12px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:9px;flex-shrink:0}
+.sessions-hdr h3{flex:1;font-size:14px;color:var(--txt1);font-weight:600;margin:0}
+.sessions-hdr .sh-close{background:none;border:1px solid var(--bdr);border-radius:6px;padding:4px 11px;color:var(--txt3);font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.sessions-hdr .sh-close:hover{border-color:var(--bdr2);color:var(--txt2)}
+.sessions-hdr .sh-clear{background:none;border:1px solid var(--bdr);border-radius:6px;padding:4px 11px;color:var(--txt3);font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.sessions-hdr .sh-clear:hover{border-color:#e74c3c;color:#e74c3c}
+.sessions-list{flex:1;overflow-y:auto;padding:12px 16px}
+.session-item{background:var(--bg2);border:1px solid var(--bdr);border-radius:9px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;transition:border-color .2s;cursor:default}
+.session-item:hover{border-color:var(--pu3);background:var(--pu2)}
+.session-info{flex:1;min-width:0}
+.session-topic{font-size:13px;color:var(--txt1);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-meta{font-size:11px;color:var(--txt3);margin-top:3px}
+.session-load{background:var(--pu);border:none;border-radius:6px;color:#fff;padding:5px 13px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap;transition:opacity .15s}
+.session-load:hover{opacity:.85}
+.session-del{background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--txt3);padding:5px 9px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s;flex-shrink:0}
+.session-del:hover{border-color:#e74c3c;color:#e74c3c}
+.sessions-empty{text-align:center;padding:50px 20px;color:var(--txt3);font-size:13px;line-height:2}
+.history-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--pu);margin-left:3px;vertical-align:middle;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -233,9 +254,18 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
       <input id="topic" data-i18n-placeholder="research.topicPlaceholder" placeholder="輸入研究主題…" oninput="renderEmpty()" onkeydown="if(event.key==='Enter')analyze()" />
       <span id="selBadge" class="sel-badge" style="display:none"></span>
       <span id="status" style="font-size:11px;color:var(--txt3);white-space:nowrap"></span>
+      <button id="historyBtn" onclick="toggleSessionsPanel()" title="歷史研究" style="background:transparent;border:1px solid var(--bdr);border-radius:8px;padding:9px 13px;color:var(--txt3);font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:5px">📂 <span id="historyBadge" style="display:none;background:var(--pu);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;line-height:1.4">0</span></button>
       <button id="analyzeBtn" onclick="analyze()" data-i18n="research.analyze">分析</button>
     </div>
     <div class="messages" id="messages"></div>
+    <div class="sessions-panel" id="sessionsPanel">
+      <div class="sessions-hdr">
+        <h3>📂 歷史研究</h3>
+        <button class="sh-clear" onclick="clearAllSessions()" title="清除所有記錄">🗑 全部清除</button>
+        <button class="sh-close" onclick="closeSessionsPanel()">✕ 關閉</button>
+      </div>
+      <div class="sessions-list" id="sessionsList"></div>
+    </div>
     <div class="chat-input">
       <div class="chat-wrap">
         <textarea id="chatInput" rows="1" data-i18n-placeholder="research.chatPlaceholder" placeholder="詢問問題…（Enter 送出）" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
@@ -654,49 +684,99 @@ async function exportPptx(){
   }catch(e){alert(t('research.exportFail')+e.message);}
 }
 
-/* ── Session persistence (P5) ── */
+/* ── Multi-session persistence ── */
+var SESSIONS_KEY='obsbot-research-sessions';
+var MAX_SESSIONS=30;
+
+function getSessions(){
+  try{var r=localStorage.getItem(SESSIONS_KEY);return r?JSON.parse(r):[];}catch(e){return[];}
+}
+function _saveSessions(arr){
+  try{localStorage.setItem(SESSIONS_KEY,JSON.stringify(arr));}catch(e){}
+}
 function saveSession(){
   if(!S.topic||!S.history.length)return;
-  try{localStorage.setItem('obsbot-research-session',JSON.stringify({
+  var sessions=getSessions();
+  var idx=sessions.findIndex(function(s){return s.topic===S.topic;});
+  var sess={
+    id:idx>=0?sessions[idx].id:(Date.now().toString(36)+Math.random().toString(36).slice(2,5)),
     topic:S.topic,history:S.history,overview:S.overview,
-    selectedPaths:[...S.selected],savedAt:Date.now()
-  }));}catch(e){}
+    selectedPaths:[...S.selected],savedAt:Date.now(),msgCount:S.history.length
+  };
+  if(idx>=0){sessions[idx]=sess;}else{sessions.unshift(sess);}
+  if(sessions.length>MAX_SESSIONS)sessions=sessions.slice(0,MAX_SESSIONS);
+  _saveSessions(sessions);
+  updateHistoryBadge();
 }
 
-function restoreSession(){
-  var raw;try{raw=localStorage.getItem('obsbot-research-session');}catch(e){return;}
-  if(!raw)return;
-  var sess;try{sess=JSON.parse(raw);}catch(e){return;}
-  if(!sess.topic||!sess.history||!sess.history.length)return;
-  if(Date.now()-sess.savedAt>7200000)return; // 2小時過期
-  window._pendingSession=sess;
-  var banner=document.createElement('div');
-  banner.id='restoreBanner';banner.className='restore-banner';
-  banner.innerHTML='上次研究：<span class="rb-topic">'+esc(sess.topic)+'</span>'
-    +'<button class="rb-btn" onclick="doRestoreSession()">恢復</button>'
-    +'<button class="rb-x" onclick="dismissRestoreBanner()">✕</button>';
-  document.body.appendChild(banner);
+function deleteSession(id){
+  _saveSessions(getSessions().filter(function(s){return s.id!==id;}));
+  renderSessionsPanel();updateHistoryBadge();
 }
 
-function doRestoreSession(){
-  var sess=window._pendingSession;if(!sess)return;
+function clearAllSessions(){
+  if(!confirm('確定要清除所有歷史研究記錄？'))return;
+  _saveSessions([]);renderSessionsPanel();updateHistoryBadge();
+}
+
+function loadSessionById(id){
+  var sess=getSessions().find(function(s){return s.id===id;});
+  if(!sess)return;
   S.topic=sess.topic;S.history=sess.history;S.overview=sess.overview||null;
   $('topic').value=sess.topic;
   window._pendingRestorePaths=sess.selectedPaths||[];
-  // 若 notes 已載入則立即恢復選取
   if(S.notes.length){
     var paths=new Set(window._pendingRestorePaths);
-    S.notes.forEach(n=>{if(paths.has(n.path))S.selected.add(n.path);});
+    S.notes.forEach(function(n){if(paths.has(n.path))S.selected.add(n.path);});
     window._pendingRestorePaths=null;
-    renderTree();
+    renderTree();updateSelCount();
   }
   renderMessages();renderRight();
-  dismissRestoreBanner();
+  closeSessionsPanel();
 }
 
-function dismissRestoreBanner(){
-  var b=document.getElementById('restoreBanner');if(b)b.remove();
-  window._pendingSession=null;
+function toggleSessionsPanel(){
+  var panel=$('sessionsPanel');
+  if(panel.classList.contains('open')){closeSessionsPanel();}else{openSessionsPanel();}
+}
+function openSessionsPanel(){renderSessionsPanel();$('sessionsPanel').classList.add('open');}
+function closeSessionsPanel(){$('sessionsPanel').classList.remove('open');}
+
+function renderSessionsPanel(){
+  var sessions=getSessions();
+  var el=$('sessionsList');if(!el)return;
+  if(!sessions.length){
+    el.innerHTML='<div class="sessions-empty">尚無儲存的研究記錄<br><small>分析或對話後會自動儲存，最多保留 '+MAX_SESSIONS+' 筆</small></div>';
+    return;
+  }
+  el.innerHTML=sessions.map(function(s){
+    var d=new Date(s.savedAt);
+    var dateStr=d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0')
+      +' '+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+    var msgCt=s.history?s.history.filter(function(m){return m.role==='user';}).length:0;
+    var noteCt=(s.selectedPaths||[]).length;
+    return '<div class="session-item">'
+      +'<div class="session-info">'
+      +'<div class="session-topic">'+esc(s.topic)+'</div>'
+      +'<div class="session-meta">'+dateStr+' · '+msgCt+' 個問題 · '+noteCt+' 篇筆記</div>'
+      +'</div>'
+      +'<button class="session-load" onclick="loadSessionById(\''+s.id+'\')">繼續研究</button>'
+      +'<button class="session-del" onclick="deleteSession(\''+s.id+'\');event.stopPropagation()" title="刪除">🗑</button>'
+      +'</div>';
+  }).join('');
+}
+
+function updateHistoryBadge(){
+  var ct=getSessions().length;
+  var badge=$('historyBadge');var btn=$('historyBtn');
+  if(!badge||!btn)return;
+  if(ct>0){
+    badge.textContent=ct;badge.style.display='inline';
+    btn.style.borderColor='var(--pu3)';btn.style.color='var(--pu)';
+  }else{
+    badge.style.display='none';
+    btn.style.borderColor='var(--bdr)';btn.style.color='var(--txt3)';
+  }
 }
 
 // Apply saved theme + language on load
@@ -713,7 +793,7 @@ $('search').addEventListener('input',function(){clearTimeout(searchTimer);search
 loadNotes();
 updateSelCount();
 renderEmpty();
-restoreSession();
+updateHistoryBadge();
 </script>
 <div id="vaultToast"></div>
 </body>
