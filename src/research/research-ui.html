@@ -585,15 +585,15 @@ function sendPromptTool(idx){
 
 async function runTool(tool){
   if(!S.topic){alert(t('research.noTopic'));return;}
-  $('rightContent').innerHTML='<div class="loading">'+t('research.generating')+'</div>';
+  const msgEl=document.createElement('div');msgEl.className='msg';
+  msgEl.innerHTML='<div class="msg-ava ai">'+t('research.avatarAI')+'</div><div class="msg-body"><div class="msg-role">'+t('research.roleAI')+'</div><div class="msg-text" style="color:var(--txt3)">'+t('research.generating')+'</div></div>';
+  $('messages').appendChild(msgEl);$('messages').scrollTop=$('messages').scrollHeight;
   try{
     const r=await fetch('/api/research/tools/'+tool,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:S.topic,paths:[...S.selected]})});
     const d=await r.json();
     S.history.push({role:'assistant',content:d.result});renderMessages();
-    $('rightContent').innerHTML='<div class="overview-item">'+renderMd(d.result)+'</div>';
-    // 捲動到最新訊息
-    var msgs=$('messages');var last=msgs.lastElementChild;if(last)last.scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(e){$('rightContent').innerHTML='<div class="empty">'+t('research.generateFail')+esc(e.message)+'</div>';}
+    var last=$('messages').lastElementChild;if(last)last.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){msgEl.querySelector('.msg-text').textContent=t('research.generateFail')+e.message;}
 }
 
 async function copyMsg(idx,btn){
