@@ -134,6 +134,40 @@ export function addQuery(
   return query;
 }
 
+/**
+ * Add an author-tracking search query.
+ * Marked with `authorHandle` so the auto-rotation logic can identify it.
+ */
+export function addAuthorQuery(config: RadarConfig, handle: string): RadarQuery {
+  const query = addQuery(config, [handle, 'AI'], 'manual', 'search');
+  query.authorHandle = handle;
+  return query;
+}
+
+/**
+ * Promote the next author from `authorQueue` when an author query is paused.
+ * Returns the new handle on success, null if the queue is empty.
+ */
+export function promoteNextAuthor(config: RadarConfig): string | null {
+  const queue = config.authorQueue;
+  if (!queue || queue.length === 0) return null;
+
+  // Skip handles already active in current queries
+  const activeHandles = new Set(
+    config.queries.filter(q => q.authorHandle && !q.paused).map(q => q.authorHandle!),
+  );
+
+  while (queue.length > 0) {
+    const handle = queue.shift()!;
+    if (activeHandles.has(handle)) continue;
+    addAuthorQuery(config, handle);
+    logger.info('radar', '作者自動輪替', { promoted: handle, queueRemaining: queue.length });
+    return handle;
+  }
+
+  return null;
+}
+
 export function removeQuery(config: RadarConfig, id: string): boolean {
   const idx = config.queries.findIndex(q => q.id === id);
   if (idx < 0) return false;

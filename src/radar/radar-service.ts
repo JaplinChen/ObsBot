@@ -6,7 +6,7 @@
 import type { Telegraf } from 'telegraf';
 import { type AppConfig, getOwnerUserId } from '../utils/config.js';
 import type { RadarConfig, RadarResult, RadarCycleSummary, RadarQueryType } from './radar-types.js';
-import { saveRadarConfig } from './radar-store.js';
+import { saveRadarConfig, promoteNextAuthor } from './radar-store.js';
 import { webSearch } from '../utils/search-service.js';
 import { findExtractor } from '../utils/url-parser.js';
 import { classifyContent } from '../classifier.js';
@@ -182,12 +182,12 @@ export async function runRadarCycle(
   let totalSaved = 0;
 
   const newlyPaused: string[] = [];
+  const promotedAuthors: string[] = [];
 
   for (const query of radarConfig.queries) {
     if (totalSaved >= radarConfig.maxTotalPerCycle) break;
     if (query.paused) continue; // skip paused queries
 
-    const wasPaused = query.paused;
     const remaining = radarConfig.maxTotalPerCycle - totalSaved;
     const maxResults = Math.min(radarConfig.maxResultsPerQuery, remaining);
     const { result, matches } = await runQuery(query, config, maxResults, toolIndex);
@@ -196,9 +196,15 @@ export async function runRadarCycle(
     totalSaved += result.saved;
 
     // Track newly paused queries for notification
-    if (!wasPaused && query.paused) {
+    if (query.paused) {
       const desc = query.type === 'rss' ? query.keywords[0] : query.keywords.join(' ');
       newlyPaused.push(`[${query.id}] ${desc}`);
+
+      // Auto-rotate: replace paused author query with next from queue
+      if (query.authorHandle) {
+        const promoted = promoteNextAuthor(radarConfig);
+        if (promoted) promotedAuthors.push(promoted);
+      }
     }
   }
 
@@ -245,6 +251,12 @@ export async function runRadarCycle(
         '',
         '使用 /radar resume <id> 可恢復。',
       ];
+      if (promotedAuthors.length > 0) {
+        lines.push('', `🔄 已自動輪替加入下一位備用作者：`);
+        promotedAuthors.forEach(h => lines.push(`• @${h}`));
+        const remaining = radarConfig.authorQueue?.length ?? 0;
+        if (remaining > 0) lines.push(`（備用佇列剩餘 ${remaining} 位）`);
+      }
       await bot.telegram.sendMessage(userId, lines.join('\n')).catch(() => {});
     }
   }

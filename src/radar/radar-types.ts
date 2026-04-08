@@ -13,6 +13,11 @@ export interface RadarConfig {
   lastRunAt?: string;
   /** Per-cycle results kept for proactive digest integration. */
   lastCycleResults?: RadarCycleSummary;
+  /**
+   * Standby author handles to promote when an active author query is paused.
+   * Ordered by priority (index 0 = next to promote).
+   */
+  authorQueue?: string[];
 }
 
 export interface RadarQuery {
@@ -37,6 +42,11 @@ export interface RadarQuery {
     titleField: string;
     snippetField?: string;
   };
+  /**
+   * If this is an author-tracking query, store the handle (e.g. "op7418").
+   * Used to trigger auto-rotation when the query is auto-paused.
+   */
+  authorHandle?: string;
 }
 
 export interface RadarResult {
