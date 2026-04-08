@@ -16,7 +16,6 @@ import { scanVaultNotes } from '../knowledge/knowledge-store.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
 import { findExtractor } from '../utils/url-parser.js';
 import { deleteOldFileIfMoved, cleanEmptyDirs } from '../vault/reprocess-helpers.js';
-import { setBatchMode } from '../utils/omlx-client.js';
 import type { ExtractorWithComments } from '../extractors/types.js';
 
 interface ParsedArgs {
@@ -119,8 +118,7 @@ async function reprocessBatch(
   const result = { total: targets.length, success: 0, failed: 0, errors: [] as string[] };
   let processed = 0;
 
-  // Phase 1: Concurrent processing (deep tier capped to 9B to avoid 27B timeouts)
-  setBatchMode(true);
+  // Phase 1: Concurrent processing
   const failedNotes: typeof targets = [];
   const queue = [...targets];
   const workers = Array.from({ length: BATCH_CONCURRENCY }, async () => {
@@ -141,7 +139,6 @@ async function reprocessBatch(
     }
   });
   await Promise.all(workers);
-  setBatchMode(false);
 
   // Phase 2: Retry failed notes sequentially (no resource contention)
   if (failedNotes.length > 0) {

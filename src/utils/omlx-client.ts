@@ -25,7 +25,7 @@ function getOmlxModels(): Record<ModelTier, string> {
   return getUserConfig().llm.omlx.models;
 }
 
-/** Per-tier default timeouts (ms). Deep is longer for 27B inference. */
+/** Per-tier default timeouts (ms). Deep is longer for large model inference. */
 const OMLX_TIMEOUTS: Record<ModelTier, number> = {
   flash: 15_000,
   standard: 30_000,
@@ -73,24 +73,16 @@ function invalidateCache(): void {
 
 /* ── Batch mode guard ──────────────────────────────────────────────── */
 
-let _batchMode = false;
-
-/** Enable/disable batch mode. Deep tier auto-downgrades to 9B in batch. */
-export function setBatchMode(enabled: boolean): void {
-  _batchMode = enabled;
-}
 
 /* ── Model selection ────────────────────────────────────────────────── */
 
-/** Get the oMLX model ID for a given tier. Deep caps to 9B in batch mode. */
+/** Get the oMLX model ID for a given tier. */
 export function getOmlxModelId(tier: ModelTier): string {
-  if (_batchMode && tier === 'deep') return getOmlxModels().standard;
   return getOmlxModels()[tier];
 }
 
 /** Get the default timeout for a given tier. */
 export function getOmlxTimeout(tier: ModelTier): number {
-  if (_batchMode && tier === 'deep') return OMLX_TIMEOUTS.standard;
   return OMLX_TIMEOUTS[tier];
 }
 
@@ -130,13 +122,14 @@ export async function omlxChatCompletion(
   const modelId = getOmlxModelId(tier);
   const timeoutMs = options.timeoutMs ?? getOmlxTimeout(tier);
 
+  const isQwenModel = modelId.toLowerCase().includes('qwen');
   const body = JSON.stringify({
     model: modelId,
     messages: [{ role: 'user', content: prompt }],
     temperature: options.temperature ?? 0.3,
     max_tokens: options.maxTokens ?? 4096,
-    // Disable reasoning/thinking for Qwen3.5 models — 10x+ faster
-    chat_template_kwargs: { enable_thinking: false },
+    // Disable reasoning/thinking for Qwen models — 10x+ faster
+    ...(isQwenModel ? { chat_template_kwargs: { enable_thinking: false } } : {}),
   });
 
   try {

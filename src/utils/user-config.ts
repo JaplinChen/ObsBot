@@ -105,7 +105,7 @@ const DEFAULTS: UserConfig = {
       models: {
         flash: 'MLX-Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-4bit',
         standard: 'Qwen3.5-9B-MLX-4bit',
-        deep: 'Qwen3.5-27B-4bit',
+        deep: 'gemma-4-26b-a4b-it-4bit',
       },
     },
     ollama: {
