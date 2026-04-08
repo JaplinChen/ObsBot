@@ -70,9 +70,10 @@ Ingest   Compile   Query    Output    Lint
 <summary><strong>功能一覽</strong></summary>
 
 #### 攝取（Ingest）
-- **丟連結就存檔** — 穩定支援 14 個平台 + 通用網頁；中國平台需 Camoufox 登入 Cookie
+- **丟連結就存檔** — 穩定支援 14 個平台 + 通用網頁；中國平台支援三層降級（Camoufox → Jina Reader → MediaCrawler）
 - **連結深度抓取** — 文章 / 回覆中的外部連結自動抓取完整內文（最多 3000 字），注入 AI 豐富化統合分析；已存 Vault 的連結在「相關連結」區塊自動附加 `→ [[wikilink]]` 跳轉
 - **內容雷達** — `/radar` 定期自動搜尋關注主題並存入 Vault（DDG / GitHub Trending / RSS / HN / Reddit / Dev.to / 自訂 JSON API）
+- **RSSHub 巡邏** — 自架 RSSHub 服務，訂閱知乎 / B站 / 掘金 / 少數派等 5000+ 路由，自動攝取中文內容圈動態
 - **追蹤系統** — `/track` 時間軸抓取、作者訂閱、多平台巡邏
 
 #### 編譯（Compile）
@@ -128,7 +129,7 @@ Ingest   Compile   Query    Output    Lint
 | GitHub | ✅ | — | — | Repo / Issue / PR |
 | TikTok | ✅ | — | — | yt-dlp + whisper.cpp STT 逐字稿 |
 | iTHome | ✅ | — | — | 台灣科技新聞 |
-| 通用網頁 | ✅ | — | — | 4 層降級（Readability → Camoufox → Browser Use → Regex） |
+| 通用網頁 | ✅ | — | — | 5 層降級（Readability → Jina Reader → Camoufox → Browser Use → Regex） |
 | PDF 文件 | ✅ | — | — | 直接傳檔到 Telegram |
 | 直連影片 | ✅ | — | — | MP4 / WebM / MKV 直連下載 + 轉錄 |
 
@@ -138,12 +139,12 @@ Ingest   Compile   Query    Output    Lint
 |------|:----:|------|
 | Bilibili | ⚠️ | 需 yt-dlp，部分內容需登入 Cookie |
 | 微博 | ⚠️ | Camoufox + API，訪客驗證可能阻擋 |
-| 小紅書 | ⚠️ | Camoufox，登入牆頻繁，常需更新 Cookie |
-| 抖音 / 今日頭條 | ⚠️ | Camoufox，反爬偵測嚴格 |
-| 知乎 | ⚠️ | Camoufox，需登入才能完整擷取；專欄文章支援評論抓取 |
+| 小紅書 | ⚠️ | Camoufox → MediaCrawler（需 Cookie），登入牆頻繁 |
+| 抖音 / 今日頭條 | ⚠️ | Camoufox → MediaCrawler（需 Cookie），反爬偵測嚴格 |
+| 知乎 | ⚠️ | Camoufox + RSSHub 熱榜備援；專欄文章支援評論抓取 |
 
-> ⚠️ 需登入的平台使用 [Camoufox](https://camoufox.com/)（反偵測瀏覽器），需手動維護登入 Cookie。平台封鎖策略頻繁變動，擷取可能間歇性失敗。
-> 通用網頁擷取另支援 [Browser Use CLI](https://docs.browser-use.com/open-source/browser-use-cli) 作為 Camoufox 之後的降級方案。
+> ⚠️ 需登入的平台採三層降級：[Camoufox](https://camoufox.com/)（反偵測瀏覽器）→ [MediaCrawler](https://github.com/NanmiCoder/MediaCrawler) FastAPI 服務（需帳號 Cookie）→ 失敗拋錯。Cookie 填入 `data/mediacrawler-cookies.json`，MediaCrawler 服務啟動方式：`python3.11 scripts/mediacrawler-server.py`。
+> 通用網頁擷取另支援 [Jina Reader](https://jina.ai/reader/) 及 [Browser Use CLI](https://docs.browser-use.com/open-source/browser-use-cli) 作為中間層降級方案。
 
 </details>
 
@@ -403,7 +404,7 @@ Ingest               Compile                 Query              Output
 + /radar 雷達        + 實體萃取              /research 研究     /anki 記憶卡
 + /track 巡邏        + 知識圖譜建構          /vsearch 語意搜    PNG 資訊卡
 + 連結深度抓取       + 動態學習              /search 統一搜     主動推理推送
-                     + 記憶整合                                 wikilink 推薦
++ RSSHub 5000+ 路由  + 記憶整合                                 wikilink 推薦
                      + 主題編譯（Karpathy）
                                         自癒 Lint
                                         ──────────────
@@ -419,6 +420,9 @@ Ingest               Compile                 Query              Output
 - **TypeScript** + ESM（`tsx` 執行），281 個檔案 / 31,670 行
 - **Telegraf** — Telegram Bot API（10 指令 hub 架構 + InlineKeyboard + ForceReply）
 - **Camoufox** — 反偵測瀏覽器（Firefox 基底），瀏覽器池最多 4 實例，閒置立即釋放
+- **Jina Reader** — 通用網頁 Markdown 轉換（`r.jina.ai`），Readability 失敗時自動觸發，零配置
+- **RSSHub** — 自架 Docker 服務（port 1200），5000+ 路由覆蓋中文內容平台，整合進 Patrol 巡邏來源
+- **MediaCrawler** — Python FastAPI 服務（port 8765），小紅書 / 抖音帶 Cookie 抓取，Camoufox 失敗時自動降級
 - **ProcessGuardian** — 三段式 409 自癒（指數退避 → 自動 logOut + 冷卻 → 退出）+ 殭屍進程自動清理
 - **OpenCode CLI** + 多模型路由 — 依複雜度自動選 flash / standard / deep 免費模型；可選 oMLX 本地推理優先
 - **知識系統** — 實體萃取、知識圖譜、缺口分析、Skill 自動生成、用戶偏好萃取、知識蒸餾、記憶整合、MOC 生成、Karpathy 主題編譯
@@ -489,7 +493,7 @@ src/
 │   ├── zhihu-extractor.ts      # 知乎（Camoufox）
 │   ├── ithome-extractor.ts     # iTHome（台灣科技新聞）
 │   ├── direct-video-extractor.ts # 直連影片（MP4/WebM/MKV）
-│   └── web-extractor.ts        # 通用網頁（4 層降級 + 自動 fallback）
+│   └── web-extractor.ts        # 通用網頁（5 層降級：Readability→Jina→Camoufox→BrowserUse→Regex）
 ├── formatters/                 # 按平台分離的 Markdown 格式化
 │   ├── base.ts                 # 組裝器（frontmatter + body + stats）
 │   ├── shared.ts               # 共用工具（評論品質篩選, badge 過濾）
@@ -512,7 +516,7 @@ src/
 ├── enrichment/                 # 內容後處理（連結展開、翻譯）
 ├── learning/                   # 分類學習與 AI 增強
 ├── radar/                      # 內容雷達（多來源自動搜尋 → Vault）
-├── patrol/                     # 多平臺巡邏（HN / Reddit / Dev.to / GitHub）
+├── patrol/                     # 多平臺巡邏（HN / Dev.to / GitHub Trending / RSSHub）
 ├── admin/                      # Admin Web UI（port 3001）
 ├── memory/                     # 使用者偏好記憶
 ├── video/                      # 影片語意搜尋（FTS5）
@@ -520,7 +524,7 @@ src/
 ├── proactive/                  # 主動推理（排程摘要 + 趨勢警報）
 ├── monitoring/                 # 自我修復 + 品質基準
 ├── vault/                      # Vault 維護工具
-└── utils/                      # 共用工具（LLM 路由 / 搜尋 / 快取 / 瀏覽器池）
+└── utils/                      # 共用工具（LLM 路由 / 搜尋 / 快取 / 瀏覽器池 / Jina / RSSHub / MediaCrawler）
 ```
 
 </details>
