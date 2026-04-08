@@ -82,6 +82,8 @@ export function formatLinkedMeta(link: LinkedContentMeta): string {
   const desc = link.description ? ` — ${link.description}` : '';
   const header = `- **[${link.title}](${link.url})**${desc}${suffix}`;
 
+  const lines: string[] = [header];
+
   // Show content preview when deep-fetched fullText is available
   if (link.fullText && link.fullText.length > 100) {
     const preview = link.fullText
@@ -91,10 +93,15 @@ export function formatLinkedMeta(link: LinkedContentMeta): string {
       .slice(0, 300);
     const truncated = preview.length >= 300 ? preview + '…' : preview;
     const indented = truncated.split('\n').map(l => `  > ${l}`).join('\n');
-    return `${header}\n${indented}`;
+    lines.push(indented);
   }
 
-  return header;
+  // Link to existing Vault note if this URL was already saved
+  if (link.vaultNote) {
+    lines.push(`  → [[${link.vaultNote}]]`);
+  }
+
+  return lines.join('\n');
 }
 
 /** Build frontmatter lines */

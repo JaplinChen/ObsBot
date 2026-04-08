@@ -13,6 +13,8 @@ import { ocrContentImages, isLikelyScreenshot } from '../../enrichment/ocr-servi
 import { cleanTitle } from '../../utils/content-cleaner.js';
 import { getUserConfig } from '../../utils/user-config.js';
 import { fetchYouTubeTranscript } from '../../utils/transcript-service.js';
+import { isDuplicateUrl } from '../../saver.js';
+import { basename } from 'node:path';
 
 /** For GitHub repos, build classification text from description + topics only (not README body) */
 function buildGithubClassifyText(content: ExtractedContent): string {
@@ -134,6 +136,16 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
   await fetchLinkedContent(content, postProcessOpts).catch((err: Error) => {
     logger.warn('post-process', '連結補充失敗', { message: err.message });
   });
+
+  // 查詢每個連結是否已存在於 Vault，有則標記 vaultNote 供 formatter 生成 wikilink
+  if (content.linkedContent?.length) {
+    await Promise.allSettled(
+      content.linkedContent.map(async (link) => {
+        const existing = await isDuplicateUrl(link.url, config.vaultPath);
+        if (existing) link.vaultNote = basename(existing, '.md');
+      }),
+    );
+  }
 
   // 將連結頁面全文注入 AI 輸入，讓 AI 可以分析連結內容
   let enrichTextWithLinks = enrichText;

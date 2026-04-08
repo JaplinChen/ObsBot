@@ -108,6 +108,8 @@ export interface LinkedContentMeta {
   language?: string;
   /** Full text content from deep fetch (truncated to ~3000 chars) */
   fullText?: string;
+  /** Obsidian note name (without .md) if this URL is already saved in Vault */
+  vaultNote?: string;
 }
 
 /** Translation result for non-Traditional-Chinese content */
