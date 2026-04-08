@@ -61,6 +61,9 @@ function checkNote(raw: string): string[] {
   }
 
   const fm = fmMatch[1];
+
+  // Skip Compress archive files — they use a different schema (compress_source instead of url/date/title)
+  if (fm.match(/^compress_source:\s*.+/m)) return [];
   const body = raw.slice(fmMatch[0].length).trim();
 
   // Frontmatter checks
