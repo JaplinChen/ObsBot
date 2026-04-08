@@ -13,10 +13,17 @@ import { handleCode } from './code-command.js';
 import type { BotStats } from '../messages/types.js';
 
 function rewriteText(ctx: Context, newCommand: string, args: string): void {
-  const msg = ctx.message as unknown as Record<string, unknown> | undefined;
   const text = args ? `${newCommand} ${args}` : newCommand;
-  if (msg) { msg.text = text; }
-  else { (ctx as unknown as Record<string, unknown>).message = { text }; }
+  const update = ctx.update as unknown as Record<string, unknown>;
+  const existingMsg = ctx.message as unknown as Record<string, unknown> | undefined;
+  if (existingMsg) {
+    existingMsg.text = text;
+  } else {
+    // In callback query context, ctx.message is a getter (ctx.update.message).
+    // We must write to ctx.update instead of ctx directly to avoid
+    // "Cannot set property message which has only a getter" error.
+    update.message = { text };
+  }
 }
 
 type CtxHandler = (ctx: Context, config: AppConfig) => Promise<void>;
