@@ -11,6 +11,7 @@ import type { ExtractedContent, Extractor } from './types.js';
 import { camoufoxPool } from '../utils/camoufox-pool.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 import { getTimedTranscript } from '../utils/transcript-service.js';
+import { mediaCrawlerClient } from '../utils/mediacrawler-client.js';
 import { logger } from '../core/logger.js';
 
 const execFileAsync = promisify(execFile);
@@ -154,13 +155,41 @@ export const douyinExtractor: Extractor = {
   async extract(url: string): Promise<ExtractedContent> {
     const resolvedUrl = await resolveShortUrl(url);
     const type = detectType(resolvedUrl);
-    const { page, release } = await camoufoxPool.acquire();
+    let lastError: Error | null = null;
+
+    // Tier 1：Camoufox
     try {
-      return type === 'toutiao'
-        ? extractToutiao(resolvedUrl, page)
-        : extractDouyin(resolvedUrl, page);
-    } finally {
-      await release();
+      const { page, release } = await camoufoxPool.acquire();
+      try {
+        return await (type === 'toutiao'
+          ? extractToutiao(resolvedUrl, page)
+          : extractDouyin(resolvedUrl, page));
+      } finally {
+        await release();
+      }
+    } catch (err) {
+      lastError = err as Error;
     }
+
+    // Tier 2：MediaCrawler（僅抖音，今日頭條不需要）
+    if (type === 'douyin' && await mediaCrawlerClient.isAvailable()) {
+      const result = await mediaCrawlerClient.crawlDouyin(resolvedUrl);
+      if (result) {
+        return {
+          platform: 'douyin',
+          author: result.author,
+          authorHandle: result.authorHandle,
+          title: result.title,
+          text: result.description,
+          images: [],
+          videos: [{ url: result.videoUrl || resolvedUrl, type: 'video' }],
+          date: result.date,
+          url: resolvedUrl,
+          likes: result.likes || undefined,
+        };
+      }
+    }
+
+    throw lastError ?? new Error(`無法擷取抖音內容：${resolvedUrl}`);
   },
 };

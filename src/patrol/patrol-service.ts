@@ -11,6 +11,7 @@ import { loadPatrolConfig, savePatrolConfig } from './patrol-store.js';
 import type { PatrolItem, PatrolSource } from './sources/source-types.js';
 import { hnSource } from './sources/hn-source.js';
 import { devtoSource } from './sources/devto-source.js';
+import { rsshubSource } from './sources/rsshub-source.js';
 import { scoreAndFilter } from './relevance-scorer.js';
 import { filterUnsaved, formatPatrolNotification, buildPatrolButtons } from './patrol-notifier.js';
 import { isDuplicateUrl } from '../saver.js';
@@ -78,6 +79,7 @@ const ALL_SOURCES: Record<string, PatrolSource> = {
   'github-trending': githubTrendingSource,
   'hn': hnSource,
   'devto': devtoSource,
+  'rsshub': rsshubSource,
 };
 
 /* ── Core patrol cycle ────────────────────────────────────────────── */
@@ -101,7 +103,9 @@ export async function runMultiPatrolCycle(
       ? pConfig.languages
       : sourceName === 'devto'
         ? pConfig.devtoTags
-        : pConfig.topics;
+        : sourceName === 'rsshub'
+          ? (pConfig.rsshubPaths ?? [])
+          : pConfig.topics;
 
     try {
       const items = await source.fetch(topicsForSource);

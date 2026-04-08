@@ -15,6 +15,8 @@ export interface PatrolConfig {
   topics: string[];
   /** Tags for Dev.to source */
   devtoTags: string[];
+  /** RSSHub 路由清單，例如 ['/zhihu/hotlist', '/bilibili/trending/regionlist/0/1'] */
+  rsshubPaths: string[];
   /** Relevance score threshold 0-10 (default: 6) */
   relevanceThreshold: number;
 }
@@ -34,5 +36,6 @@ export const DEFAULT_PATROL_CONFIG: PatrolConfig = {
   enabledSources: ['github-trending'],
   topics: ['ai-agent', 'obsidian', 'typescript', 'local-llm'],
   devtoTags: ['ai', 'typescript', 'webdev', 'opensource'],
+  rsshubPaths: [],
   relevanceThreshold: 6,
 };

@@ -1,8 +1,8 @@
-export const JINA_REMOVE_SELECTORS = '';
 import type { ExtractedContent, Extractor } from './types.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 import { stripHtmlTags } from './web-cleaner.js';
 import { htmlToMarkdown, htmlToMarkdownWithBrowser, htmlToMarkdownWithBrowserUse } from '../utils/html-to-markdown.js';
+import { fetchJina } from '../utils/jina-reader.js';
 
 
 function decodeHtml(s: string): string {
@@ -119,6 +119,15 @@ export const webExtractor: Extractor = {
 
     // Tier 1: Readability + Turndown on fetched HTML
     let parsed = html ? htmlToMarkdown(html, finalUrl) : null;
+
+    // Tier 1.5: Jina Reader（Readability 失敗或無 HTML 時）
+    let jinaResult: Awaited<ReturnType<typeof fetchJina>> = null;
+    if (!parsed) {
+      jinaResult = await fetchJina(url);
+      if (jinaResult) {
+        parsed = { title: jinaResult.title, markdown: jinaResult.markdown, excerpt: '', byline: null };
+      }
+    }
 
     // Tier 2: Camoufox browser rendering (WAF bypass / JS-rendered pages)
     if (!parsed) {
