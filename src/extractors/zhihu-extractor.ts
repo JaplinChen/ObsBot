@@ -7,10 +7,11 @@
  */
 
 import { parseHTML } from 'linkedom';
-import type { ExtractedContent, Extractor, ExtractorWithComments, ThreadComment } from './types.js';
+import type { ExtractedContent, ExtractorWithComments, ThreadComment } from './types.js';
 import { fetchWithTimeout, retry } from '../utils/fetch-with-timeout.js';
 import { htmlFragmentToMarkdown } from '../utils/html-to-markdown.js';
 import { logger } from '../core/logger.js';
+import { fetchZhihuComments } from './zhihu-comments.js';
 
 const QUESTION_RE = /zhihu\.com\/question\/(\d+)/;
 const ARTICLE_RE = /zhuanlan\.zhihu\.com\/p\/(\d+)/;
@@ -205,58 +206,6 @@ function extractInitialData(html: string): InitialData | null {
     });
     return null;
   }
-}
-
-/** Zhihu comment API response shape */
-interface ZhihuCommentItem {
-  id: number;
-  content: string;
-  author: { name: string; url_token?: string };
-  created_time: number;
-  like_count: number;
-  child_comments?: ZhihuCommentItem[];
-}
-
-interface ZhihuCommentPage {
-  data: ZhihuCommentItem[];
-  paging?: { is_end: boolean };
-}
-
-function mapComment(item: ZhihuCommentItem): ThreadComment {
-  const replies = (item.child_comments ?? []).slice(0, 5).map(r => ({
-    author: r.author.name,
-    authorHandle: r.author.url_token ?? r.author.name,
-    text: r.content.replace(/<[^>]+>/g, '').trim(),
-    date: new Date(r.created_time * 1000).toISOString().split('T')[0],
-    likes: r.like_count,
-  }));
-  return {
-    author: item.author.name,
-    authorHandle: item.author.url_token ?? item.author.name,
-    text: item.content.replace(/<[^>]+>/g, '').trim(),
-    date: new Date(item.created_time * 1000).toISOString().split('T')[0],
-    likes: item.like_count,
-    replies: replies.length > 0 ? replies : undefined,
-  };
-}
-
-async function fetchZhihuComments(apiUrl: string, limit: number): Promise<ThreadComment[]> {
-  const comments: ThreadComment[] = [];
-  try {
-    const res = await fetchWithTimeout(
-      `${apiUrl}?limit=20&order=score`,
-      15_000, { headers: HEADERS },
-    );
-    if (!res.ok) return [];
-    const data = await res.json() as ZhihuCommentPage;
-    for (const item of data.data ?? []) {
-      if (comments.length >= limit) break;
-      comments.push(mapComment(item));
-    }
-  } catch {
-    // API unavailable (auth required) — return empty
-  }
-  return comments;
 }
 
 export const zhihuExtractor: ExtractorWithComments = {
