@@ -14,15 +14,15 @@ import type { BotStats } from '../messages/types.js';
 
 function rewriteText(ctx: Context, newCommand: string, args: string): void {
   const text = args ? `${newCommand} ${args}` : newCommand;
-  const update = ctx.update as unknown as Record<string, unknown>;
   const existingMsg = ctx.message as unknown as Record<string, unknown> | undefined;
   if (existingMsg) {
     existingMsg.text = text;
   } else {
-    // In callback query context, ctx.message is a getter (ctx.update.message).
-    // We must write to ctx.update instead of ctx directly to avoid
-    // "Cannot set property message which has only a getter" error.
-    update.message = { text };
+    // Callback query context: ctx.message is getter-only (reads ctx.update.message).
+    // Spread the real callback message to preserve chat/from so ctx.reply() still works,
+    // then override text so downstream handlers can parse the command.
+    const cbMsg = (ctx.callbackQuery?.message ?? {}) as Record<string, unknown>;
+    (ctx.update as unknown as Record<string, unknown>).message = { ...cbMsg, text };
   }
 }
 

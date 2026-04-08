@@ -228,7 +228,10 @@ export function registerCommands(
     const pathArgs = paths.join(' ');
     const existingMsg = ctx.message as unknown as Record<string, unknown> | undefined;
     if (existingMsg) { existingMsg.text = `/reprocess ${pathArgs}`; }
-    else { (ctx.update as unknown as Record<string, unknown>).message = { text: `/reprocess ${pathArgs}` }; }
+    else {
+      const cbMsg = (ctx.callbackQuery?.message ?? {}) as Record<string, unknown>;
+      (ctx.update as unknown as Record<string, unknown>).message = { ...cbMsg, text: `/reprocess ${pathArgs}` };
+    }
     await handleReprocess(ctx, config);
   });
 

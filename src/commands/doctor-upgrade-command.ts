@@ -119,7 +119,8 @@ export async function handleDoctorUpgradeRun(
   if (existingMsg) {
     existingMsg.text = `/reprocess --all${sinceSuffix}`;
   } else {
-    (ctx.update as unknown as Record<string, unknown>).message = { text: `/reprocess --all${sinceSuffix}` };
+    const cbMsg = (ctx.callbackQuery?.message ?? {}) as Record<string, unknown>;
+    (ctx.update as unknown as Record<string, unknown>).message = { ...cbMsg, text: `/reprocess --all${sinceSuffix}` };
   }
   await handleReprocess(ctx, config);
 }

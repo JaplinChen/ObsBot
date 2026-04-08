@@ -86,7 +86,10 @@ function rewriteText(ctx: Context, newCommand: string, args: string): void {
   const text = args ? `${newCommand} ${args}` : newCommand;
   const existingMsg = ctx.message as unknown as Record<string, unknown> | undefined;
   if (existingMsg) { existingMsg.text = text; }
-  else { (ctx.update as unknown as Record<string, unknown>).message = { text }; }
+  else {
+    const cbMsg = (ctx.callbackQuery?.message ?? {}) as Record<string, unknown>;
+    (ctx.update as unknown as Record<string, unknown>).message = { ...cbMsg, text };
+  }
 }
 
 /** Build vault hub with retry handler injected at registration time */
