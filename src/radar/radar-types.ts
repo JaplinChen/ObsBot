@@ -18,6 +18,8 @@ export interface RadarConfig {
    * Ordered by priority (index 0 = next to promote).
    */
   authorQueue?: string[];
+  /** ISO timestamp of the last weekly author-queue refresh from vault rankings. */
+  lastAuthorQueueRefreshedAt?: string;
 }
 
 export interface RadarQuery {

@@ -6,7 +6,8 @@
 import type { Telegraf } from 'telegraf';
 import { type AppConfig, getOwnerUserId } from '../utils/config.js';
 import type { RadarConfig, RadarResult, RadarCycleSummary, RadarQueryType } from './radar-types.js';
-import { saveRadarConfig, promoteNextAuthor } from './radar-store.js';
+import { saveRadarConfig } from './radar-store.js';
+import { promoteNextAuthor, runWeeklyAuthorRefresh } from './radar-author.js';
 import { webSearch } from '../utils/search-service.js';
 import { findExtractor } from '../utils/url-parser.js';
 import { classifyContent } from '../classifier.js';
@@ -260,6 +261,9 @@ export async function runRadarCycle(
       await bot.telegram.sendMessage(userId, lines.join('\n')).catch(() => {});
     }
   }
+
+  // ── Weekly author-queue refresh (delegated to radar-author.ts) ───────────
+  await runWeeklyAuthorRefresh(bot, config, radarConfig);
 
   const totalErrors = results.reduce((s, r) => s + r.errors, 0);
   logger.info('radar', '掃描完成', { totalSaved, totalErrors });
