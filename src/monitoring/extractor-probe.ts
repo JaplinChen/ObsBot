@@ -19,7 +19,7 @@ const PROBE_ENDPOINTS: Record<string, { url: string; method: 'HEAD' | 'GET' }> =
   github:      { url: 'https://github.com/', method: 'HEAD' },
   bilibili:    { url: 'https://www.bilibili.com/', method: 'HEAD' },
   weibo:       { url: 'https://m.weibo.cn/api/config', method: 'GET' },
-  xhs:         { url: 'https://www.xiaohongshu.com/', method: 'HEAD' },
+  xhs:         { url: 'https://www.xiaohongshu.com/', method: 'GET' },
   douyin:      { url: 'https://www.douyin.com/aweme/v1/web/general/search/single/', method: 'HEAD' },
   tiktok:      { url: 'https://www.tiktok.com/', method: 'HEAD' },
   ithome:      { url: 'https://ithelp.ithome.com.tw/', method: 'HEAD' },
