@@ -1,9 +1,8 @@
 /**
- * Reprocess vault helpers: backup, progress tracking, fallback reclassify.
+ * Reprocess vault helpers: backup, progress tracking, empty-dir cleanup.
  */
-import { readdir, readFile, writeFile, rename, mkdir, cp, unlink, rmdir } from 'node:fs/promises';
-import { join, dirname, normalize } from 'node:path';
-import { classifyContent } from '../classifier.js';
+import { readdir, readFile, writeFile, unlink, cp, rmdir } from 'node:fs/promises';
+import { join, normalize } from 'node:path';
 
 /* ── Backup ───────────────────────────────────────────────────────────── */
 
@@ -64,55 +63,6 @@ export class ReprocessProgress {
   getResults(): ReprocessResult[] {
     return this.data.results;
   }
-}
-
-/* ── Fallback reclassify ──────────────────────────────────────────────── */
-
-function extractField(content: string, field: string): string | null {
-  const re = new RegExp(`^${field}:\\s*"?([^"\\n]+)"?\\s*$`, 'm');
-  return content.match(re)?.[1]?.trim() ?? null;
-}
-
-function replaceField(content: string, field: string, newValue: string): string {
-  const re = new RegExp(`^(${field}:\\s*).*$`, 'm');
-  return content.replace(re, `$1${newValue}`);
-}
-
-export async function fallbackReclassify(
-  filePath: string,
-  baseDir: string,
-): Promise<ReprocessResult> {
-  const raw = await readFile(filePath, 'utf-8');
-  const title = extractField(raw, 'title') ?? '';
-  const url = extractField(raw, 'url') ?? '';
-  const oldCategory = extractField(raw, 'category') ?? '其他';
-
-  // 取得正文（frontmatter 結束後的內容）供分類使用
-  const bodyMatch = raw.match(/^---[\s\S]*?---\n([\s\S]*)$/);
-  const body = bodyMatch ? bodyMatch[1].slice(0, 800) : '';
-
-  const newCategory = await classifyContent(title, body);
-
-  const oldTop = oldCategory.split('/')[0];
-  const newTop = newCategory.split('/')[0];
-
-  if (oldTop === newTop) {
-    return { url, status: 'fallback', oldPath: filePath, oldCategory, newCategory: oldCategory };
-  }
-
-  // Move to new category folder
-  const rel = normalize(filePath).slice(normalize(baseDir).length).replace(/\\/g, '/');
-  const segments = rel.split('/').filter(Boolean);
-  segments[0] = newTop;
-  const newFilePath = join(baseDir, ...segments);
-  await mkdir(dirname(newFilePath), { recursive: true });
-  const updated = replaceField(raw, 'category', newCategory);
-  await writeFile(filePath, updated, 'utf-8');
-  await rename(filePath, newFilePath);
-  // 清理舊目錄（搬移後若為空則刪除，防止空目錄堆積）
-  await cleanEmptyDirs(dirname(filePath));
-
-  return { url, status: 'fallback', oldPath: filePath, newPath: newFilePath, oldCategory, newCategory };
 }
 
 /* ── Cleanup empty dirs ───────────────────────────────────────────────── */
