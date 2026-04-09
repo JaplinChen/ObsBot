@@ -14,17 +14,31 @@ export const CATEGORIES: CategoryRule[] = [
   // 越精確的排越前面
   // ══════════════════════════════════════════════════════
 
-  // ── 0. 辦公協作（claude cowork 比 claude 更精確，必須排前面）──
+  // ── 0. 辦公協作（具體工具排前，兜底排後）──
   {
-    name: 'AI/Cowork',
-    keywords: [
-      'claude cowork', 'cowork', 'openwork', '辦公協作', '協作辦公',
-      'feishu', '飛書',
+    name: 'AI/Cowork/OpenWork',
+    keywords: ['openwork', 'opencode'],
+    exclude: [
+      'sword', 'antique', '古劍', '金屬', 'jewelry',
+      'staffing', 'employer', 'recruitment', '人力',
     ],
+  },
+  {
+    name: 'AI/Cowork/Claude Cowork',
+    keywords: ['claude cowork', 'cowork'],
     exclude: [
       'sword', 'antique', '古劍', '金屬', 'jewelry',
       'staffing', 'employer', 'recruitment', '人力',
       'john mayer', 'johnmayer', 'rakuten',
+      'openwork',
+    ],
+  },
+  {
+    name: 'AI/Cowork',
+    keywords: ['辦公協作', '協作辦公', 'feishu', '飛書'],
+    exclude: [
+      'sword', 'antique', '古劍', '金屬', 'jewelry',
+      'staffing', 'employer', 'recruitment', '人力',
     ],
   },
 
