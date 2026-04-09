@@ -59,6 +59,14 @@ export const CATEGORIES: CategoryRule[] = [
   { name: 'AI/開發工具/Cursor', keywords: ['cursor'] },
   { name: 'AI/開發工具/Windsurf', keywords: ['windsurf'] },
   { name: 'AI/開發工具/Cline', keywords: ['cline'] },
+  {
+    name: 'AI/開發工具',
+    keywords: [
+      'github copilot', 'copilot', 'tabnine', 'supermaven', 'aider',
+      'continue.dev', 'zed editor', 'ai coding', 'code assistant', 'coding assistant',
+      'devin', 'software engineer ai', 'swe-agent',
+    ],
+  },
 
   // ── 自動化：工作流工具 ──
   { name: 'AI/自動化/Make', keywords: ['make.com'] },
@@ -131,13 +139,24 @@ export const CATEGORIES: CategoryRule[] = [
       'multi-agent', 'agent orchestration', 'agent 軍團', 'agent 架構',
       'agent framework', 'agent monitoring', 'agent 操控', 'agent 監控',
       '自動化', 'automation', 'workflow', 'mcp server', 'mcp tool', 'mcp ',
-      'telegram bot', 'bot',
+      'telegram bot', 'discord bot', 'slack bot', 'line bot', 'chatbot',
       'langchain', 'langgraph',
       'best practices', '最佳实践', '最佳實踐', '工程指南',
       '数据抓取', '資料抓取',
       '爬蟲', 'crawler', 'scraping', 'scraper', 'firecrawl',
       'cli tool', 'cli 工具', '情報', '無頭瀏覽器', 'headless browser',
       '團隊組建', 'skill清单', 'skill 清單',
+    ],
+  },
+  {
+    name: 'AI/LLM 基礎',
+    keywords: [
+      'transformer', 'attention mechanism', '注意力機制',
+      'tokenization', 'fine-tuning', 'finetuning', 'pre-training', 'pretraining',
+      'rlhf', 'reinforcement learning from human feedback',
+      'context window', 'inference', '推理加速', 'speculative decoding',
+      'quantization', 'int4', 'int8', 'gguf', 'ggml',
+      'lora', 'qlora', 'peft', 'model merging',
     ],
   },
   {
@@ -200,9 +219,20 @@ export const CATEGORIES: CategoryRule[] = [
     name: 'macOS 生態',
     keywords: [
       'mac', 'macbook', 'iphone', 'ipad', 'macos', 'apple silicon', 'apple watch',
-      'ios ', 'mac mini', 'mac studio', 'mac pro', 'imac',
+      'ios ', 'ios開發', 'ios app', 'ios版', 'mac mini', 'mac studio', 'mac pro', 'imac',
       'macwhisper', 'orbstack', 'ghostty', 'raycast',
     ],
+  },
+  {
+    name: '資安',
+    keywords: [
+      'security', 'cybersecurity', 'vulnerability', 'exploit', 'cve',
+      '資安', '安全漏洞', '資訊安全', '網路安全', '漏洞', '滲透測試',
+      'pentest', 'penetration test', 'hacking', 'malware', 'ransomware',
+      'phishing', 'zero-day', 'xss', 'sql injection', 'csrf',
+      'threat', 'attack surface', 'incident response', 'soc',
+    ],
+    exclude: ['生活安全', '食品安全', '交通安全'],
   },
   { name: '科技', keywords: ['hardware', 'chip', 'semiconductor', '晶片', '半導體', '硬體', '科技新聞', '休眠機制'] },
   {
@@ -222,7 +252,7 @@ export const CATEGORIES: CategoryRule[] = [
     keywords: [
       'stock', 'etf', 'crypto', 'bitcoin', 'invest', 'portfolio',
       'dividend', '股票', '基金', '投資', '理財', '加密貨幣',
-      '比特幣', '報酬', '資產', 'finance', 'market', '市場',
+      '比特幣', '報酬', '資產', 'finance', '股市', 'market cap', 'bull market', 'bear market', '市場',
     ],
   },
   {
@@ -234,7 +264,7 @@ export const CATEGORIES: CategoryRule[] = [
     ],
   },
   { name: '設計', keywords: ['typography', 'brand design', 'visual design', '排版', '品牌設計', '視覺設計'] },
-  { name: '行銷', keywords: ['marketing', 'seo', 'google ads', 'facebook ads', 'growth hack', 'content marketing', 'social media marketing', 'campaign', '行銷', '廣告', '流量', 'viral'] },
+  { name: '行銷', keywords: ['marketing', 'seo策略', 'seo行銷', 'google ads', 'facebook ads', 'growth hack', 'content marketing', 'social media marketing', 'campaign', '行銷', '廣告', '流量', 'viral'] },
   { name: '中文媒體', keywords: ['微博', 'weibo', '小紅書', '小红书', 'xiaohongshu', '紅書', 'xhs', 'bilibili', 'b站', '嗶哩嗶哩', '哔哩哔哩', '抖音', 'douyin', '今日頭條', '今日头条', 'toutiao', 'tiktok', '知乎', 'zhihu', '豆瓣', 'douban'] },
   {
     name: '生產力',
