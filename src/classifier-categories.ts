@@ -16,7 +16,7 @@ export const CATEGORIES: CategoryRule[] = [
 
   // ── 0. 辦公協作（claude cowork 比 claude 更精確，必須排前面）──
   {
-    name: 'AI/辦公協作',
+    name: 'AI/Cowork',
     keywords: [
       'claude cowork', 'cowork', 'openwork', '辦公協作', '協作辦公',
       'feishu', '飛書',
