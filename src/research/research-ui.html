@@ -62,6 +62,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .bot-bar .sel-ct b{color:var(--pu);font-weight:700}
 .bot-bar .clr{background:none;border:none;color:var(--txt3);font-size:12px;cursor:pointer;font-family:inherit}
 .bot-bar .clr:hover{color:var(--txt2)}
+.batch-btns{display:none;gap:5px}
+.batch-btns.vis{display:flex}
+.batch-btn{background:none;border:1px solid var(--bdr);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;color:var(--txt2);white-space:nowrap}
+.batch-btn:hover{border-color:var(--bdr2);color:var(--txt1)}
+.batch-btn.danger{border-color:rgba(231,76,60,.4);color:#e74c3c}
+.batch-btn.danger:hover{background:#e74c3c;color:#fff;border-color:#e74c3c}
 /* 中欄 */
 .center{display:flex;flex-direction:column;overflow:hidden;background:var(--bg0);flex:1;min-width:0;position:relative}
 .topic-bar{padding:11px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:9px;background:var(--bg1);flex-shrink:0}
@@ -311,6 +317,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
     <div class="note-list" id="noteList"><div class="empty" data-i18n="research.scanning">正在掃描 Vault…</div></div>
     <div class="bot-bar">
       <span class="sel-ct"><b id="selCount">0</b> <span data-i18n="research.selected"> 篇已選</span></span>
+      <div class="batch-btns" id="batchBtns">
+        <button class="batch-btn" onclick="openBatchMove()">📂 移動</button>
+        <button class="batch-btn danger" onclick="openBatchDelete()">🗑 刪除</button>
+      </div>
       <button class="clr" onclick="clearSelection()" data-i18n="research.clear">清除</button>
     </div>
   </div>
@@ -559,6 +569,9 @@ function updateSelCount(){
   // 手機：筆記 tab 顯示已選數量 badge
   var mb=$('mobSelBadge');
   if(mb){if(n>0){mb.textContent=n;mb.style.display='';}else mb.style.display='none';}
+  // 批次操作按鈕
+  var bb=$('batchBtns');
+  if(bb){if(n>=1)bb.classList.add('vis');else bb.classList.remove('vis');}
   renderEmpty();
 }
 
@@ -679,12 +692,17 @@ function closeMoveDialog(){$('moveDialog').classList.remove('open');}
 
 async function submitMove(folder){
   closeMoveDialog();
-  if(!_ctxPath)return;
+  // 批次模式：_ctxPath === null 時移動所有已選
+  var paths=_ctxPath?[_ctxPath]:Array.from(S.selected);
+  if(paths.length===0)return;
   try{
-    var r=await fetch('/api/vault/note/move?path='+encodeURIComponent(_ctxPath),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder})});
-    var d=await r.json();
-    if(d.error){alert('移動失敗：'+d.error);return;}
-    if(S.selected.has(_ctxPath)){S.selected.delete(_ctxPath);S.selected.add(d.newPath);}
+    for(var i=0;i<paths.length;i++){
+      var p=paths[i];
+      var r=await fetch('/api/vault/note/move?path='+encodeURIComponent(p),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder})});
+      var d=await r.json();
+      if(d.error){alert('移動失敗（'+p.split('/').pop()+'）：'+d.error);continue;}
+      if(S.selected.has(p)){S.selected.delete(p);S.selected.add(d.newPath);}
+    }
     await fetch('/api/research/rescan',{method:'POST'});
     loadNotes($('search').value);updateSelCount();
   }catch(e){alert('移動失敗：'+e.message);}
@@ -721,14 +739,40 @@ function openDeleteDialog(path){
 }
 function closeDeleteDialog(){$('deleteDialog').classList.remove('open');}
 
-async function submitDelete(){
-  if(!_ctxPath)return;
-  closeDeleteDialog();
+async function openBatchMove(){
+  _ctxPath=null; // 批次模式
+  $('folderList').innerHTML='<div class="loading">載入資料夾…</div>';
+  $('moveDialog').classList.add('open');
   try{
-    var r=await fetch('/api/vault/note?path='+encodeURIComponent(_ctxPath),{method:'DELETE'});
+    var r=await fetch('/api/vault/folders');
     var d=await r.json();
-    if(d.error){alert('刪除失敗：'+d.error);return;}
-    S.selected.delete(_ctxPath);
+    if(d.error){$('folderList').innerHTML='<div class="empty">載入失敗</div>';return;}
+    var n=S.selected.size;
+    $('folderList').innerHTML='<div style="font-size:11px;color:var(--txt3);margin-bottom:6px;">移動 '+n+' 篇筆記到：</div>'
+      +d.folders.map(function(f){var label=f||'（根目錄）';return'<button class="folder-opt" onclick="submitMove(\''+f.replace(/'/g,"\\'")+'\')">\uD83D\uDCC1 '+esc(label)+'</button>';}).join('');
+  }catch(e){$('folderList').innerHTML='<div class="empty">載入失敗</div>';}
+}
+
+function openBatchDelete(){
+  _ctxPath=null; // 批次模式
+  var n=S.selected.size;
+  $('deleteNoteName').textContent=n+' 篇筆記';
+  $('deleteDialog').classList.add('open');
+}
+
+async function submitDelete(){
+  closeDeleteDialog();
+  // 批次模式：_ctxPath === null 時刪除所有已選
+  var paths=_ctxPath?[_ctxPath]:Array.from(S.selected);
+  if(paths.length===0)return;
+  try{
+    for(var i=0;i<paths.length;i++){
+      var p=paths[i];
+      var r=await fetch('/api/vault/note?path='+encodeURIComponent(p),{method:'DELETE'});
+      var d=await r.json();
+      if(d.error){alert('刪除失敗（'+p.split('/').pop()+'）：'+d.error);continue;}
+      S.selected.delete(p);
+    }
     await fetch('/api/research/rescan',{method:'POST'});
     loadNotes($('search').value);updateSelCount();
   }catch(e){alert('刪除失敗：'+e.message);}
