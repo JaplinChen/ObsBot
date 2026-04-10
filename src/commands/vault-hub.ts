@@ -20,7 +20,7 @@ import { startTyping, stopTyping } from '../utils/typing-indicator.js';
 import type { BotStats } from '../messages/types.js';
 import {
   handleVaultGraph, handleVaultDreaming, handleVaultMemoir,
-  handleVaultAnalyzeRules, handleVaultBookmarkGap,
+  handleVaultAnalyzeRules, handleVaultBookmarkGap, handleVaultDraft,
 } from './vault-hub-ext.js';
 
 type SubHandler = (ctx: Context, config: AppConfig) => Promise<void>;
@@ -51,10 +51,11 @@ const CAT_DEFS = {
     ]),
   },
   ops: {
-    text: '⚙️ *處理操作*\n\n重新處理、重試、推薦連結、Wiki 編譯：',
+    text: '⚙️ *處理操作*\n\n重新處理、重試、推薦連結、Wiki 編譯、草稿生成：',
     keyboard: () => Markup.inlineKeyboard([
       [Markup.button.callback('🔄 重新處理', 'vlt:reprocess'), Markup.button.callback('🔁 重試失敗', 'vlt:retry')],
       [Markup.button.callback('🔗 推薦連結', 'vlt:suggest'), Markup.button.callback('📚 Wiki 編譯', 'vlt:compile')],
+      [Markup.button.callback('📝 生成草稿', 'vlt:draft')],
       [Markup.button.callback('‹ 返回', 'vlt:back')],
     ]),
   },
@@ -112,35 +113,13 @@ export function createVaultHub(stats: BotStats) {
       return;
     }
 
-    // graph — entity co-occurrence graph
-    if (sub === 'graph') {
-      await handleVaultGraph(ctx, config, rest);
-      return;
-    }
-
-    // dreaming — daily knowledge consolidation
-    if (sub === 'dreaming') {
-      await handleVaultDreaming(ctx, config, rest);
-      return;
-    }
-
-    // memoir — development history narrative
-    if (sub === 'memoir') {
-      await handleVaultMemoir(ctx, config, rest);
-      return;
-    }
-
-    // analyze rules — CLAUDE.md suggest-only diff
-    if (sub === 'analyze' && rest.startsWith('rules')) {
-      await handleVaultAnalyzeRules(ctx, config, rest);
-      return;
-    }
-
-    // bookmark-gap — X bookmarks vs Vault coverage
-    if (sub === 'bookmark-gap') {
-      await handleVaultBookmarkGap(ctx, config, rest);
-      return;
-    }
+    // ext sub-commands (graph / dreaming / memoir / analyze / bookmark-gap / draft)
+    if (sub === 'graph') { await handleVaultGraph(ctx, config, rest); return; }
+    if (sub === 'dreaming') { await handleVaultDreaming(ctx, config, rest); return; }
+    if (sub === 'memoir') { await handleVaultMemoir(ctx, config, rest); return; }
+    if (sub === 'analyze' && rest.startsWith('rules')) { await handleVaultAnalyzeRules(ctx, config, rest); return; }
+    if (sub === 'bookmark-gap') { await handleVaultBookmarkGap(ctx, config, rest); return; }
+    if (sub === 'draft') { await handleVaultDraft(ctx, config, rest); return; }
 
     // retry needs special handling (uses stats closure)
     if (sub === 'retry') {
@@ -265,30 +244,17 @@ export function createVaultCallback(stats: BotStats) {
       return;
     }
 
-    if (mode === 'graph') {
-      await handleVaultGraph(ctx, config, '');
+    if (mode === 'draft') {
+      await handleVaultDraft(ctx, config, '');
       return;
     }
 
-    if (mode === 'dreaming') {
-      await handleVaultDreaming(ctx, config, '');
-      return;
-    }
-
-    if (mode === 'memoir') {
-      await handleVaultMemoir(ctx, config, '');
-      return;
-    }
-
-    if (mode === 'analyze') {
-      await handleVaultAnalyzeRules(ctx, config, 'rules');
-      return;
-    }
-
-    if (mode === 'bookmark-gap') {
-      await handleVaultBookmarkGap(ctx, config, '');
-      return;
-    }
+    if (mode === 'graph') { await handleVaultGraph(ctx, config, ''); return; }
+    if (mode === 'dreaming') { await handleVaultDreaming(ctx, config, ''); return; }
+    if (mode === 'memoir') { await handleVaultMemoir(ctx, config, ''); return; }
+    if (mode === 'analyze') { await handleVaultAnalyzeRules(ctx, config, 'rules'); return; }
+    if (mode === 'bookmark-gap') { await handleVaultBookmarkGap(ctx, config, ''); return; }
+    if (mode === 'draft') { await handleVaultDraft(ctx, config, ''); return; }
 
     const m = MODES[mode];
     if (m) {

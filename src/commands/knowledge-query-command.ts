@@ -16,6 +16,7 @@ import { findEntity, findNotesByTopic, formatEntitySection, findDirectRelations,
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 import { replyEmptyKnowledge } from './reply-buttons.js';
 import { TtlCache } from '../utils/ttl-cache.js';
+import { recordQuery } from '../utils/access-log.js';
 
 const callbackPayloadCache = new TtlCache<string>({ maxSize: 500, ttlMs: 30 * 60_000 });
 
@@ -120,6 +121,7 @@ async function runRecommend(ctx: Context, topic: string): Promise<void> {
     await ctx.reply(`找不到與「${topic}」相關的筆記。`);
     return;
   }
+  recordQuery(topic, matchedNotes.slice(0, 10).map(n => n.category)).catch(() => {});
 
   const entity = findEntity(knowledge, topic);
   const header = entity

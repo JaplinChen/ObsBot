@@ -8,6 +8,7 @@ import { join, relative } from 'node:path';
 import type { AppConfig } from '../utils/config.js';
 import { getAllMdFiles, parseFrontmatter, parseArrayField } from '../vault/frontmatter-utils.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
+import { recordQuery } from '../utils/access-log.js';
 
 interface MatchedNote {
   title: string;
@@ -101,6 +102,9 @@ export async function handleFind(ctx: Context, config: AppConfig): Promise<void>
       await ctx.reply(`在 Vault 中找不到「${query}」相關筆記。`);
       return;
     }
+
+    // 記錄查詢行為（fire-and-forget，供 enricher 自適應分析）
+    recordQuery(query, top.map(n => n.category)).catch(() => {});
 
     const lines = [`🔎 Vault 搜尋「${query}」：找到 ${matches.length} 篇`, ''];
     for (const [i, note] of top.entries()) {

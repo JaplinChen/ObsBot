@@ -8,6 +8,8 @@ import { canonicalizeUrl } from './utils/url-canonicalizer.js';
 import { getAllMdFiles } from './vault/frontmatter-utils.js';
 import { logger } from './core/logger.js';
 import { CATEGORIES } from './classifier-categories.js';
+import { sanitizeContent } from './utils/content-sanitizer.js';
+import { notifyNoteAdded } from './knowledge/wiki-updater.js';
 
 /** 合法分類白名單 — 防止 LLM 或用戶輸入汙染目錄結構 */
 const VALID_CATEGORIES = new Set(CATEGORIES.map(c => c.name));
@@ -277,8 +279,9 @@ export async function saveToVault(
       }
     }
 
-    // Generate Markdown
-    const markdown = formatAsMarkdown(content, localImagePaths, localVideoPaths, imageUrlMap);
+    // Generate Markdown (並掃描敏感資訊)
+    const { result: markdown, redacted } = sanitizeContent(formatAsMarkdown(content, localImagePaths, localVideoPaths, imageUrlMap));
+    if (redacted > 0) logger.warn('saver', '已遮蔽敏感資訊', { count: redacted, url: content.url });
     const mdFilename = `${slug}-${content.date}-${content.platform}.md`;
     const mdPath = join(notesDir, mdFilename);
     await writeFile(mdPath, markdown, 'utf-8');
@@ -288,11 +291,9 @@ export async function saveToVault(
       urlIndex.set(normUrl, mdPath);
       persistIndex(urlIndex).catch(() => {});
     }
-
+    notifyNoteAdded(rawCategory, vaultPath).catch(() => {}); // fire-and-forget wiki 更新
     return { mdPath, imageCount: localImagePaths.length, videoCount: content.videos.length };
   } finally {
     processingUrls.delete(normUrl);
   }
 }
-
-
