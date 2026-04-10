@@ -751,7 +751,7 @@ async function openBatchMove(){
     if(d.error){$('folderList').innerHTML='<div class="empty">載入失敗</div>';return;}
     var n=S.selected.size;
     $('folderList').innerHTML='<div style="font-size:11px;color:var(--txt3);margin-bottom:6px;">移動 '+n+' 篇筆記到：</div>'
-      +d.folders.map(function(f){var label=f||'（根目錄）';return'<button class="folder-opt" onclick="submitMove(\''+f.replace(/'/g,"\\'")+'\')">\uD83D\uDCC1 '+esc(label)+'</button>';}).join('');
+      +(Array.isArray(d)?d:[]).map(function(f){var label=f||'（根目錄）';return'<button class="folder-opt" onclick="submitMove(\''+f.replace(/'/g,"\\'")+'\')">\uD83D\uDCC1 '+esc(label)+'</button>';}).join('');
   }catch(e){$('folderList').innerHTML='<div class="empty">載入失敗</div>';}
 }
 
