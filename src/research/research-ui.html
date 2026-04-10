@@ -173,7 +173,34 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .loading{color:var(--txt3);font-size:13px;padding:10px;text-align:center}
 .empty{color:var(--txt3);font-size:13px;padding:20px;text-align:center}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--txt3)}
-@media(max-width:900px){.app{flex-direction:column}.left,.right{display:none}}
+/* ── Mobile layout ── */
+.mob-tabs{display:none}
+@media(max-width:900px){
+  .app{flex-direction:column;height:calc(100vh - 52px)}
+  .left,.center,.right{display:none;width:100%;flex-shrink:0;flex:unset}
+  .left.mob-active,.right.mob-active{display:flex;height:100%}
+  .center.mob-active{display:flex;flex-direction:column;height:100%}
+  .mob-tabs{
+    display:flex;position:fixed;bottom:0;left:0;right:0;height:52px;
+    background:var(--bg1);border-top:1px solid var(--bdr);z-index:200;
+    safe-area-inset-bottom:env(safe-area-inset-bottom)
+  }
+  .mob-tab{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:2px;border:none;background:none;
+    cursor:pointer;color:var(--txt3);transition:color .15s;font-family:inherit;
+    padding:0;position:relative
+  }
+  .mob-tab.active{color:var(--pu)}
+  .mob-tab-icon{font-size:20px;line-height:1}
+  .mob-tab-label{font-size:10px;font-weight:500}
+  .mob-sel-badge{
+    position:absolute;top:4px;right:calc(50% - 16px);
+    background:var(--pu);color:#fff;border-radius:10px;
+    font-size:9px;font-weight:700;padding:0 5px;line-height:14px;
+    display:none
+  }
+}
 /* Theme toggle */
 .theme-sw-btn{background:transparent;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:15px;line-height:1;transition:all .2s;flex-shrink:0}
 .theme-sw-btn:hover{border-color:var(--pu3);transform:scale(1.08)}
@@ -293,6 +320,22 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
       <div class="empty" data-i18n="research.emptyOverview">分析後顯示概覽</div>
     </div>
   </div>
+</div>
+<!-- 手機底部 Tab Bar -->
+<div class="mob-tabs">
+  <button class="mob-tab" id="mobTabNotes" onclick="switchMobTab('notes')">
+    <span id="mobSelBadge" class="mob-sel-badge">0</span>
+    <span class="mob-tab-icon">📁</span>
+    <span class="mob-tab-label">筆記</span>
+  </button>
+  <button class="mob-tab active" id="mobTabChat" onclick="switchMobTab('chat')">
+    <span class="mob-tab-icon">💬</span>
+    <span class="mob-tab-label">研究</span>
+  </button>
+  <button class="mob-tab" id="mobTabTools" onclick="switchMobTab('tools')">
+    <span class="mob-tab-icon">🔧</span>
+    <span class="mob-tab-label">工具</span>
+  </button>
 </div>
 <div class="note-modal-overlay" id="noteModal" onclick="if(event.target===this)closeNoteModal()">
   <div class="note-modal">
@@ -440,6 +483,9 @@ function updateSelCount(){
   $('selCount').textContent=n;
   var b=$('selBadge');
   if(b){if(n>0){b.textContent='已選 '+n+' 篇';b.style.display='';}else b.style.display='none';}
+  // 手機：筆記 tab 顯示已選數量 badge
+  var mb=$('mobSelBadge');
+  if(mb){if(n>0){mb.textContent=n;mb.style.display='';}else mb.style.display='none';}
   renderEmpty();
 }
 
@@ -503,6 +549,7 @@ function closeNoteModal(){$('noteModal').classList.remove('open');}
 
 async function analyze(){
   const topic=$('topic').value.trim();if(!topic)return;
+  if(isMobile())switchMobTab('chat');
   S.topic=topic;S.history=[];
   $('messages').innerHTML='<div class="loading">'+t('research.analyzing')+'</div>';
   try{
@@ -518,6 +565,7 @@ async function analyze(){
 
 async function sendMsg(){
   const txt=$('chatInput').value.trim();if(!txt||!S.topic)return;
+  if(isMobile())switchMobTab('chat');
   $('chatInput').value='';
   S.history.push({role:'user',content:txt});renderMessages();
   const msgEl=document.createElement('div');msgEl.className='msg';
@@ -811,6 +859,25 @@ loadNotes();
 updateSelCount();
 renderEmpty();
 initSessions();
+
+/* ── Mobile tabs ── */
+function isMobile(){return window.innerWidth<=900;}
+function switchMobTab(tab){
+  if(!isMobile())return;
+  var map={notes:'left',chat:'center',tools:'right'};
+  var ids={notes:'mobTabNotes',chat:'mobTabChat',tools:'mobTabTools'};
+  ['left','center','right'].forEach(function(c){document.querySelector('.'+c).classList.remove('mob-active');});
+  if(map[tab])document.querySelector('.'+map[tab]).classList.add('mob-active');
+  Object.keys(ids).forEach(function(k){document.getElementById(ids[k]).classList.toggle('active',k===tab);});
+}
+window.addEventListener('resize',function(){
+  if(!isMobile()){
+    ['left','center','right'].forEach(function(c){document.querySelector('.'+c).classList.remove('mob-active');});
+  } else if(!document.querySelector('.mob-active')){
+    switchMobTab('chat');
+  }
+});
+if(isMobile())switchMobTab('chat');
 </script>
 <div id="vaultToast"></div>
 <!-- Admin modal -->
