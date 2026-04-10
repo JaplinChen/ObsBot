@@ -99,7 +99,9 @@ describe('enrich-content-service', () => {
     expect(content.enrichedKeywords).toEqual(['k1']);
     expect(content.enrichedSummary).toBe('s1');
     expect(content.title).toBe('new title');
-    expect(content.category).toBe('新分類');
+    // enricher 的 category 建議轉為 suggestedTags，不覆蓋 category
+    expect(content.category).toBe('技術');
+    expect(content.suggestedTags).toContain('新分類');
   });
 
   it('runs AI enrich without requiring local provider config', async () => {
