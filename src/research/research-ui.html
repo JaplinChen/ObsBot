@@ -653,10 +653,12 @@ function ctxAction(action){
   $('noteCtxMenu').classList.remove('open');
   document.removeEventListener('click',_closeCtxOnce);
   if(!_ctxPath)return;
+  // 若被操作的筆記已在多選清單中，move/delete 自動升級批次模式
+  var isBatch=S.selected.has(_ctxPath)&&S.selected.size>1;
   if(action==='view')openNoteByPath(_ctxPath);
-  else if(action==='move')openMoveDialog(_ctxPath);
+  else if(action==='move'){if(isBatch)openBatchMove();else openMoveDialog(_ctxPath);}
   else if(action==='rename')openRenameDialog(_ctxPath);
-  else if(action==='delete')openDeleteDialog(_ctxPath);
+  else if(action==='delete'){if(isBatch)openBatchDelete();else openDeleteDialog(_ctxPath);}
 }
 
 async function openNoteByPath(path){
