@@ -263,8 +263,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .admin-close{position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:#fff;border:2px solid #e0e0e0;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:all .2s}
 .admin-close:hover{background:#f44;border-color:#f44;color:#fff}
 /* ── 筆記管理 ── */
-.note-act-btn{background:none;border:none;padding:2px 7px;cursor:pointer;color:var(--txt3);font-size:16px;border-radius:4px;line-height:1;flex-shrink:0;opacity:0;transition:opacity .15s,color .15s;font-family:inherit}
-.note-item:hover .note-act-btn,.note-item.selected .note-act-btn{opacity:1}
+.note-act-btn{background:none;border:none;padding:2px 7px;cursor:pointer;color:var(--txt3);font-size:16px;border-radius:4px;line-height:1;flex-shrink:0;opacity:0;pointer-events:none;transition:opacity .15s,color .15s;font-family:inherit}
+.note-item:hover .note-act-btn,.note-item.selected .note-act-btn{opacity:1;pointer-events:auto}
 .note-act-btn:hover{color:var(--pu)!important;background:var(--pu2)}
 .note-ctx-menu{display:none;position:fixed;background:var(--bg1);border:1px solid var(--bdr2);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.18);z-index:600;min-width:140px;overflow:hidden;animation:fu .12s ease}
 .note-ctx-menu.open{display:block}
