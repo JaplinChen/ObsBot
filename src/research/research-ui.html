@@ -670,7 +670,7 @@ async function openMoveDialog(path){
     var curFolder=path.split('/').slice(0,-1).join('/')||'.';
     var opts=folders.filter(function(f){return f!==curFolder;}).map(function(f){
       var label=f==='.'?'（根目錄）':f;
-      return'<div class="folder-opt" onclick="submitMove(\''+esc(f.replace(/'/g,"\\'")+'\')">📁 '+esc(label)+'</div>';
+      return'<div class="folder-opt" onclick="submitMove(\''+esc(f.replace(/'/g,"\\\'"))+'\')">📁 '+esc(label)+'</div>';
     }).join('');
     $('folderList').innerHTML=opts||'<div class="empty">沒有其他資料夾</div>';
   }catch(e){$('folderList').innerHTML='<div class="empty">載入失敗</div>';}
