@@ -15,6 +15,7 @@ import { buildPptx } from './slide-pptx.js';
 import { renderSlidePreviewHtml } from './slide-preview.js';
 import type { NoteRecord, ChatMessage, CleanLevel } from './types.js';
 import { saveReportToVault } from '../knowledge/report-saver.js';
+import { handleVaultManageRequest } from './vault-manage-routes.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW_RESEARCH_HTML = readFileSync(join(__dirname, 'research-ui.html'), 'utf-8');
@@ -309,6 +310,11 @@ export async function handleResearchRequest(req: IncomingMessage, res: ServerRes
     });
     json(res, { path });
     return true;
+  }
+
+  // Vault 筆記管理（查看、改名、刪除、移動）
+  if (url.startsWith('/api/vault/')) {
+    return handleVaultManageRequest(req, res);
   }
 
   return false;

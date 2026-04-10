@@ -256,6 +256,37 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .admin-frame{width:100%;height:100%;border:none;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.45)}
 .admin-close{position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:#fff;border:2px solid #e0e0e0;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:all .2s}
 .admin-close:hover{background:#f44;border-color:#f44;color:#fff}
+/* ── 筆記管理 ── */
+.note-act-btn{background:none;border:none;padding:2px 7px;cursor:pointer;color:var(--txt3);font-size:16px;border-radius:4px;line-height:1;flex-shrink:0;opacity:0;transition:opacity .15s,color .15s;font-family:inherit}
+.note-item:hover .note-act-btn,.note-item.selected .note-act-btn{opacity:1}
+.note-act-btn:hover{color:var(--pu)!important;background:var(--pu2)}
+.note-ctx-menu{display:none;position:fixed;background:var(--bg1);border:1px solid var(--bdr2);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.18);z-index:600;min-width:140px;overflow:hidden;animation:fu .12s ease}
+.note-ctx-menu.open{display:block}
+.note-ctx-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;font-family:inherit;font-size:13px;color:var(--txt2);cursor:pointer;transition:background .12s;text-align:left}
+.note-ctx-btn:hover{background:var(--bg2)}
+.note-ctx-btn.danger{color:#e74c3c}
+.note-ctx-btn.danger:hover{background:#fff0f0}
+[data-theme="dark"] .note-ctx-btn.danger:hover{background:#2a1010}
+.mgmt-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;justify-content:center;align-items:center}
+.mgmt-ov.open{display:flex}
+.mgmt-dlg{background:var(--bg1);border-radius:12px;width:min(460px,94vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.22)}
+.mgmt-dlg-hdr{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+.mgmt-dlg-hdr h3{flex:1;font-size:15px;color:var(--txt1);margin:0;font-weight:600}
+.mgmt-dlg-hdr button{background:none;border:none;font-size:20px;cursor:pointer;color:var(--txt3);padding:4px 8px;border-radius:6px;font-family:inherit}
+.mgmt-dlg-hdr button:hover{background:var(--bg0);color:var(--txt1)}
+.mgmt-dlg-body{padding:16px 18px;overflow-y:auto}
+.folder-opt{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--txt2);border:1px solid transparent;transition:all .15s;margin-bottom:4px;user-select:none}
+.folder-opt:hover{background:var(--pu2);border-color:var(--pu3);color:var(--pu)}
+.rename-inp{width:100%;background:var(--bg0);border:1px solid var(--bdr2);border-radius:8px;padding:10px 12px;color:var(--txt1);font-size:14px;font-family:inherit;outline:none;margin-bottom:14px;transition:border-color .2s}
+.rename-inp:focus{border-color:var(--pu)}
+.mgmt-btns{display:flex;gap:8px;justify-content:flex-end}
+.mgmt-btn{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;border:1px solid var(--bdr)}
+.mgmt-btn.primary{background:var(--pu);border-color:var(--pu);color:#fff}
+.mgmt-btn.primary:hover{opacity:.88}
+.mgmt-btn.cancel{background:none;color:var(--txt2)}
+.mgmt-btn.cancel:hover{border-color:var(--bdr2);color:var(--txt1)}
+.mgmt-btn.danger{background:none;border-color:#e74c3c;color:#e74c3c}
+.mgmt-btn.danger:hover{background:#e74c3c;color:#fff}
 </style>
 </head>
 <body>
@@ -341,6 +372,46 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
   <div class="note-modal">
     <div class="note-modal-hdr"><h2 id="noteModalTitle"></h2><button onclick="closeNoteModal()">✕</button></div>
     <div class="note-modal-body" id="noteModalBody"></div>
+  </div>
+</div>
+<!-- 筆記操作浮動選單 -->
+<div class="note-ctx-menu" id="noteCtxMenu">
+  <button class="note-ctx-btn" onclick="ctxAction('view')">📖 查看內容</button>
+  <button class="note-ctx-btn" onclick="ctxAction('move')">📂 移動到…</button>
+  <button class="note-ctx-btn" onclick="ctxAction('rename')">✏️ 改名</button>
+  <button class="note-ctx-btn danger" onclick="ctxAction('delete')">🗑 刪除</button>
+</div>
+<!-- 移動筆記對話框 -->
+<div class="mgmt-ov" id="moveDialog" onclick="if(event.target===this)closeMoveDialog()">
+  <div class="mgmt-dlg">
+    <div class="mgmt-dlg-hdr"><h3>📂 移動到…</h3><button onclick="closeMoveDialog()">✕</button></div>
+    <div class="mgmt-dlg-body" id="folderList" style="max-height:55vh;overflow-y:auto"></div>
+  </div>
+</div>
+<!-- 改名對話框 -->
+<div class="mgmt-ov" id="renameDialog" onclick="if(event.target===this)closeRenameDialog()">
+  <div class="mgmt-dlg">
+    <div class="mgmt-dlg-hdr"><h3>✏️ 改名</h3><button onclick="closeRenameDialog()">✕</button></div>
+    <div class="mgmt-dlg-body">
+      <input class="rename-inp" id="renameInput" placeholder="輸入新名稱（不含 .md）" onkeydown="if(event.key==='Enter')submitRename()">
+      <div class="mgmt-btns">
+        <button class="mgmt-btn cancel" onclick="closeRenameDialog()">取消</button>
+        <button class="mgmt-btn primary" onclick="submitRename()">確認</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- 確認刪除對話框 -->
+<div class="mgmt-ov" id="deleteDialog" onclick="if(event.target===this)closeDeleteDialog()">
+  <div class="mgmt-dlg">
+    <div class="mgmt-dlg-hdr"><h3>🗑 確認刪除</h3><button onclick="closeDeleteDialog()">✕</button></div>
+    <div class="mgmt-dlg-body">
+      <p style="color:var(--txt2);margin-bottom:16px;font-size:14px;line-height:1.6">確定要刪除 <strong id="deleteNoteName" style="color:var(--txt1)"></strong> 嗎？此操作無法復原。</p>
+      <div class="mgmt-btns">
+        <button class="mgmt-btn cancel" onclick="closeDeleteDialog()">取消</button>
+        <button class="mgmt-btn danger" onclick="submitDelete()">確認刪除</button>
+      </div>
+    </div>
   </div>
 </div>
 <script>
@@ -450,11 +521,13 @@ function renderTree(){
       html+='<div class="folder-children">';
       for(const f of files){
         const sel=S.selected.has(f.path);
-        html+='<div class="note-item'+(sel?' selected':'')+'" onclick="toggleNote(\''+esc(f.path.replace(/'/g,"\\'"))+'\')">';
+        var ep=esc(f.path.replace(/'/g,"\\'"));
+        html+='<div class="note-item'+(sel?' selected':'')+'" onclick="toggleNote(\''+ep+'\')">';
         html+='<div class="note-chk'+(sel?' on':'')+'">'+(sel?'✓':'')+'</div>';
         html+='<span style="font-size:13px;flex-shrink:0">📝</span>';
         html+='<span class="note-name" title="'+esc(f.name)+'">'+esc(f.name)+'</span>';
         if((f.tags||[]).length>0)html+='<span class="note-tags-dot"></span>';
+        html+='<button class="note-act-btn" onclick="event.stopPropagation();openNoteCtx(\''+ep+'\',this)" title="操作">⋯</button>';
         html+='</div>';
       }
       html+='</div>';
@@ -546,6 +619,120 @@ async function openNoteModal(name){
 }
 
 function closeNoteModal(){$('noteModal').classList.remove('open');}
+
+/* ── 筆記管理 ─────────────────────────────────────────────── */
+var _ctxPath=null;
+
+function openNoteCtx(path,btn){
+  _ctxPath=path;
+  var menu=$('noteCtxMenu');
+  var rect=btn.getBoundingClientRect();
+  var left=Math.min(rect.left,window.innerWidth-160);
+  var top=rect.bottom+4;
+  if(top+160>window.innerHeight)top=rect.top-164;
+  menu.style.top=top+'px';menu.style.left=left+'px';
+  menu.classList.add('open');
+  setTimeout(function(){document.addEventListener('click',_closeCtxOnce,{once:true});},0);
+}
+function _closeCtxOnce(){$('noteCtxMenu').classList.remove('open');}
+
+function ctxAction(action){
+  $('noteCtxMenu').classList.remove('open');
+  document.removeEventListener('click',_closeCtxOnce);
+  if(!_ctxPath)return;
+  if(action==='view')openNoteByPath(_ctxPath);
+  else if(action==='move')openMoveDialog(_ctxPath);
+  else if(action==='rename')openRenameDialog(_ctxPath);
+  else if(action==='delete')openDeleteDialog(_ctxPath);
+}
+
+async function openNoteByPath(path){
+  var name=path.split('/').pop().replace(/\.md$/i,'');
+  var modal=$('noteModal');
+  $('noteModalTitle').textContent=name;
+  $('noteModalBody').innerHTML='<div class="loading">載入中…</div>';
+  modal.classList.add('open');
+  try{
+    var r=await fetch('/api/vault/note?path='+encodeURIComponent(path));
+    var d=await r.json();
+    if(d.error){$('noteModalBody').innerHTML='<div class="empty">'+esc(d.error)+'</div>';return;}
+    $('noteModalBody').innerHTML=renderMd(d.body);
+  }catch(e){$('noteModalBody').innerHTML='<div class="empty">載入失敗：'+esc(e.message)+'</div>';}
+}
+
+async function openMoveDialog(path){
+  _ctxPath=path;
+  $('folderList').innerHTML='<div class="loading">載入資料夾…</div>';
+  $('moveDialog').classList.add('open');
+  try{
+    var r=await fetch('/api/vault/folders');
+    var folders=await r.json();
+    var curFolder=path.split('/').slice(0,-1).join('/')||'.';
+    var opts=folders.filter(function(f){return f!==curFolder;}).map(function(f){
+      var label=f==='.'?'（根目錄）':f;
+      return'<div class="folder-opt" onclick="submitMove(\''+esc(f.replace(/'/g,"\\'")+'\')">📁 '+esc(label)+'</div>';
+    }).join('');
+    $('folderList').innerHTML=opts||'<div class="empty">沒有其他資料夾</div>';
+  }catch(e){$('folderList').innerHTML='<div class="empty">載入失敗</div>';}
+}
+function closeMoveDialog(){$('moveDialog').classList.remove('open');}
+
+async function submitMove(folder){
+  closeMoveDialog();
+  if(!_ctxPath)return;
+  try{
+    var r=await fetch('/api/vault/note/move?path='+encodeURIComponent(_ctxPath),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder})});
+    var d=await r.json();
+    if(d.error){alert('移動失敗：'+d.error);return;}
+    if(S.selected.has(_ctxPath)){S.selected.delete(_ctxPath);S.selected.add(d.newPath);}
+    await fetch('/api/research/rescan',{method:'POST'});
+    loadNotes($('search').value);updateSelCount();
+  }catch(e){alert('移動失敗：'+e.message);}
+}
+
+function openRenameDialog(path){
+  _ctxPath=path;
+  var name=path.split('/').pop().replace(/\.md$/i,'');
+  $('renameInput').value=name;
+  $('renameDialog').classList.add('open');
+  setTimeout(function(){$('renameInput').focus();$('renameInput').select();},60);
+}
+function closeRenameDialog(){$('renameDialog').classList.remove('open');}
+
+async function submitRename(){
+  var newName=($('renameInput').value||'').trim();
+  if(!newName||!_ctxPath)return;
+  closeRenameDialog();
+  try{
+    var r=await fetch('/api/vault/note?path='+encodeURIComponent(_ctxPath),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:newName})});
+    var d=await r.json();
+    if(d.error){alert('改名失敗：'+d.error);return;}
+    if(S.selected.has(_ctxPath)){S.selected.delete(_ctxPath);S.selected.add(d.newPath);}
+    await fetch('/api/research/rescan',{method:'POST'});
+    loadNotes($('search').value);updateSelCount();
+  }catch(e){alert('改名失敗：'+e.message);}
+}
+
+function openDeleteDialog(path){
+  _ctxPath=path;
+  var name=path.split('/').pop().replace(/\.md$/i,'');
+  $('deleteNoteName').textContent=name;
+  $('deleteDialog').classList.add('open');
+}
+function closeDeleteDialog(){$('deleteDialog').classList.remove('open');}
+
+async function submitDelete(){
+  if(!_ctxPath)return;
+  closeDeleteDialog();
+  try{
+    var r=await fetch('/api/vault/note?path='+encodeURIComponent(_ctxPath),{method:'DELETE'});
+    var d=await r.json();
+    if(d.error){alert('刪除失敗：'+d.error);return;}
+    S.selected.delete(_ctxPath);
+    await fetch('/api/research/rescan',{method:'POST'});
+    loadNotes($('search').value);updateSelCount();
+  }catch(e){alert('刪除失敗：'+e.message);}
+}
 
 async function analyze(){
   const topic=$('topic').value.trim();if(!topic)return;
