@@ -112,8 +112,9 @@ export function buildFrontmatter(
 ): string[] {
   const platformLabel = PLATFORM_LABELS[content.platform] ?? content.platform;
   const category = content.category ?? '其他';
-  const categoryTag = category.replace(/\s+/g, '-');
-  const allTags = [content.platform, 'archive', categoryTag, ...(content.extraTags ?? [])];
+  // suggestedTags：enricher 的語意分類結果，轉為 tag（不加 category 本身，避免 'inbox' 出現在 tags）
+  const semanticTags = (content.suggestedTags ?? []).map(t => t.replace(/\s+/g, '-'));
+  const allTags = [content.platform, 'archive', ...semanticTags, ...(content.extraTags ?? [])];
 
   const lines: string[] = [
     '---',

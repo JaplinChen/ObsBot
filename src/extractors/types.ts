@@ -64,6 +64,8 @@ export interface ExtractedContent {
   enrichedKeyPoints?: string[];
   /** Extra tags from platform metadata (e.g. GitHub topics) */
   extraTags?: string[];
+  /** LLM-suggested semantic tags (from enricher classification, not used as category) */
+  suggestedTags?: string[];
   /** Star/engagement count (e.g. GitHub stargazers) */
   stars?: number;
   /** Long-form body content separate from short text (e.g. GitHub README) */
