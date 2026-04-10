@@ -173,7 +173,7 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
   if (enriched.analysis) content.enrichedAnalysis = enriched.analysis;
   if (enriched.keyPoints?.length) content.enrichedKeyPoints = enriched.keyPoints;
   if (enriched.title) content.title = enriched.title;
-  if (enriched.category) content.category = enriched.category;
+  // enricher 的分類建議一律忽略，分類固定為 inbox（由用戶手動整理）
   if (enriched.githubAnalysis) content.githubAnalysis = enriched.githubAnalysis;
   // AI-generated chapters (only when no platform-native chapters exist)
   if (!content.chapters && enriched.chapters?.length) content.chapters = enriched.chapters;

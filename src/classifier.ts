@@ -71,17 +71,9 @@ function classifyWithKeywords(title: string, text: string): string {
 
 /* ── 主要分類入口（async）───────────────────────────────── */
 
-export async function classifyContent(title: string, text: string): Promise<string> {
-  // [1] LLM 語意分類（主路徑）
-  const llmResult = await classifyWithLlm(title, text);
-  if (llmResult) return llmResult;
-
-  // [2] 動態學習規則（信心 >= 0.75）
-  const learned = classifyWithLearnedRules(title, text);
-  if (learned) return learned;
-
-  // [3] 靜態關鍵字計分（最終 fallback）
-  return classifyWithKeywords(title, text);
+export async function classifyContent(_title: string, _text: string): Promise<string> {
+  // 所有新文章固定存入 inbox，由用戶手動整理分類
+  return 'inbox';
 }
 
 /* ── 關鍵字提取（同步，供 formatter 使用）───────────────── */

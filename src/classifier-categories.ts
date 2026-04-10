@@ -9,6 +9,9 @@ export interface CategoryRule {
 }
 
 export const CATEGORIES: CategoryRule[] = [
+  // 所有新文章固定放入收件匣，由用戶手動整理
+  { name: 'inbox', keywords: [] },
+
   // ══════════════════════════════════════════════════════
   // AI 三層分類：具體工具 → 功能分類兜底 → AI 通用兜底
   // 越精確的排越前面
