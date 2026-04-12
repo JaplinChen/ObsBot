@@ -9,11 +9,16 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { writeFileSync, unlinkSync } from 'node:fs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const isDev = process.argv.includes('--dev');
 const RESTART_DELAY_MS = 3_000;
 const CRASH_DELAY_MS = 10_000;
+const LOOP_PID_FILE = join(ROOT, '.loop.pid');
+
+// 寫入 PID 檔，讓 /launch 可以精確 kill 此進程
+writeFileSync(LOOP_PID_FILE, String(process.pid), 'utf-8');
 
 let running = true;
 let currentChild = null;
@@ -24,6 +29,8 @@ function stopLoop(signal) {
   if (currentChild) {
     try { currentChild.kill('SIGTERM'); } catch {}
   }
+  // 清除 PID 檔
+  try { unlinkSync(LOOP_PID_FILE); } catch {}
   // 強制退出，避免殭屍 loop 殘留
   setTimeout(() => process.exit(0), 3000);
 }
