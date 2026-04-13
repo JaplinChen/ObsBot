@@ -115,6 +115,9 @@ async function runViaCli(prompt: string, timeoutMs: number, model: string): Prom
  * Priority chain (configurable via user-config.json):
  *   auto: oMLX → Ollama → OpenAI → Gemini → OpenCode CLI → DDG Chat
  *   specific: use only the selected provider, then DDG fallback
+ *
+ * A shared deadline (timeoutMs) applies across ALL provider attempts combined,
+ * so sequential fallbacks cannot accumulate beyond the caller-specified limit.
  */
 export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}): Promise<string | null> {
   const timeoutMs = options.timeoutMs ?? 30_000;
@@ -134,41 +137,46 @@ export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}
   ];
   const compOpts = { timeoutMs, maxTokens: options.maxTokens };
 
-  // Provider attempt functions
+  // Shared deadline: the entire provider chain must finish within timeoutMs.
+  const deadline = Date.now() + timeoutMs;
+  const remaining = () => Math.max(0, deadline - Date.now());
+
+  // Provider attempt functions (each receives the remaining budget, not the full timeoutMs)
   const providers: Record<string, () => Promise<string | null>> = {
     omlx: async () => {
       if (!await isOmlxAvailable()) return null;
       return omlxChatCompletion(prompt, {
-        model: tier, timeoutMs, maxTokens: options.maxTokens,
+        model: tier, timeoutMs: remaining(), maxTokens: options.maxTokens,
         systemPrompt: effectiveSystem || undefined,
       });
     },
     ollama: async () => {
       if (!await isProviderAvailable('ollama')) return null;
       const m = llmCfg.ollama.models[tier] || llmCfg.ollama.model;
-      return m ? openaiChatCompletion('ollama', m, messages, compOpts) : null;
+      return m ? openaiChatCompletion('ollama', m, messages, { ...compOpts, timeoutMs: remaining() }) : null;
     },
     openai: async () => {
       if (!llmCfg.openai.apiKey) return null;
       const m = llmCfg.openai.models[tier] || llmCfg.openai.model;
-      return m ? openaiChatCompletion('openai', m, messages, compOpts) : null;
+      return m ? openaiChatCompletion('openai', m, messages, { ...compOpts, timeoutMs: remaining() }) : null;
     },
     gemini: async () => {
       if (!llmCfg.gemini.apiKey) return null;
-      return geminiChatCompletion(llmCfg.gemini.model || 'gemini-2.5-flash', messages, compOpts);
+      return geminiChatCompletion(llmCfg.gemini.model || 'gemini-2.5-flash', messages, { ...compOpts, timeoutMs: remaining() });
     },
     opencode: async () => {
       const fullPrompt = effectiveSystem ? `${effectiveSystem}\n\n${prompt}` : prompt;
-      return runViaCli(fullPrompt, timeoutMs, ocModel);
+      return runViaCli(fullPrompt, remaining(), ocModel);
     },
     ddg: async () => {
       const fullPrompt = effectiveSystem ? `${effectiveSystem}\n\n${prompt}` : prompt;
-      return runViaDdgChat(fullPrompt, timeoutMs);
+      return runViaDdgChat(fullPrompt, remaining());
     },
   };
 
-  // Walk the user-defined order, skip disabled providers
+  // Walk the user-defined order, skip disabled providers or exhausted budget
   for (const key of llmCfg.order) {
+    if (remaining() <= 0) break;
     if (!llmCfg.enabled[key]) continue;
     const fn = providers[key];
     if (!fn) continue;

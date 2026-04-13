@@ -43,13 +43,26 @@ function isMeaningfulComment(c: { text: string }): boolean {
   return true;
 }
 
+/** Hard cap on extraction time (covers all fallback tiers). */
+const EXTRACT_TIMEOUT_MS = 60_000;
+
 export async function extractContentWithComments(
   url: string,
   extractor: ExtractorWithComments,
 ): Promise<ExtractedContent> {
   const hasComments = typeof extractor.extractComments === 'function';
-  const [contentResult, commentsResult] = await Promise.allSettled([
+
+  // Wrap extraction with a hard timeout so cascading fallback tiers
+  // (fetch → Jina → Camoufox → BrowserUse) cannot exceed 60 s total.
+  const extractWithTimeout = Promise.race([
     extractor.extract(url),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`擷取超時（>${EXTRACT_TIMEOUT_MS / 1000}s）：${url}`)), EXTRACT_TIMEOUT_MS),
+    ),
+  ]);
+
+  const [contentResult, commentsResult] = await Promise.allSettled([
+    extractWithTimeout,
     hasComments ? extractor.extractComments(url, 30) : Promise.resolve([]),
   ]);
 

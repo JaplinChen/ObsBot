@@ -103,7 +103,7 @@ export async function extractTextFromImage(
 }
 
 /**
- * Run OCR on multiple images, return combined extracted text.
+ * Run OCR on multiple images in parallel, return combined extracted text.
  * Only processes images likely to contain text (screenshots, code images).
  */
 export async function ocrContentImages(
@@ -114,17 +114,14 @@ export async function ocrContentImages(
   const tesseract = await getTesseract();
   if (!tesseract) return '';
 
-  const results: string[] = [];
   const candidates = imageUrls
     .filter(u => u.startsWith('http://') || u.startsWith('https://'))
     .slice(0, maxImages);
 
-  for (const url of candidates) {
-    const text = await extractTextFromImage(url);
-    if (text) {
-      results.push(text);
-    }
-  }
+  const settled = await Promise.allSettled(candidates.map(url => extractTextFromImage(url)));
 
-  return results.join('\n---\n');
+  return settled
+    .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+    .map(r => r.value)
+    .join('\n---\n');
 }

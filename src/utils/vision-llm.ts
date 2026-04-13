@@ -106,6 +106,7 @@ export async function analyzeImage(
 /**
  * Download images to temp dir, analyze up to maxCount with vision model,
  * return combined descriptions. Cleans up temp files afterwards.
+ * Images are processed in parallel to avoid sequential blocking.
  */
 export async function analyzeContentImages(
   imageUrls: string[],
@@ -115,33 +116,34 @@ export async function analyzeContentImages(
   const tempDir = join(tmpdir(), `obsbot-vision-${id}`);
   await mkdir(tempDir, { recursive: true });
 
-  const descriptions: string[] = [];
   try {
-    const urls = imageUrls.filter(u => u.startsWith('http://') || u.startsWith('https://')).slice(0, maxCount);
-    for (let i = 0; i < urls.length; i++) {
-      try {
-        // Download to temp
-        const res = await fetchWithTimeout(urls[i], 15_000);
-        if (!res.ok) continue;
+    const urls = imageUrls
+      .filter(u => u.startsWith('http://') || u.startsWith('https://'))
+      .slice(0, maxCount);
+
+    const results = await Promise.allSettled(
+      urls.map(async (url, i) => {
+        const res = await fetchWithTimeout(url, 15_000);
+        if (!res.ok) return null;
         const buf = Buffer.from(await res.arrayBuffer());
-        if (buf.length > MAX_IMAGE_BYTES) continue;
-        const ext = urls[i].match(/\.(jpe?g|png|gif|webp)/i)?.[0] ?? '.jpg';
+        if (buf.length > MAX_IMAGE_BYTES) return null;
+        const ext = url.match(/\.(jpe?g|png|gif|webp)/i)?.[0] ?? '.jpg';
         const imgPath = join(tempDir, `img-${i}${ext}`);
         await writeFile(imgPath, buf);
-
-        // Analyze
         const desc = await analyzeImage(imgPath);
         if (desc) {
-          descriptions.push(`[圖片${i + 1}] ${desc}`);
           logger.info('vision', `image ${i + 1} analyzed`, { chars: desc.length });
+          return `[圖片${i + 1}] ${desc}`;
         }
-      } catch (err) {
-        logger.warn('vision', `image ${i + 1} failed`, { message: (err as Error).message });
-      }
-    }
+        return null;
+      }),
+    );
+
+    return results
+      .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+      .map(r => r.value)
+      .join('\n');
   } finally {
     rm(tempDir, { recursive: true, force: true }).catch(() => {});
   }
-
-  return descriptions.join('\n');
 }

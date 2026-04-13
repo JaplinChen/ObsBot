@@ -55,7 +55,7 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
             return '';
           })
         : Promise.resolve(''),
-      analyzeContentImages(content.images, 5).catch((err: Error) => {
+      analyzeContentImages(content.images, 2).catch((err: Error) => {
         logger.warn('msg', 'vision-analysis failed', { message: err.message });
         return '';
       }),
