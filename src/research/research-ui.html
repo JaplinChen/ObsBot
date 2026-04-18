@@ -444,9 +444,19 @@ if(typeof mermaid!=='undefined'){
 }
 function runMermaid(){
   if(typeof mermaid==='undefined')return;
-  var nodes=document.querySelectorAll('.mermaid:not([data-processed])');
+  var nodes=Array.from(document.querySelectorAll('.mermaid:not([data-processed])'));
   if(!nodes.length)return;
-  try{mermaid.run({nodes:Array.from(nodes)});}catch(e){}
+  mermaid.run({nodes}).catch(function(){
+    nodes.forEach(function(n){
+      if(n.getAttribute('data-processed'))return;
+      var wrap=n.parentElement;
+      if(wrap&&wrap.classList.contains('mermaid-wrap')){
+        var code=n.textContent||'';
+        wrap.innerHTML='<div style="color:#f87171;font-size:12px;padding:8px 12px;display:flex;align-items:center;gap:6px">⚠️ 圖表語法錯誤，無法渲染</div>'
+          +'<pre style="font-size:11px;color:var(--txt3);padding:8px 12px;margin:0;overflow-x:auto">'+esc(code)+'</pre>';
+      }
+    });
+  });
 }
 /* ── i18n engine ── */
 /* __LOCALES_INJECT__ */
@@ -854,11 +864,19 @@ async function sendMsg(){
   }catch(e){msgEl.querySelector('.msg-text').textContent=t('research.error')+e.message;}
 }
 
-function msgActionBar(i){
+function msgActionBar(i,tool){
   var mid='toolmenu-'+i;
-  return '<div class="msg-actions">'
-    +'<button class="msg-action-btn" onclick="copyMsg('+i+',this)" title="複製內容">📋 複製</button>'
-    +'<button class="msg-action-btn" onclick="saveMsgToVault('+i+',this)">💾 存入 Vault</button>'
+  var isDiagram=tool&&tool.startsWith('diagram:');
+  var isArch=tool==='diagram:architecture';
+  var h='<div class="msg-actions">'
+    +'<button class="msg-action-btn" onclick="copyMsg('+i+',this)" title="複製內容">📋 複製</button>';
+  if(isDiagram){
+    h+='<button class="msg-action-btn" onclick="copyDiagramCode('+i+',this)" title="複製圖表代碼">⌨️ 複製代碼</button>';
+    if(isArch)h+='<button class="msg-action-btn" onclick="downloadDiagram('+i+')" title="下載 SVG 檔案">⬇️ 下載 SVG</button>';
+    h+='<button class="msg-action-btn" onclick="rerunDiagram('+i+',this)" title="重新生成">🔄 重新生成</button>';
+    h+='<span class="msg-action-sep">|</span>';
+  }
+  h+='<button class="msg-action-btn" onclick="saveMsgToVault('+i+',this)">💾 存入 Vault</button>'
     +'<span class="msg-action-sep">|</span>'
     +'<div class="msg-tool-wrap"><button class="msg-action-btn" onclick="toggleToolMenu(\''+mid+'\',event)">🛠 工具 ▾</button>'
     +'<div class="msg-tool-menu" id="'+mid+'">'
@@ -868,6 +886,7 @@ function msgActionBar(i){
     +'<div class="msg-tool-item" onclick="runTool(\'outline\');closeToolMenus()">✏️ 教學大綱</div>'
     +'</div></div>'
     +'</div>';
+  return h;
 }
 
 function toggleToolMenu(id,e){
@@ -885,7 +904,7 @@ function renderMessages(){
   $('messages').innerHTML=S.history.map((m,i)=>{
     const isAi=m.role==='assistant';
     const toolAttr=m._tool?' data-tool="'+m._tool+'"':'';
-    return '<div class="msg"'+toolAttr+'><div class="msg-ava '+(isAi?'ai':'user')+'">'+(isAi?t('research.avatarAI'):t('research.avatarUser'))+'</div><div class="msg-body"><div class="msg-role">'+(isAi?t('research.roleAI'):t('research.roleUser'))+'</div><div class="msg-text">'+(isAi?renderMd(m.content):esc(m.content))+'</div>'+(isAi?msgActionBar(i):'')+'</div></div>';
+    return '<div class="msg"'+toolAttr+'><div class="msg-ava '+(isAi?'ai':'user')+'">'+(isAi?t('research.avatarAI'):t('research.avatarUser'))+'</div><div class="msg-body"><div class="msg-role">'+(isAi?t('research.roleAI'):t('research.roleUser'))+'</div><div class="msg-text">'+(isAi?renderMd(m.content):esc(m.content))+'</div>'+(isAi?msgActionBar(i,m._tool):'')+'</div></div>';
   }).join('');
   $('messages').scrollTop=$('messages').scrollHeight;
   setTimeout(runMermaid,80);
@@ -994,6 +1013,43 @@ async function copyMsg(idx,btn){
     var orig=btn.innerHTML;btn.innerHTML='✅ 已複製';
     setTimeout(()=>{btn.innerHTML=orig;},1500);
   }catch(e){alert('複製失敗：'+e.message);}
+}
+
+function _extractDiagramCode(content){
+  var sm=content.match(/```svg\s*([\s\S]*?)```/);
+  if(sm)return{type:'svg',code:sm[1].trim()};
+  var mm=content.match(/```mermaid\s*([\s\S]*?)```/);
+  if(mm)return{type:'mermaid',code:mm[1].trim()};
+  return null;
+}
+
+async function copyDiagramCode(idx,btn){
+  var msg=S.history[idx];if(!msg)return;
+  var d=_extractDiagramCode(msg.content);
+  if(!d){alert('找不到圖表代碼');return;}
+  try{
+    await navigator.clipboard.writeText(d.code);
+    var orig=btn.innerHTML;btn.innerHTML='✅ 已複製';
+    setTimeout(()=>{btn.innerHTML=orig;},1500);
+  }catch(e){alert('複製失敗：'+e.message);}
+}
+
+function downloadDiagram(idx){
+  var msg=S.history[idx];if(!msg)return;
+  var d=_extractDiagramCode(msg.content);
+  if(!d||d.type!=='svg'){alert('僅架構圖支援下載 SVG');return;}
+  var blob=new Blob([d.code],{type:'image/svg+xml;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=(S.topic||'架構圖')+'.svg';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
+function rerunDiagram(idx,btn){
+  var msg=S.history[idx];if(!msg||!msg._tool)return;
+  var orig=btn.innerHTML;btn.innerHTML='⏳';btn.disabled=true;
+  runTool(msg._tool).finally(()=>{btn.innerHTML=orig;btn.disabled=false;});
 }
 
 async function saveAllToVault(btn){
