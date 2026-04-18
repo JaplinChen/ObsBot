@@ -666,8 +666,7 @@ function renderMd(s){
     return '<a class="wikilink" href="javascript:void(0)" onclick="openNoteModal(\''+link.replace(/'/g,"\\'")+'\')">'+(display)+'</a>';
   });
   if(typeof marked!=='undefined'){
-    marked.setOptions({breaks:true,gfm:true});
-    var html=marked.parse(t);
+    var html=marked.parse(t,{breaks:true,gfm:true});
     // 將 ```mermaid 代碼塊轉為 <pre class="mermaid">，由 mermaid.run() 統一渲染
     html=html.replace(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/gi,function(_,code){
       var decoded=code.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&#39;/g,"'").replace(/&quot;/g,'"').trim();
@@ -981,7 +980,11 @@ function renderMessages(){
   $('messages').innerHTML=S.history.map((m,i)=>{
     const isAi=m.role==='assistant';
     const toolAttr=m._tool?' data-tool="'+m._tool+'"':'';
-    return '<div class="msg"'+toolAttr+'><div class="msg-ava '+(isAi?'ai':'user')+'">'+(isAi?t('research.avatarAI'):t('research.avatarUser'))+'</div><div class="msg-body"><div class="msg-role">'+(isAi?t('research.roleAI'):t('research.roleUser'))+'</div><div class="msg-text">'+(isAi?renderMd(m.content):esc(m.content))+'</div>'+(isAi?msgActionBar(i,m._tool):'')+'</div></div>';
+    const meta=m._tool?(TOOL_LABELS[m._tool]||{icon:'🔧',label:m._tool}):null;
+    const toolHdr=meta?'<div class="tool-result-header"><span class="tool-result-icon">'+meta.icon+'</span><span class="tool-result-label">'+meta.label+'</span><span class="tool-result-topic">'+esc(S.topic)+'</span></div>':'';
+    // 向後相容：strip 舊格式 content 中可能嵌入的 header HTML
+    const rawContent=m._tool?m.content.replace(/^<div class="tool-result-header">[\s\S]*?<\/div>\n*/,''):m.content;
+    return '<div class="msg"'+toolAttr+'><div class="msg-ava '+(isAi?'ai':'user')+'">'+(isAi?t('research.avatarAI'):t('research.avatarUser'))+'</div><div class="msg-body"><div class="msg-role">'+(isAi?t('research.roleAI'):t('research.roleUser'))+'</div>'+toolHdr+'<div class="msg-text">'+(isAi?renderMd(rawContent):esc(rawContent))+'</div>'+(isAi?msgActionBar(i,m._tool):'')+'</div></div>';
   }).join('');
   $('messages').scrollTop=$('messages').scrollHeight;
   setTimeout(runMermaid,80);
@@ -1142,8 +1145,7 @@ async function runTool(tool){
     const r=await fetch('/api/research/tools/'+tool,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:S.topic,paths:[...S.selected]})});
     const d=await r.json();
     const meta=TOOL_LABELS[tool]||{icon:'🔧',label:tool};
-    const header='<div class="tool-result-header"><span class="tool-result-icon">'+meta.icon+'</span><span class="tool-result-label">'+meta.label+'</span><span class="tool-result-topic">'+S.topic+'</span></div>\n\n';
-    S.history.push({role:'assistant',content:header+d.result,_tool:tool});renderMessages();
+    S.history.push({role:'assistant',content:d.result,_tool:tool});renderMessages();
     var last=$('messages').lastElementChild;if(last)last.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){msgEl.querySelector('.msg-text').textContent=t('research.generateFail')+e.message;}
 }
