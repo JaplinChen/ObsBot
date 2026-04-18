@@ -3,20 +3,17 @@
  * 處理 /research 和 /api/research/* 的所有請求。
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanVaultNotes, searchNotes, loadNoteBody } from './vault-reader.js';
-import { compressNote, compressBatch, getCacheStats } from './compress-cache.js';
+import { compressBatch, getCacheStats } from './compress-cache.js';
 import { preprocessText } from './text-cleaner.js';
-import { analyzeNotes, chatWithNotes, generateResearchReport, generateComparisonTable, generateAnkiCards, generateTeachingOutline, generateDiagram } from './chat-service.js';
+import { analyzeNotes, chatWithNotes, streamChatWithNotes, generateResearchReport, generateComparisonTable, generateAnkiCards, generateTeachingOutline, generateDiagram } from './chat-service.js';
 import type { DiagramType } from './chat-service.js';
-import { buildSlideSpec, parseSlideSpecPayload } from './slide-spec.js';
-import { buildPptx } from './slide-pptx.js';
-import { renderSlidePreviewHtml } from './slide-preview.js';
 import type { NoteRecord, ChatMessage, CleanLevel } from './types.js';
-import { saveReportToVault } from '../knowledge/report-saver.js';
 import { handleVaultManageRequest } from './vault-manage-routes.js';
+import { handleIORequest } from './research-routes-io.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW_RESEARCH_HTML = readFileSync(join(__dirname, 'research-ui.html'), 'utf-8');
@@ -35,6 +32,15 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
+function parseBody<T>(raw: string, res: ServerResponse): T | null {
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    json(res, { error: '請求格式錯誤（非有效 JSON）' }, 400);
+    return null;
+  }
+}
+
 function json(res: ServerResponse, data: unknown, status = 200): void {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -49,20 +55,6 @@ function html(res: ServerResponse, content: string): void {
 /** 取得 vault 路徑 */
 function getVaultPath(): string {
   return process.env['VAULT_PATH'] || '';
-}
-
-/* ── 研究 sessions 持久化 ──────────────────────────────────────── */
-const SESSIONS_FILE = join(process.cwd(), 'data', 'research-sessions.json');
-
-function readSessions(): unknown[] {
-  try {
-    if (!existsSync(SESSIONS_FILE)) return [];
-    return JSON.parse(readFileSync(SESSIONS_FILE, 'utf-8')) as unknown[];
-  } catch { return []; }
-}
-
-function writeSessions(sessions: unknown[]): void {
-  try { writeFileSync(SESSIONS_FILE, JSON.stringify(sessions), 'utf-8'); } catch { /* ignore */ }
 }
 
 /** 暫存已掃描的筆記（避免每次請求都重掃） */
@@ -103,7 +95,8 @@ export async function handleResearchRequest(req: IncomingMessage, res: ServerRes
 
   // 初始分析
   if (url === '/api/research/analyze' && method === 'POST') {
-    const body = JSON.parse(await readBody(req)) as { topic: string; paths: string[] };
+    const body = parseBody<{ topic: string; paths: string[] }>(await readBody(req), res);
+    if (!body) return true;
     const notes = await getNotes();
     const vp = getVaultPath();
     const selected = notes.filter((n) => body.paths.includes(n.path));
@@ -116,9 +109,34 @@ export async function handleResearchRequest(req: IncomingMessage, res: ServerRes
     return true;
   }
 
+  // SSE 串流對話
+  if (url === '/api/research/chat/stream' && method === 'POST') {
+    const body = parseBody<{ topic: string; paths: string[]; history: ChatMessage[]; message: string }>(await readBody(req), res);
+    if (!body) return true;
+    const notes = await getNotes();
+    const vp = getVaultPath();
+    const selected = notes.filter((n) => body.paths.includes(n.path));
+    for (const note of selected) {
+      if (!note.body) note.body = await loadNoteBody(vp, note.path);
+    }
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    try {
+      for await (const chunk of streamChatWithNotes(body.topic, selected, body.history, body.message)) {
+        res.write(`data: ${JSON.stringify({ delta: chunk })}\n\n`);
+      }
+    } catch { /* ignore mid-stream errors */ }
+    res.write('data: [DONE]\n\n');
+    res.end();
+    return true;
+  }
+
   // 對話
   if (url === '/api/research/chat' && method === 'POST') {
-    const body = JSON.parse(await readBody(req)) as { topic: string; paths: string[]; history: ChatMessage[]; message: string };
+    const body = parseBody<{ topic: string; paths: string[]; history: ChatMessage[]; message: string }>(await readBody(req), res);
+    if (!body) return true;
     const notes = await getNotes();
     const vp = getVaultPath();
     const selected = notes.filter((n) => body.paths.includes(n.path));
@@ -132,7 +150,8 @@ export async function handleResearchRequest(req: IncomingMessage, res: ServerRes
 
   // 文本預處理
   if (url === '/api/research/preprocess' && method === 'POST') {
-    const body = JSON.parse(await readBody(req)) as { text: string; topic?: string; level?: CleanLevel };
+    const body = parseBody<{ text: string; topic?: string; level?: CleanLevel }>(await readBody(req), res);
+    if (!body) return true;
     const compressed = preprocessText(body.text, body.topic, body.level);
     const ratio = body.text.length > 0 ? compressed.length / body.text.length : 1;
     json(res, { compressed, ratio: Math.round(ratio * 100) / 100 });
@@ -141,7 +160,8 @@ export async function handleResearchRequest(req: IncomingMessage, res: ServerRes
 
   // 壓縮筆記
   if (url === '/api/research/compress' && method === 'POST') {
-    const body = JSON.parse(await readBody(req)) as { paths: string[]; topic?: string };
+    const body = parseBody<{ paths: string[]; topic?: string }>(await readBody(req), res);
+    if (!body) return true;
     const notes = await getNotes();
     const vp = getVaultPath();
     const selected = notes.filter((n) => body.paths.includes(n.path));
@@ -157,31 +177,17 @@ export async function handleResearchRequest(req: IncomingMessage, res: ServerRes
     return true;
   }
 
-  // PPTX 匯出
-  if (url === '/api/research/export/pptx' && method === 'POST') {
-    const body = JSON.parse(await readBody(req)) as { spec?: Record<string, unknown>; content?: string; topic?: string };
-    const spec = body.spec ?? (body.content ? buildSlideSpec(body.content, body.topic ?? '') : null);
-    if (!spec) { json(res, { error: '缺少投影片規格或內容' }, 400); return true; }
-    const buf = await buildPptx(spec);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
-    res.setHeader('Content-Disposition', 'attachment; filename="research.pptx"');
-    res.end(buf);
-    return true;
-  }
-
-  // HTML 預覽
-  if (url === '/api/research/export/preview' && method === 'POST') {
-    const body = JSON.parse(await readBody(req)) as { spec?: Record<string, unknown>; content?: string; topic?: string };
-    const spec = body.spec ?? (body.content ? buildSlideSpec(body.content, body.topic ?? '') : null);
-    if (!spec) { json(res, { error: '缺少投影片規格或內容' }, 400); return true; }
-    html(res, renderSlidePreviewHtml(spec));
-    return true;
+  // 投影片/儲存/sessions — 委派給 IO 模組
+  if (url.startsWith('/api/research/export/') || url === '/api/research/save-report'
+      || url === '/api/research/save-all' || url === '/api/research/sessions') {
+    return handleIORequest(url, method, req, res, getVaultPath());
   }
 
   // 知識工具
   if (url.startsWith('/api/research/tools/') && method === 'POST') {
     const tool = url.split('/').pop();
-    const body = JSON.parse(await readBody(req)) as { topic: string; paths: string[] };
+    const body = parseBody<{ topic: string; paths: string[] }>(await readBody(req), res);
+    if (!body) return true;
     const notes = await getNotes();
     const vp = getVaultPath();
     const selected = notes.filter((n) => body.paths.includes(n.path));
@@ -253,71 +259,6 @@ export async function handleResearchRequest(req: IncomingMessage, res: ServerRes
     cachedNotes = [];
     const notes = await getNotes();
     json(res, { count: notes.length });
-    return true;
-  }
-
-  // 存入 Vault
-  if (url === '/api/research/save-report' && method === 'POST') {
-    const body = JSON.parse(await readBody(req)) as { topic: string; content: string; toolType?: string };
-    const vp = getVaultPath();
-    if (!vp) { json(res, { error: '未設定 VAULT_PATH' }, 500); return true; }
-    const toolLabel: Record<string, string> = {
-      report: '研究報告', compare: '比較表', anki: 'Anki 卡片',
-      outline: '教學大綱', overview: '分析概覽',
-    };
-    const label = toolLabel[body.toolType ?? ''] ?? '研究結果';
-    const slug = body.topic.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\u4e00-\u9fff-]/g, '').slice(0, 30);
-    const now = new Date();
-    const date = now.toISOString().slice(0, 10);
-    const hhmm = now.toTimeString().slice(0, 5).replace(':', '');
-    const path = await saveReportToVault(vp, {
-      title: `${body.topic} — ${label}`,
-      date,
-      content: body.content,
-      tags: ['research-generated', slug],
-      filePrefix: `research-${slug}-${hhmm}`,
-      subtitle: `${label} · 研究主題：${body.topic}`,
-      tool: body.toolType ?? 'chat',
-    });
-    json(res, { path });
-    return true;
-  }
-
-  // Sessions 持久化（跨 domain 同步）
-  if (url === '/api/research/sessions' && method === 'GET') {
-    json(res, readSessions());
-    return true;
-  }
-  if (url === '/api/research/sessions' && method === 'POST') {
-    const sessions = JSON.parse(await readBody(req)) as unknown[];
-    writeSessions(sessions);
-    json(res, { ok: true });
-    return true;
-  }
-
-  // 全部存入 Vault（整段對話合併）
-  if (url === '/api/research/save-all' && method === 'POST') {
-    const body = JSON.parse(await readBody(req)) as { topic: string; history: Array<{ role: string; content: string }> };
-    const vp = getVaultPath();
-    if (!vp) { json(res, { error: '未設定 VAULT_PATH' }, 500); return true; }
-    const slug = body.topic.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\u4e00-\u9fff-]/g, '').slice(0, 30);
-    const now = new Date();
-    const date = now.toISOString().slice(0, 10);
-    const hhmm = now.toTimeString().slice(0, 5).replace(':', '');
-    const sections = body.history
-      .filter((m) => m.role === 'assistant')
-      .map((m, i) => `## 回應 ${i + 1}\n\n${m.content}`)
-      .join('\n\n---\n\n');
-    const path = await saveReportToVault(vp, {
-      title: `${body.topic} — 完整研究對話`,
-      date,
-      content: sections,
-      tags: ['research-generated', 'research-full', slug],
-      filePrefix: `research-${slug}-full-${hhmm}`,
-      subtitle: `完整對話紀錄 · 研究主題：${body.topic}`,
-      tool: 'full',
-    });
-    json(res, { path });
     return true;
   }
 

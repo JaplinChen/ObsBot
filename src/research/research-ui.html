@@ -849,19 +849,58 @@ async function sendMsg(){
   if(isMobile())switchMobTab('chat');
   $('chatInput').value='';
   S.history.push({role:'user',content:txt});renderMessages();
+
+  // 串流用佔位訊息
   const msgEl=document.createElement('div');msgEl.className='msg';
-  msgEl.innerHTML='<div class="msg-ava ai">'+t('research.avatarAI')+'</div><div class="msg-body"><div class="msg-role">'+t('research.roleAI')+'</div><div class="msg-text" style="color:var(--txt3)">'+t('research.thinking')+'</div></div>';
+  msgEl.innerHTML='<div class="msg-ava ai">'+t('research.avatarAI')+'</div><div class="msg-body"><div class="msg-role">'+t('research.roleAI')+'</div><div class="msg-text stream-bubble" style="color:var(--txt3)">'+t('research.thinking')+'</div></div>';
   $('messages').appendChild(msgEl);$('messages').scrollTop=$('messages').scrollHeight;
+  const textEl=msgEl.querySelector('.stream-bubble');
+
+  let fullText='';
+  const payload=JSON.stringify({topic:S.topic,paths:[...S.selected],history:S.history,message:txt});
+
   try{
-    const r=await fetch('/api/research/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:S.topic,paths:[...S.selected],history:S.history,message:txt})});
-    const d=await r.json();
-    S.history.push({role:'assistant',content:d.reply});
-    renderMessages();saveSession();
-    // 偵測 PPTX 匯出動作標記
-    if(d.reply&&d.reply.includes('[[EXPORT_PPTX]]')){
-      setTimeout(()=>exportPptx(),300);
+    const resp=await fetch('/api/research/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:payload});
+    if(!resp.ok||!resp.body)throw new Error('stream unavailable');
+    const reader=resp.body.getReader();
+    const decoder=new TextDecoder();
+    let buf='';
+    while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const lines=buf.split('\n');
+      buf=lines.pop()??'';
+      for(const line of lines){
+        if(!line.startsWith('data: '))continue;
+        const data=line.slice(6).trim();
+        if(data==='[DONE]')break;
+        try{
+          const parsed=JSON.parse(data);
+          if(parsed.delta){
+            fullText+=parsed.delta;
+            textEl.innerHTML=renderMd(fullText)||'…';
+            textEl.style.color='';
+            $('messages').scrollTop=$('messages').scrollHeight;
+          }
+        }catch{}
+      }
     }
-  }catch(e){msgEl.querySelector('.msg-text').textContent=t('research.error')+e.message;}
+  }catch{
+    // 回退：一般非串流請求
+    try{
+      const r=await fetch('/api/research/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:payload});
+      const d=await r.json();
+      fullText=d.reply||'';
+    }catch(e){
+      if(textEl)textEl.textContent=t('research.error')+(e instanceof Error?e.message:String(e));
+      return;
+    }
+  }
+
+  S.history.push({role:'assistant',content:fullText});
+  renderMessages();saveSession();
+  if(fullText&&fullText.includes('[[EXPORT_PPTX]]')){setTimeout(()=>exportPptx(),300);}
 }
 
 function msgActionBar(i,tool){

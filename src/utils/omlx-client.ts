@@ -162,6 +162,81 @@ export async function omlxChatCompletion(
   }
 }
 
+/* ── Streaming completion ───────────────────────────────────────────── */
+
+/**
+ * Stream a chat completion from oMLX via SSE.
+ * Yields partial text chunks as they arrive.
+ * Returns immediately (yields nothing) on any connection error.
+ */
+export async function* omlxStreamCompletion(
+  prompt: string,
+  options: OmlxOptions = {},
+): AsyncGenerator<string> {
+  const tier = options.model ?? 'standard';
+  const modelId = getOmlxModelId(tier);
+  const timeoutMs = options.timeoutMs ?? getOmlxTimeout(tier);
+  const isQwenModel = modelId.toLowerCase().includes('qwen');
+
+  const messages: Array<{ role: string; content: string }> = [];
+  if (options.systemPrompt) messages.push({ role: 'system', content: options.systemPrompt });
+  messages.push({ role: 'user', content: prompt });
+
+  const body = JSON.stringify({
+    model: modelId,
+    messages,
+    temperature: options.temperature ?? 0.3,
+    max_tokens: options.maxTokens ?? 4096,
+    stream: true,
+    ...(isQwenModel ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+  });
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(`${getOmlxBase()}/v1/chat/completions`, {
+      method: 'POST',
+      headers: authHeaders('application/json'),
+      body,
+      signal: ctrl.signal,
+    });
+
+    if (!res.ok || !res.body) { invalidateCache(); return; }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') return;
+        try {
+          const parsed = JSON.parse(data) as {
+            choices?: Array<{ delta?: { content?: string } }>;
+          };
+          const chunk = parsed.choices?.[0]?.delta?.content;
+          if (chunk) yield chunk;
+        } catch { /* skip malformed SSE line */ }
+      }
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('ECONNREFUSED')) invalidateCache();
+    // AbortError (timeout) — stop silently
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /* ── Vision completion ──────────────────────────────────────────────── */
 
 /**
