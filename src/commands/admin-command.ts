@@ -7,6 +7,7 @@ import type { AppConfig } from '../utils/config.js';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { logger } from '../core/logger.js';
+import { getMonthlyCostStats, formatCostStats } from '../core/cost-tracker.js';
 
 const LOG_DIR = join(process.cwd(), 'logs');
 const MAX_LOG_LINES = 30;
@@ -39,6 +40,8 @@ export async function handleHealth(ctx: Context, _config: AppConfig): Promise<vo
   const heapMB = (mem.heapUsed / 1024 / 1024).toFixed(1);
   const rssMB = (mem.rss / 1024 / 1024).toFixed(1);
 
+  const costStats = await getMonthlyCostStats().catch(() => null);
+
   const lines = [
     '💚 Bot 健康狀態',
     '',
@@ -47,6 +50,10 @@ export async function handleHealth(ctx: Context, _config: AppConfig): Promise<vo
     `📦 Node: ${process.version}`,
     `🖥 PID: ${process.pid}`,
   ];
+
+  if (costStats) {
+    lines.push('', formatCostStats(costStats));
+  }
 
   await ctx.reply(lines.join('\n'));
 }

@@ -9,6 +9,7 @@ import type { AppConfig } from '../../utils/config.js';
 import { analyzeContentImages } from '../../utils/vision-llm.js';
 import { computeEnrichmentScore } from '../../monitoring/benchmark-scorer.js';
 import { loadBenchmarkData, saveBenchmarkData, recordPlatformAttempt } from '../../monitoring/benchmark-store.js';
+import { suggestAction } from '../../learning/action-suggester.js';
 import { ocrContentImages, isLikelyScreenshot } from '../../enrichment/ocr-service.js';
 import { cleanTitle } from '../../utils/content-cleaner.js';
 import { getUserConfig } from '../../utils/user-config.js';
@@ -197,4 +198,13 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
   } catch {
     // Non-critical, silent fallback
   }
+
+  // Action suggestion: fire-and-forget, must not block pipeline
+  suggestAction(
+    config.vaultPath,
+    content.title,
+    content.category,
+    content.enrichedKeywords ?? [],
+    content.enrichedSummary ?? '',
+  ).catch(() => { /* silent fallback */ });
 }

@@ -22,6 +22,7 @@ import {
   handleVaultGraph, handleVaultDreaming, handleVaultMemoir,
   handleVaultAnalyzeRules, handleVaultBookmarkGap, handleVaultDraft,
 } from './vault-hub-ext.js';
+import { analyzeFailures, formatFailureReport } from '../monitoring/failure-analyzer.js';
 
 type SubHandler = (ctx: Context, config: AppConfig) => Promise<void>;
 
@@ -113,6 +114,9 @@ export function createVaultHub(stats: BotStats) {
       return;
     }
 
+    // analyze-failures — enrichment failure pattern analysis
+    if (sub === 'analyze-failures') { await handleVaultAnalyzeFailures(ctx); return; }
+
     // ext sub-commands (graph / dreaming / memoir / analyze / bookmark-gap / draft)
     if (sub === 'graph') { await handleVaultGraph(ctx, config, rest); return; }
     if (sub === 'dreaming') { await handleVaultDreaming(ctx, config, rest); return; }
@@ -174,6 +178,23 @@ async function handleVaultCompile(ctx: Context, config: AppConfig, args: string)
   } catch (err) {
     stopTyping(typing);
     await ctx.reply(`Wiki 編譯失敗：${String(err)}`);
+  }
+}
+
+/** /vault analyze-failures — enrichment failure pattern analysis */
+async function handleVaultAnalyzeFailures(ctx: Context): Promise<void> {
+  const typing = startTyping(ctx);
+  await ctx.reply('📊 正在分析 enrichment 失敗模式…');
+  try {
+    const result = await analyzeFailures();
+    stopTyping(typing);
+    const report = formatFailureReport(result);
+    for (const chunk of splitMessage(report)) {
+      await ctx.reply(chunk, { parse_mode: 'Markdown' });
+    }
+  } catch (err) {
+    stopTyping(typing);
+    await ctx.reply(`分析失敗：${String(err)}`);
   }
 }
 

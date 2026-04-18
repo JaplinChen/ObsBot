@@ -148,7 +148,7 @@ export async function healVault(vaultPath: string, dryRun: boolean = false): Pro
           newContent = raw.slice(0, parsed.fmEnd) + cleanBody;
           modified = true;
           issues.push({ file: relPath, issue: 'HTML 殘留（已修復）', autoFixable: true, fixed: true, severity: 'auto_fixed' });
-          corrections.push({ file: relPath, field: 'html', timestamp: now });
+          corrections.push({ file: relPath, field: 'html', timestamp: now, reason: 'html_remnants' });
         }
       }
 
@@ -195,7 +195,7 @@ export async function healVault(vaultPath: string, dryRun: boolean = false): Pro
           newContent = replaceSummary(newContent, extracted);
           modified = true;
           issues.push({ file: relPath, issue: `摘要過短（${summary.length} 字→已修復）`, autoFixable: true, fixed: true, severity: 'auto_fixed' });
-          corrections.push({ file: relPath, field: 'summary', timestamp: now });
+          corrections.push({ file: relPath, field: 'summary', timestamp: now, reason: 'summary_too_short' });
         } else {
           unfixableIssues.push('摘要過短');
           issues.push({ file: relPath, issue: `摘要過短（${summary.length} 字）`, autoFixable: false, severity: 'needs_review' });
@@ -212,7 +212,7 @@ export async function healVault(vaultPath: string, dryRun: boolean = false): Pro
           newContent = replaceKeywords(newContent, merged);
           modified = true;
           issues.push({ file: relPath, issue: `關鍵字不足（${keywords.length}→${merged.length} 個，已修復）`, autoFixable: true, fixed: true, severity: 'auto_fixed' });
-          corrections.push({ file: relPath, field: 'keywords', timestamp: now });
+          corrections.push({ file: relPath, field: 'keywords', timestamp: now, reason: 'keywords_insufficient' });
         } else {
           unfixableIssues.push('關鍵字不足');
           issues.push({ file: relPath, issue: `關鍵字不足（${keywords.length} 個）`, autoFixable: false, severity: 'needs_review' });
@@ -247,7 +247,7 @@ export async function healVault(vaultPath: string, dryRun: boolean = false): Pro
               modified = true;
               translated++;
               issues.push({ file: relPath, issue: `未翻譯（${lang}→已翻譯為繁體中文）`, autoFixable: true, fixed: true, severity: 'auto_fixed' });
-              corrections.push({ file: relPath, field: 'translation', timestamp: now });
+              corrections.push({ file: relPath, field: 'translation', timestamp: now, reason: 'missing_translation' });
               logger.info('vault-healer', '翻譯完成', { file: relPath, lang });
             }
           } catch (err) {

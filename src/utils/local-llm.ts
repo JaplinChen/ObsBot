@@ -11,6 +11,7 @@ import {
   isProviderAvailable, openaiChatCompletion, geminiChatCompletion,
 } from './openai-client.js';
 import { loadSoul } from './soul-loader.js';
+import { recordCost } from '../core/cost-tracker.js';
 
 /** Read CLI timeout from user config. */
 function getCliTimeout(): number {
@@ -121,9 +122,16 @@ async function runViaCli(prompt: string, timeoutMs: number, model: string): Prom
  */
 export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}): Promise<string | null> {
   const timeoutMs = options.timeoutMs ?? 30_000;
-  const tier = options.task
+  const rawTier = options.task
     ? resolveModelTier(options.task, options.model)
     : (options.model ?? 'standard');
+  // COST_OPTIMIZED mode: downgrade to flash unless caller explicitly forces higher tier
+  const tier: ModelTier = process.env.COST_OPTIMIZED === 'true' && rawTier !== 'deep'
+    ? 'flash'
+    : rawTier;
+
+  // Non-blocking cost tracking
+  recordCost(tier, prompt).catch(() => { /* silent */ });
   const ocModel = getLlmModels()[tier];
   const llmCfg = getUserConfig().llm;
 

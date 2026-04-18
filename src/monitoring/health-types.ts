@@ -48,6 +48,7 @@ export interface CorrectionEvent {
   file: string;       // ObsBot 相對路徑
   field: string;      // 'translation' | 'summary' | 'keywords' | 'html' | 'images'
   timestamp: string;  // ISO datetime
+  reason?: string;    // 失敗原因分類，供 failure-analyzer 使用
 }
 
 export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
