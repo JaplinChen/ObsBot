@@ -220,13 +220,11 @@ const DIAGRAM_PROMPTS: Record<DiagramType, string> = {
     + '顯示主要參與者之間的訊息流。中文標示。\n'
     + '只輸出 ```mermaid 代碼塊，不加其他文字。',
   architecture:
-    '請為「{topic}」的系統架構生成 JSON 描述。只輸出 ```json 代碼塊，不加其他文字。\n\n'
-    + '格式：{"title":"圖表標題","nodes":[{"id":"英文ID","label":"元件名稱","sublabel":"技術/備註","type":"類型"}],"edges":[{"from":"ID","to":"ID","label":"協議"}]}\n\n'
-    + '規則：\n'
-    + '- nodes 最多 8 個，必要時合併次要元件\n'
-    + '- type 對應：前端UI→cyan、後端API→green、資料庫儲存→purple、雲端基礎設施→amber、安全認證→rose、訊息佇列→orange\n'
-    + '- edges 描述元件間的呼叫或資料流，label 填 REST/SQL/gRPC/MQTT 等協議\n'
-    + '- 所有 label/sublabel 用繁體中文',
+    '只回傳一個 JSON 物件，第一個字元是 {，最後一個字元是 }，絕對不含其他任何文字或 markdown。\n\n'
+    + '為「{topic}」生成架構圖節點與連線：\n'
+    + '{"title":"標題","nodes":[{"id":"英文ID","label":"名稱","sublabel":"技術","type":"類型"}],"edges":[{"from":"ID","to":"ID","label":"協議"}]}\n\n'
+    + 'nodes 最多 8 個。type 值：前端→cyan、後端→green、資料庫→purple、雲端→amber、安全→rose、佇列→orange\n'
+    + 'label/sublabel 用繁體中文。只輸出 JSON，不輸出任何解釋。',
 };
 
 /**
@@ -254,7 +252,12 @@ export async function generateDiagram(
 
   // 架構圖 — 從 JSON 規格產生 SVG（座標由 builder 計算，不靠 LLM）
   if (isArchitecture) {
-    const spec = parseArchSpec(cleaned);
+    let spec = parseArchSpec(cleaned);
+    // JSON 解析失敗時自動重試一次
+    if (!spec || spec.nodes.length === 0) {
+      const retry = await runLocalLlmPrompt(prompt, { task: 'summarize', maxTokens: 512, timeoutMs: 60_000 });
+      if (retry) spec = parseArchSpec(stripThinkingTags(retry));
+    }
     if (spec && spec.nodes.length > 0) {
       return '```svg\n' + buildArchitectureSvg(spec) + '\n```';
     }
