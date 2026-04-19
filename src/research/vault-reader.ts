@@ -2,7 +2,7 @@
  * Vault 掃描與筆記載入 — server-side 版本。
  * 複用現有 frontmatter-utils 的解析邏輯。
  */
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { join, relative, dirname, basename } from 'node:path';
 import { getAllMdFiles, parseFrontmatter, parseArrayField } from '../vault/frontmatter-utils.js';
 import type { NoteRecord } from './types.js';
@@ -46,19 +46,21 @@ function parseNote(filePath: string, vaultRoot: string, raw: string): NoteRecord
  */
 export async function scanVaultNotes(vaultPath: string): Promise<NoteRecord[]> {
   const mdFiles = await getAllMdFiles(vaultPath);
-  const notes: NoteRecord[] = [];
 
-  for (const filePath of mdFiles) {
-    try {
-      const raw = await readFile(filePath, 'utf-8');
-      const note = parseNote(filePath, vaultPath, raw);
-      notes.push(note);
-    } catch {
-      // 跳過無法讀取的檔案
-    }
-  }
+  const results = await Promise.all(
+    mdFiles.map(async (filePath) => {
+      try {
+        const [raw, s] = await Promise.all([readFile(filePath, 'utf-8'), stat(filePath)]);
+        const note = parseNote(filePath, vaultPath, raw);
+        note.mtime = s.mtimeMs;
+        return note;
+      } catch {
+        return null;
+      }
+    }),
+  );
 
-  return notes.sort((a, b) => a.path.localeCompare(b.path));
+  return (results.filter(Boolean) as NoteRecord[]).sort((a, b) => a.path.localeCompare(b.path));
 }
 
 /**
@@ -72,15 +74,28 @@ export async function loadNoteBody(vaultPath: string, notePath: string): Promise
 }
 
 /**
- * 搜尋筆記：比對標題、標籤、body 中的關鍵字。
+ * 搜尋筆記：命中後依相關性分數降序排列。
+ * 分數：標題/標籤命中 × 3，關鍵字命中 × 2，內文命中 × 1。
  */
 export function searchNotes(notes: NoteRecord[], query: string): NoteRecord[] {
   if (!query.trim()) return notes;
   const q = query.toLowerCase();
-  return notes.filter((n) => {
-    const searchable = [n.name, ...n.tags, ...n.keywords, n.category, n.preview].join(' ').toLowerCase();
-    return searchable.includes(q);
-  });
+
+  const scored: Array<{ note: NoteRecord; score: number }> = [];
+  for (const n of notes) {
+    const nameLower = n.name.toLowerCase();
+    const tagsStr = [...n.tags, ...n.keywords].join(' ').toLowerCase();
+    const previewLower = (n.preview || '').toLowerCase();
+
+    const titleHits = (nameLower.split(q).length - 1) * 3;
+    const tagHits = (tagsStr.split(q).length - 1) * 2;
+    const bodyHits = previewLower.split(q).length - 1;
+    const score = titleHits + tagHits + bodyHits;
+
+    if (score > 0) scored.push({ note: n, score });
+  }
+
+  return scored.sort((a, b) => b.score - a.score).map((s) => s.note);
 }
 
 /**
@@ -105,9 +120,9 @@ export function buildNoteContext(notes: NoteRecord[], topic: string, maxChars = 
   return `你是「${topic}」主題的研究助手，熟悉用戶的 Obsidian 筆記。\n`
     + '用繁體中文回答，深入有結構，使用 Markdown（# ## ### #### 標題、表格、- 清單、**粗體**、> 引言、```程式碼```）。\n'
     + '引用筆記時用 [[筆記名稱]] 標注來源。\n\n'
-    + '## 圖表（必讀）\n\n'
-    + '**每次回覆都必須在適當位置主動插入至少一個 Mermaid 圖表**，前端會自動渲染為圖片。\n'
-    + '不需要等用戶要求——只要回覆中有流程、階層、對比、時序、架構等可視化結構，立即插入對應圖表。\n\n'
+    + '## 圖表建議\n\n'
+    + '若回覆中含有流程、階層、對比、時序、架構等可視化結構，可插入 Mermaid 圖表，前端會自動渲染。\n'
+    + '純問答或短句回覆不需要圖表。\n\n'
     + '選擇最合適的圖表類型：\n'
     + '- `flowchart LR` / `flowchart TD` — 流程、因果、步驟\n'
     + '- `mindmap` — 概念展開、知識結構\n'

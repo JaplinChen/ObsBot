@@ -113,8 +113,16 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .msg-text .wikilink:hover{background:var(--pu3);text-decoration:underline}
 .mermaid-wrap{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:16px;margin:12px 0;overflow-x:auto;text-align:center}
 .mermaid-wrap svg{max-width:100%;height:auto}
-/* 架構圖容器 — 永遠深色主題（不隨頁面主題反色，語義顏色保持正確） */
-.arch-svg-wrap{background:#020617;border:1px solid #1e293b;border-radius:12px;padding:0;margin:14px 0;overflow:auto;line-height:0;box-shadow:0 4px 24px rgba(0,0,0,.35)}
+/* 架構圖容器 — 依風格自適應（dark/sketch/minimal） */
+.diag-style-row{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+.diag-style-label{font-size:11px;color:var(--txt3);white-space:nowrap;margin-right:2px}
+.diag-style-btn{font-size:11px;padding:3px 9px;border-radius:20px;border:1px solid var(--bdr);background:var(--bg2);color:var(--txt2);cursor:pointer;transition:all .15s}
+.diag-style-btn:hover{border-color:var(--pu2);color:var(--pu2)}
+.diag-style-btn.on{background:var(--pu3);border-color:var(--pu2);color:var(--pu2);font-weight:600}
+.arch-svg-wrap{border-radius:12px;padding:0;margin:14px 0;overflow:auto;line-height:0}
+.arch-svg-wrap.style-dark{background:#020617;border:1px solid #1e293b;box-shadow:0 4px 24px rgba(0,0,0,.35)}
+.arch-svg-wrap.style-sketch{background:#fafaf9;border:1px solid #e2e8f0;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.arch-svg-wrap.style-minimal{background:#fff;border:1px solid #e2e8f0;box-shadow:0 1px 8px rgba(0,0,0,.06)}
 .arch-svg-wrap svg{width:100%;height:auto;display:block;border-radius:12px}
 /* 工具結果標題列 */
 .tool-result-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg2);border:1px solid var(--bdr);border-radius:10px 10px 0 0;margin-bottom:-1px;border-bottom:2px solid var(--pu3)}
@@ -306,6 +314,32 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .mgmt-btn.cancel:hover{border-color:var(--bdr2);color:var(--txt1)}
 .mgmt-btn.danger{background:none;border-color:#e74c3c;color:#e74c3c}
 .mgmt-btn.danger:hover{background:#e74c3c;color:#fff}
+/* ── 工具類別摺疊 ── */
+.t-sec{margin-bottom:2px}
+.t-sec-hdr{display:flex;align-items:center;gap:6px;padding:7px 2px;cursor:pointer;color:var(--txt3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;user-select:none;border-radius:5px;transition:color .15s}
+.t-sec-hdr:hover{color:var(--txt2)}
+.t-sec-arrow{font-size:9px;transition:transform .2s;flex-shrink:0;width:12px;text-align:center}
+.t-sec-arrow.open{transform:rotate(90deg)}
+.t-sec-body{padding-bottom:6px}
+/* ── 自動插圖設定 ── */
+.autodiag-panel{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;margin-bottom:6px}
+.autodiag-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:7px}
+.autodiag-row:last-child{margin-bottom:0}
+.autodiag-label{font-size:11px;color:var(--txt3);font-weight:600;width:30px;flex-shrink:0;padding-top:3px}
+.autodiag-grp{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+.autodiag-btn{background:var(--bg1);border:1px solid var(--bdr);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--txt2);font-family:inherit;transition:all .15s;white-space:nowrap}
+.autodiag-btn:hover{border-color:var(--bdr2);color:var(--txt1)}
+.autodiag-btn.on{background:var(--pu2);border-color:var(--pu3);color:var(--pu);font-weight:600}
+.autodiag-loading{color:var(--txt3);font-size:12px;margin-top:8px;display:flex;align-items:center;gap:5px;font-style:italic}
+/* ── 自動插圖示意圖 ── */
+.ad-demo{margin-top:8px;border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;background:var(--bg0);font-size:11px}
+.ad-demo-lbl{color:var(--txt3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.ad-demo-bubble{background:var(--bg1);border:1px solid var(--bdr);border-radius:8px;padding:6px 10px;margin:4px 0;color:var(--txt2);line-height:1.7;font-size:11.5px}
+.ad-demo-tag{display:inline-block;background:var(--pu);color:#fff;border-radius:4px;padding:0 5px;font-family:'SF Mono',Monaco,monospace;font-size:10px;vertical-align:middle;margin:1px 0}
+.ad-demo-chart{background:var(--bg2);border:1px dashed var(--pu3);border-radius:6px;padding:5px 8px;margin:4px 0;text-align:center}
+.ad-demo-flow{display:flex;align-items:center;justify-content:center;gap:3px;padding:2px 0}
+.ad-demo-node{background:var(--pu2);border:1px solid var(--pu3);border-radius:4px;padding:2px 7px;color:var(--pu);font-size:10px;white-space:nowrap}
+.ad-demo-arr{color:var(--txt3);font-size:12px}
 </style>
 </head>
 <body>
@@ -497,6 +531,16 @@ document.addEventListener('click', function(e) { var sw = document.querySelector
 const S={notes:[],selected:new Set(),topic:'',history:[],overview:null,tab:'overview',folderOpen:{},activeTag:'',allTags:[]};
 const $=id=>document.getElementById(id);
 
+// 自動插圖設定（存 localStorage）
+var _ADConfig={
+  get mode(){return localStorage.getItem('rd-ad-mode')||'off';},
+  set mode(v){localStorage.setItem('rd-ad-mode',v);},
+  get types(){try{return JSON.parse(localStorage.getItem('rd-ad-types')||'["flowchart","architecture"]');}catch{return['flowchart','architecture'];}},
+  set types(v){localStorage.setItem('rd-ad-types',JSON.stringify(v));},
+  get max(){return parseInt(localStorage.getItem('rd-ad-max')||'2',10);},
+  set max(v){localStorage.setItem('rd-ad-max',String(v));},
+};
+
 async function loadNotes(q){
   const url=q?'/api/research/notes?q='+encodeURIComponent(q):'/api/research/notes';
   const r=await fetch(url);const notes=await r.json();
@@ -646,8 +690,7 @@ function renderMd(s){
     return '<a class="wikilink" href="javascript:void(0)" onclick="openNoteModal(\''+link.replace(/'/g,"\\'")+'\')">'+(display)+'</a>';
   });
   if(typeof marked!=='undefined'){
-    marked.setOptions({breaks:true,gfm:true});
-    var html=marked.parse(t);
+    var html=marked.parse(t,{breaks:true,gfm:true});
     // 將 ```mermaid 代碼塊轉為 <pre class="mermaid">，由 mermaid.run() 統一渲染
     html=html.replace(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/gi,function(_,code){
       var decoded=code.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&#39;/g,"'").replace(/&quot;/g,'"').trim();
@@ -658,7 +701,8 @@ function renderMd(s){
       var decoded=code.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&#39;/g,"'").replace(/&quot;/g,'"').trim();
       // 基本安全檢查：只允許 <svg 開頭的代碼
       if(!decoded.startsWith('<svg'))return'<pre><code>'+code+'</code></pre>';
-      return '<div class="arch-svg-wrap">'+decoded+'</div>';
+      var styleClass='style-'+(localStorage.getItem('rd-diagram-style')||'sketch');
+      return '<div class="arch-svg-wrap '+styleClass+'">'+decoded+'</div>';
     });
     return html;
   }
@@ -849,19 +893,76 @@ async function sendMsg(){
   if(isMobile())switchMobTab('chat');
   $('chatInput').value='';
   S.history.push({role:'user',content:txt});renderMessages();
+
+  // 串流用佔位訊息
   const msgEl=document.createElement('div');msgEl.className='msg';
-  msgEl.innerHTML='<div class="msg-ava ai">'+t('research.avatarAI')+'</div><div class="msg-body"><div class="msg-role">'+t('research.roleAI')+'</div><div class="msg-text" style="color:var(--txt3)">'+t('research.thinking')+'</div></div>';
+  msgEl.innerHTML='<div class="msg-ava ai">'+t('research.avatarAI')+'</div><div class="msg-body"><div class="msg-role">'+t('research.roleAI')+'</div><div class="msg-text stream-bubble" style="color:var(--txt3)">'+t('research.thinking')+'</div></div>';
   $('messages').appendChild(msgEl);$('messages').scrollTop=$('messages').scrollHeight;
+  const textEl=msgEl.querySelector('.stream-bubble');
+
+  let fullText='';
+  var _adMode=_ADConfig.mode;
+  const payload=JSON.stringify({topic:S.topic,paths:[...S.selected],history:S.history,message:txt,autodiagramA:_adMode==='a'||_adMode==='ab',allowedDiagramTypes:_ADConfig.types});
+
   try{
-    const r=await fetch('/api/research/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:S.topic,paths:[...S.selected],history:S.history,message:txt})});
-    const d=await r.json();
-    S.history.push({role:'assistant',content:d.reply});
-    renderMessages();saveSession();
-    // 偵測 PPTX 匯出動作標記
-    if(d.reply&&d.reply.includes('[[EXPORT_PPTX]]')){
-      setTimeout(()=>exportPptx(),300);
+    const resp=await fetch('/api/research/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:payload});
+    if(!resp.ok||!resp.body)throw new Error('stream unavailable');
+    const reader=resp.body.getReader();
+    const decoder=new TextDecoder();
+    let buf='';
+    while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const lines=buf.split('\n');
+      buf=lines.pop()??'';
+      for(const line of lines){
+        if(!line.startsWith('data: '))continue;
+        const data=line.slice(6).trim();
+        if(data==='[DONE]')break;
+        try{
+          const parsed=JSON.parse(data);
+          if(parsed.delta){
+            fullText+=parsed.delta;
+            textEl.innerHTML=renderMd(fullText)||'…';
+            textEl.style.color='';
+            $('messages').scrollTop=$('messages').scrollHeight;
+          }
+        }catch{}
+      }
     }
-  }catch(e){msgEl.querySelector('.msg-text').textContent=t('research.error')+e.message;}
+  }catch{
+    // 回退：一般非串流請求
+    try{
+      const r=await fetch('/api/research/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:payload});
+      const d=await r.json();
+      fullText=d.reply||'';
+    }catch(e){
+      if(textEl)textEl.textContent=t('research.error')+(e instanceof Error?e.message:String(e));
+      return;
+    }
+  }
+
+  // 自動插圖後處理（模式A/B）
+  if(_adMode!=='off'&&fullText&&textEl){
+    textEl.insertAdjacentHTML('beforeend','<div class="autodiag-loading">🖼 正在生成插圖…</div>');
+    $('messages').scrollTop=$('messages').scrollHeight;
+    try{
+      if((_adMode==='a'||_adMode==='ab')&&fullText.includes('[DIAGRAM:')){
+        fullText=await _processDiagramMarkers(fullText);
+      }
+      if(_adMode==='b'||_adMode==='ab'){
+        fullText=await _processAutoDiagramB(fullText);
+      }
+      textEl.innerHTML=renderMd(fullText)||'…';
+      setTimeout(runMermaid,80);
+      $('messages').scrollTop=$('messages').scrollHeight;
+    }catch{/* 插圖失敗不影響主對話 */}
+  }
+
+  S.history.push({role:'assistant',content:fullText});
+  renderMessages();saveSession();
+  if(fullText&&fullText.includes('[[EXPORT_PPTX]]')){setTimeout(()=>exportPptx(),300);}
 }
 
 function msgActionBar(i,tool){
@@ -904,7 +1005,11 @@ function renderMessages(){
   $('messages').innerHTML=S.history.map((m,i)=>{
     const isAi=m.role==='assistant';
     const toolAttr=m._tool?' data-tool="'+m._tool+'"':'';
-    return '<div class="msg"'+toolAttr+'><div class="msg-ava '+(isAi?'ai':'user')+'">'+(isAi?t('research.avatarAI'):t('research.avatarUser'))+'</div><div class="msg-body"><div class="msg-role">'+(isAi?t('research.roleAI'):t('research.roleUser'))+'</div><div class="msg-text">'+(isAi?renderMd(m.content):esc(m.content))+'</div>'+(isAi?msgActionBar(i,m._tool):'')+'</div></div>';
+    const meta=m._tool?(TOOL_LABELS[m._tool]||{icon:'🔧',label:m._tool}):null;
+    const toolHdr=meta?'<div class="tool-result-header"><span class="tool-result-icon">'+meta.icon+'</span><span class="tool-result-label">'+meta.label+'</span><span class="tool-result-topic">'+esc(S.topic)+'</span></div>':'';
+    // 向後相容：strip 舊格式 content 中可能嵌入的 header HTML
+    const rawContent=m._tool?m.content.replace(/^<div class="tool-result-header">[\s\S]*?<\/div>\n*/,''):m.content;
+    return '<div class="msg"'+toolAttr+'><div class="msg-ava '+(isAi?'ai':'user')+'">'+(isAi?t('research.avatarAI'):t('research.avatarUser'))+'</div><div class="msg-body"><div class="msg-role">'+(isAi?t('research.roleAI'):t('research.roleUser'))+'</div>'+toolHdr+'<div class="msg-text">'+(isAi?renderMd(rawContent):esc(rawContent))+'</div>'+(isAi?msgActionBar(i,m._tool):'')+'</div></div>';
   }).join('');
   $('messages').scrollTop=$('messages').scrollHeight;
   setTimeout(runMermaid,80);
@@ -942,16 +1047,17 @@ function renderRight(){
     ];
     var noAnalysis=!S.overview,noTopic=!S.topic;
     var eDis=noTopic?' disabled':'',tDis=noAnalysis?' disabled':'';
-    let h='<div class="overview-section"><h3>'+t('research.quickExport')+'</h3>';
-    if(noTopic)h+='<div class="tool-section-note">請先執行分析以啟用匯出</div>';
-    h+='<button class="tool-btn'+eDis+'" onclick="exportPreview()"><span class="icon">👁</span>'+t('research.previewSlides')+'</button>';
-    h+='<button class="tool-btn'+eDis+'" onclick="exportPptx()"><span class="icon">📥</span>'+t('research.downloadPptx')+'</button></div>';
-    h+='<div class="overview-section"><h3>'+t('research.aiTools')+'</h3>';
-    if(noAnalysis)h+='<div class="tool-section-note">請先執行分析以啟用 AI 工具</div>';
-    h+=apiTools.map(a=>'<button class="tool-btn'+tDis+'" onclick="runTool(\''+a.tool+'\')"><span class="icon">'+a.icon+'</span>'+t(a.labelKey)+'</button>').join('');
-    h+='</div>';
-    h+='<div class="overview-section"><h3>圖表生成</h3>';
-    if(noTopic)h+='<div class="tool-section-note">請先輸入主題以啟用</div>';
+
+    // 快速匯出
+    var exportBody=(noTopic?'<div class="tool-section-note">請先執行分析以啟用匯出</div>':'')
+      +'<button class="tool-btn'+eDis+'" onclick="exportPreview()"><span class="icon">👁</span>'+t('research.previewSlides')+'</button>'
+      +'<button class="tool-btn'+eDis+'" onclick="exportPptx()"><span class="icon">📥</span>'+t('research.downloadPptx')+'</button>';
+
+    // AI 工具
+    var aiBody=(noAnalysis?'<div class="tool-section-note">請先執行分析以啟用 AI 工具</div>':'')
+      +apiTools.map(a=>'<button class="tool-btn'+tDis+'" onclick="runTool(\''+a.tool+'\')"><span class="icon">'+a.icon+'</span>'+t(a.labelKey)+'</button>').join('');
+
+    // 圖表生成
     var diagrams=[
       {icon:'🔀',label:'流程圖',tool:'diagram:flowchart'},
       {icon:'🧠',label:'心智圖',tool:'diagram:mindmap'},
@@ -959,17 +1065,129 @@ function renderRight(){
       {icon:'⏱️',label:'時間軸',tool:'diagram:timeline'},
       {icon:'↔️',label:'時序圖',tool:'diagram:sequence'},
     ];
-    h+=diagrams.map(d=>'<button class="tool-btn'+eDis+'" onclick="runTool(\''+d.tool+'\')"><span class="icon">'+d.icon+'</span>'+d.label+'</button>').join('');
-    h+='</div>';
-    h+='<div class="overview-section"><h3>提示工具</h3>';
-    h+=promptTools.map((p,i)=>'<button class="tool-btn'+tDis+'" onclick="sendPromptTool('+i+')"><span class="icon">'+p.icon+'</span>'+t(p.labelKey)+'</button>').join('');
-    h+='</div>';
+    var curStyle=localStorage.getItem('rd-diagram-style')||'sketch';
+    var styleOpts=[{id:'dark',label:'暗黑科技',icon:'🌑'},{id:'sketch',label:'手繪插畫',icon:'✏️'},{id:'minimal',label:'簡約白',icon:'⬜'}];
+    var styleRow='<div class="diag-style-row"><span class="diag-style-label">圖表風格</span>'
+      +styleOpts.map(s=>'<button class="diag-style-btn'+(curStyle===s.id?' on':'')+'" onclick="setDiagStyle(\''+s.id+'\',this)">'+s.icon+' '+s.label+'</button>').join('')
+      +'</div>';
+    var diagBody=(noTopic?'<div class="tool-section-note">請先輸入主題以啟用</div>':'')
+      +diagrams.map(d=>'<button class="tool-btn'+eDis+'" onclick="runTool(\''+d.tool+'\')"><span class="icon">'+d.icon+'</span>'+d.label+'</button>').join('')
+      +styleRow;
+
+    // 提示工具
+    var promptBody=promptTools.map((p,i)=>'<button class="tool-btn'+tDis+'" onclick="sendPromptTool('+i+')"><span class="icon">'+p.icon+'</span>'+t(p.labelKey)+'</button>').join('');
+
+    // 自動插圖
+    var adMode=_ADConfig.mode,adTypes=_ADConfig.types,adMax=_ADConfig.max;
+    var _MODES=[{id:'off',label:'關閉'},{id:'a',label:'LLM標記'},{id:'b',label:'智能分析'},{id:'ab',label:'兩者'}];
+    var _DTYPES=[{id:'architecture',label:'架構圖'},{id:'flowchart',label:'流程圖'},{id:'mindmap',label:'心智圖'},{id:'sequence',label:'時序圖'},{id:'timeline',label:'時間軸'}];
+    var adBody='<div class="autodiag-panel"><div class="autodiag-row"><span class="autodiag-label">模式</span><div class="autodiag-grp">'
+      +_MODES.map(m=>'<button class="autodiag-btn'+(adMode===m.id?' on':'')+'" onclick="setADMode(\''+m.id+'\')">'+m.label+'</button>').join('')
+      +'</div></div>';
+    if(adMode!=='off'){
+      adBody+='<div class="autodiag-row"><span class="autodiag-label">類型</span><div class="autodiag-grp">'
+        +_DTYPES.map(dt=>'<button class="autodiag-btn'+(adTypes.includes(dt.id)?' on':'')+'" onclick="toggleADType(\''+dt.id+'\')">'+dt.label+'</button>').join('')
+        +'</div></div>'
+        +'<div class="autodiag-row"><span class="autodiag-label">上限</span><div class="autodiag-grp">'
+        +[1,2,3].map(n=>'<button class="autodiag-btn'+(adMax===n?' on':'')+'" onclick="setADMax('+n+')">'+n+'</button>').join('')
+        +'</div></div>';
+    }
+    adBody+='</div>'+_adDemo(adMode);
+
+    let h=_tsec('export','📥',t('research.quickExport'),exportBody)
+      +_tsec('ai','🤖',t('research.aiTools'),aiBody)
+      +_tsec('diagram','📊','圖表生成',diagBody)
+      +_tsec('prompt','💡','提示工具',promptBody)
+      +_tsec('autodiag','🖼','自動插圖',adBody);
     el.innerHTML=h;
     window._promptTools=promptTools.map(p=>({icon:p.icon,label:t(p.labelKey),prompt:t(p.promptKey)}));
   }else if(S.tab==='slides'){
     el.innerHTML='<button class="tool-btn" onclick="exportPreview()"><span class="icon">👁</span>'+t('research.previewSlides')+'</button>'
       +'<button class="tool-btn" onclick="exportPptx()"><span class="icon">📥</span>'+t('research.downloadPptx')+'</button>';
   }
+}
+
+var _toolOpen={export:false,ai:true,diagram:true,prompt:false,autodiag:true};
+function toggleToolSec(id){_toolOpen[id]=!_toolOpen[id];renderRight();}
+
+function _tsec(id,icon,label,body){
+  var open=_toolOpen[id]!==false;
+  return '<div class="t-sec"><div class="t-sec-hdr" onclick="toggleToolSec(\''+id+'\')">'
+    +'<span class="t-sec-arrow'+(open?' open':'')+'">▶</span>'+icon+' '+label
+    +'</div>'+(open?'<div class="t-sec-body">'+body+'</div>':'')+'</div>';
+}
+
+function _adDemo(mode){
+  if(mode==='off')return'';
+  var demoA='<div class="ad-demo-lbl">模式 A — LLM 在回覆中標記插圖位置</div>'
+    +'<div class="ad-demo-bubble">解釋 CI/CD 的部署流程...<br>'
+    +'<span class="ad-demo-tag">[DIAGRAM:flowchart:CI/CD流程]</span><br>'
+    +'此標記會自動展開為圖表↓</div>'
+    +'<div class="ad-demo-chart"><div class="ad-demo-flow">'
+    +'<div class="ad-demo-node">推送代碼</div><span class="ad-demo-arr">→</span>'
+    +'<div class="ad-demo-node">CI 測試</div><span class="ad-demo-arr">→</span>'
+    +'<div class="ad-demo-node">部署</div>'
+    +'</div></div>';
+  var demoB='<div class="ad-demo-lbl">模式 B — 智能分析，在段落後自動插圖</div>'
+    +'<div class="ad-demo-bubble">回覆完成後，AI 掃描哪些段落需要視覺化，然後自動插入↓</div>'
+    +'<div class="ad-demo-bubble">微服務架構由前端、API 閘道、服務層構成…</div>'
+    +'<div class="ad-demo-chart" style="color:var(--pu);font-size:11px">🏗️ 架構圖自動插入此處</div>';
+  if(mode==='a')return'<div class="ad-demo">'+demoA+'</div>';
+  if(mode==='b')return'<div class="ad-demo">'+demoB+'</div>';
+  return'<div class="ad-demo">'+demoA+demoB+'</div>';
+}
+
+function setDiagStyle(style,btn){
+  localStorage.setItem('rd-diagram-style',style);
+  document.querySelectorAll('.diag-style-btn').forEach(function(b){b.classList.remove('on');});
+  if(btn)btn.classList.add('on');
+}
+function setADMode(mode){_ADConfig.mode=mode;renderRight();}
+function toggleADType(type){
+  var types=_ADConfig.types;
+  var idx=types.indexOf(type);
+  if(idx>=0){if(types.length>1)types.splice(idx,1);}else types.push(type);
+  _ADConfig.types=types;renderRight();
+}
+function setADMax(n){_ADConfig.max=n;renderRight();}
+
+async function _fetchDiagram(type,topic){
+  var r=await fetch('/api/research/tools/diagram:'+type,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic,paths:[...S.selected]})});
+  var d=await r.json();return d.result||'';
+}
+
+async function _processDiagramMarkers(text){
+  var RE=/\[DIAGRAM:(flowchart|mindmap|timeline|sequence|architecture):([^\]\n]{1,60})\]/g;
+  var matches=[],m,max=_ADConfig.max,types=_ADConfig.types;
+  while((m=RE.exec(text))!==null&&matches.length<max){
+    if(types.includes(m[1]))matches.push({full:m[0],type:m[1],topic:m[2].trim()});
+  }
+  for(var i=0;i<matches.length;i++){
+    var r=matches[i];
+    try{var svg=await _fetchDiagram(r.type,r.topic);text=text.replace(r.full,svg?'\n\n'+svg+'\n\n':'');}
+    catch{text=text.replace(r.full,'');}
+  }
+  return text.replace(/\[DIAGRAM:[^\]]*\]/g,'');
+}
+
+async function _processAutoDiagramB(text){
+  var types=_ADConfig.types,max=_ADConfig.max;
+  try{
+    var resp=await fetch('/api/research/auto-diagram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({replyText:text,allowedTypes:types,maxDiagrams:max})});
+    var d=await resp.json();
+    if(!d.suggestions||!d.suggestions.length)return text;
+    for(var i=0;i<d.suggestions.length;i++){
+      var s=d.suggestions[i];
+      try{
+        var svg=await _fetchDiagram(s.type,s.topic);
+        if(!svg)continue;
+        var idx=text.indexOf(s.anchor);
+        if(idx>=0){var paraEnd=text.indexOf('\n\n',idx+s.anchor.length);var ins=paraEnd>=0?paraEnd:text.length;text=text.slice(0,ins)+'\n\n'+svg+text.slice(ins);}
+        else text+='\n\n'+svg;
+      }catch{}
+    }
+  }catch{}
+  return text;
 }
 
 function askQuestion(q){$('chatInput').value=q;sendMsg();}
@@ -997,11 +1215,10 @@ async function runTool(tool){
   msgEl.innerHTML='<div class="msg-ava ai">'+t('research.avatarAI')+'</div><div class="msg-body"><div class="msg-role">'+t('research.roleAI')+'</div><div class="msg-text" style="color:var(--txt3)">'+t('research.generating')+'</div></div>';
   $('messages').appendChild(msgEl);$('messages').scrollTop=$('messages').scrollHeight;
   try{
-    const r=await fetch('/api/research/tools/'+tool,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:S.topic,paths:[...S.selected]})});
+    const r=await fetch('/api/research/tools/'+tool,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:S.topic,paths:[...S.selected],diagramStyle:localStorage.getItem('rd-diagram-style')||'sketch'})});
     const d=await r.json();
     const meta=TOOL_LABELS[tool]||{icon:'🔧',label:tool};
-    const header='<div class="tool-result-header"><span class="tool-result-icon">'+meta.icon+'</span><span class="tool-result-label">'+meta.label+'</span><span class="tool-result-topic">'+S.topic+'</span></div>\n\n';
-    S.history.push({role:'assistant',content:header+d.result,_tool:tool});renderMessages();
+    S.history.push({role:'assistant',content:d.result,_tool:tool});renderMessages();
     var last=$('messages').lastElementChild;if(last)last.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){msgEl.querySelector('.msg-text').textContent=t('research.generateFail')+e.message;}
 }

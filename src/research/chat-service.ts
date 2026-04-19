@@ -3,9 +3,12 @@
  * LLM 呼叫全部走 runLocalLlmPrompt()。
  */
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
+import { isOmlxAvailable, omlxStreamCompletion } from '../utils/omlx-client.js';
 import { buildNoteContext } from './vault-reader.js';
-import { parseArchSpec, buildArchitectureSvg } from './arch-svg-builder.js';
 import type { NoteRecord, ChatMessage, AnalysisOverview } from './types.js';
+
+export type { DiagramType, DiagramSuggestion } from './diagram-service.js';
+export { generateDiagram, analyzeForDiagrams } from './diagram-service.js';
 
 /* ── 工具函式 ────────────────────────────────────────────────── */
 
@@ -46,13 +49,9 @@ export async function analyzeNotes(
   topic: string,
   notes: NoteRecord[],
 ): Promise<AnalysisOverview | null> {
-  // 取前 6 篇筆記的摘要，每篇最多 300 字
-  const noteSnippets = notes.slice(0, 6).map((n) => {
-    const content = (n.body || n.preview || '').slice(0, 300);
-    return `【${n.name}】${content}`;
-  }).join('\n---\n') || '無';
-
-  const prompt = `針對「${topic}」，基於以下筆記內容：\n${noteSnippets}\n\n只回傳純 JSON（不含其他文字）：\n`
+  const context = buildNoteContext(notes, topic);
+  const prompt = `${context}\n\n`
+    + `針對「${topic}」，只回傳純 JSON（不含其他文字）：\n`
     + '{"summary":"摘要100字以內","keyQuestions":["Q1","Q2","Q3","Q4","Q5"],'
     + '"keyConcepts":["概念1","概念2","概念3","概念4","概念5"]}';
 
@@ -70,6 +69,9 @@ export async function analyzeNotes(
  * 以筆記為上下文進行對話，回傳助手回覆。
  * 支援 wikilink [[筆記名稱]] 歸因。
  */
+/** 截斷歷史：只保留最近 N 輪（user+assistant 各算一條）以防超出 context window。 */
+const MAX_HISTORY_TURNS = 10;
+
 export async function chatWithNotes(
   topic: string,
   notes: NoteRecord[],
@@ -78,9 +80,8 @@ export async function chatWithNotes(
 ): Promise<string> {
   const systemPrompt = buildNoteContext(notes, topic);
 
-  // 組裝對話歷史為單一 prompt（因 runLocalLlmPrompt 只接受單一 prompt）
-  const historyText = history
-    .filter((m) => m.content)
+  const recentHistory = history.filter((m) => m.content).slice(-MAX_HISTORY_TURNS * 2);
+  const historyText = recentHistory
     .map((m) => `${m.role === 'user' ? '使用者' : '助手'}：${m.content}`)
     .join('\n\n');
 
@@ -198,78 +199,68 @@ export async function generateTeachingOutline(
 }
 
 /**
- * 圖表類型定義。
+ * 以筆記為上下文串流對話，透過 oMLX SSE 逐 token 回傳。
+ * 若 oMLX 不可用，回退為一次性完整回覆。
+ * opts.autodiagramA — 在 prompt 中注入模式A插圖標記指令
+ * opts.allowedTypes — 允許的圖表類型清單
  */
-export type DiagramType = 'flowchart' | 'mindmap' | 'timeline' | 'sequence' | 'architecture';
-
-const DIAGRAM_PROMPTS: Record<DiagramType, string> = {
-  flowchart:
-    '請用 Mermaid flowchart LR 語法，畫出「{topic}」的核心概念流程圖。\n'
-    + '節點用中文標示，包含 5-10 個節點，清楚顯示因果/流程關係。\n'
-    + '只輸出 ```mermaid 代碼塊，不加其他文字。',
-  mindmap:
-    '請用 Mermaid mindmap 語法，畫出「{topic}」的心智圖。\n'
-    + '根節點為主題，展開 3-4 層，中文標示。\n'
-    + '只輸出 ```mermaid 代碼塊，不加其他文字。',
-  timeline:
-    '請用 Mermaid timeline 語法，畫出「{topic}」的時間軸或發展歷程。\n'
-    + '如果沒有明確時間點，用邏輯順序的階段取代（如「第一階段」「第二階段」）。\n'
-    + '中文標示。只輸出 ```mermaid 代碼塊，不加其他文字。',
-  sequence:
-    '請用 Mermaid sequenceDiagram 語法，畫出「{topic}」的互動時序圖。\n'
-    + '顯示主要參與者之間的訊息流。中文標示。\n'
-    + '只輸出 ```mermaid 代碼塊，不加其他文字。',
-  architecture:
-    '只回傳一個 JSON 物件，第一個字元是 {，最後一個字元是 }，絕對不含其他任何文字或 markdown。\n\n'
-    + '為「{topic}」生成架構圖節點與連線：\n'
-    + '{"title":"標題","nodes":[{"id":"英文ID","label":"名稱","sublabel":"技術","type":"類型"}],"edges":[{"from":"ID","to":"ID","label":"協議"}]}\n\n'
-    + 'nodes 最多 8 個。type 值：前端→cyan、後端→green、資料庫→purple、雲端→amber、安全→rose、佇列→orange\n'
-    + 'label/sublabel 用繁體中文。只輸出 JSON，不輸出任何解釋。',
-};
-
-/**
- * 自動生成 Mermaid 圖表。
- */
-export async function generateDiagram(
-  type: DiagramType,
+export async function* streamChatWithNotes(
   topic: string,
   notes: NoteRecord[],
-): Promise<string> {
-  const context = buildNoteContext(notes, topic);
-  const templatePrompt = DIAGRAM_PROMPTS[type] ?? DIAGRAM_PROMPTS.flowchart;
-  const taskPrompt = templatePrompt.replace('{topic}', topic);
-  const prompt = `${context}\n\n${taskPrompt}`;
-
-  const isArchitecture = type === 'architecture';
-  const result = await runLocalLlmPrompt(prompt, {
-    task: 'summarize',
-    maxTokens: isArchitecture ? 3072 : 1024,
-    timeoutMs: isArchitecture ? 120_000 : 60_000,
-  });
-
-  if (!result) return '（圖表生成失敗，請稍後再試）';
-  const cleaned = stripThinkingTags(result);
-
-  // 架構圖 — 從 JSON 規格產生 SVG（座標由 builder 計算，不靠 LLM）
-  if (isArchitecture) {
-    let spec = parseArchSpec(cleaned);
-    // JSON 解析失敗時自動重試一次
-    if (!spec || spec.nodes.length === 0) {
-      const retry = await runLocalLlmPrompt(prompt, { task: 'summarize', maxTokens: 512, timeoutMs: 60_000 });
-      if (retry) spec = parseArchSpec(stripThinkingTags(retry));
-    }
-    if (spec && spec.nodes.length > 0) {
-      return '```svg\n' + buildArchitectureSvg(spec) + '\n```';
-    }
-    return '（架構圖生成失敗：LLM 未回傳有效 JSON，請稍後重試）';
+  history: ChatMessage[],
+  userMessage: string,
+  opts: { autodiagramA?: boolean; allowedTypes?: string[] } = {},
+): AsyncGenerator<string> {
+  if (!(await isOmlxAvailable())) {
+    // 回退：整段完成再 yield
+    const reply = await chatWithNotes(topic, notes, history, userMessage);
+    yield reply;
+    return;
   }
 
-  // Mermaid 圖表 — 確保包含 ```mermaid 代碼塊
-  if (cleaned.includes('```mermaid')) return cleaned;
-  const mermaidKeywords = ['graph ', 'flowchart ', 'sequenceDiagram', 'mindmap', 'timeline', 'classDiagram', 'gantt'];
-  if (mermaidKeywords.some(k => cleaned.includes(k))) {
-    return '```mermaid\n' + cleaned.trim() + '\n```';
-  }
+  const systemPrompt = buildNoteContext(notes, topic);
+  const recentHistory = history.filter((m) => m.content).slice(-MAX_HISTORY_TURNS * 2);
+  const historyText = recentHistory
+    .map((m) => `${m.role === 'user' ? '使用者' : '助手'}：${m.content}`)
+    .join('\n\n');
 
-  return cleaned;
+  const diagramInstruction = opts.autodiagramA
+    ? `\n\n【插圖規則】若回覆涉及架構、流程、步驟或比較，可在相關段落後插入標記：[DIAGRAM:type:主題]。`
+      + `type 限：${(opts.allowedTypes ?? ['flowchart', 'architecture']).join('/')}。`
+      + '整個回覆最多插入 2 個標記，只在確實有助理解時才插入，不強制插入。'
+    : '';
+
+  const fullPrompt = [
+    systemPrompt + diagramInstruction,
+    historyText ? `\n\n對話歷史：\n${historyText}` : '',
+    `\n\n使用者：${userMessage}`,
+    '\n\n助手：',
+  ].join('');
+
+  let inThinking = false;
+  let thinkBuf = '';
+
+  for await (const chunk of omlxStreamCompletion(fullPrompt, { maxTokens: 2048, timeoutMs: 90_000 })) {
+    // 過濾 <thinking> 區塊（cross-chunk 狀態機）
+    thinkBuf += chunk;
+    if (!inThinking && thinkBuf.includes('<thinking>')) {
+      inThinking = true;
+      const before = thinkBuf.slice(0, thinkBuf.indexOf('<thinking>'));
+      if (before) yield before;
+      thinkBuf = thinkBuf.slice(thinkBuf.indexOf('<thinking>'));
+    }
+    if (inThinking) {
+      if (thinkBuf.includes('</thinking>')) {
+        inThinking = false;
+        thinkBuf = thinkBuf.slice(thinkBuf.indexOf('</thinking>') + '</thinking>'.length);
+      } else {
+        thinkBuf = thinkBuf.slice(-100); // 只保留尾端等待閉標籤
+      }
+    } else {
+      yield thinkBuf;
+      thinkBuf = '';
+    }
+  }
+  if (thinkBuf && !inThinking) yield thinkBuf;
 }
+
