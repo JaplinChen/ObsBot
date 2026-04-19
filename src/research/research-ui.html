@@ -1041,7 +1041,9 @@ function renderMessages(){
     const isAi=m.role==='assistant';
     const toolAttr=m._tool?' data-tool="'+m._tool+'"':'';
     const meta=m._tool?(TOOL_LABELS[m._tool]||{icon:'🔧',label:m._tool}):null;
-    const toolHdr=meta?'<div class="tool-result-header"><span class="tool-result-icon">'+meta.icon+'</span><span class="tool-result-label">'+meta.label+'</span><span class="tool-result-topic">'+esc(S.topic)+'</span></div>':'';
+    var _dsn={dark:'暗黑科技',sketch:'手繪插畫',minimal:'簡約白',retro:'復古終端機',blueprint:'工程藍圖',pastel:'粉彩'};
+    var metaLabel=meta?(m._tool==='diagram:architecture'&&m._style?meta.label+'-「'+(_dsn[m._style]||m._style)+'」':meta.label):null;
+    const toolHdr=meta?'<div class="tool-result-header"><span class="tool-result-icon">'+meta.icon+'</span><span class="tool-result-label">'+metaLabel+'</span><span class="tool-result-topic">'+esc(S.topic)+'</span></div>':'';
     // 向後相容：strip 舊格式 content 中可能嵌入的 header HTML
     const rawContent=m._tool?m.content.replace(/^<div class="tool-result-header">[\s\S]*?<\/div>\n*/,''):m.content;
     return '<div class="msg"'+toolAttr+'><div class="msg-ava '+(isAi?'ai':'user')+'">'+(isAi?t('research.avatarAI'):t('research.avatarUser'))+'</div><div class="msg-body"><div class="msg-role">'+(isAi?t('research.roleAI'):t('research.roleUser'))+'</div>'+toolHdr+'<div class="msg-text">'+(isAi?renderMd(rawContent):esc(rawContent))+'</div>'+(isAi?msgActionBar(i,m._tool):'')+'</div></div>';
@@ -1254,7 +1256,7 @@ async function runTool(tool){
     const r=await fetch('/api/research/tools/'+tool,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:S.topic,paths:[...S.selected],diagramStyle:localStorage.getItem('rd-diagram-style')||'sketch'})});
     const d=await r.json();
     const meta=TOOL_LABELS[tool]||{icon:'🔧',label:tool};
-    S.history.push({role:'assistant',content:d.result,_tool:tool});renderMessages();
+    S.history.push({role:'assistant',content:d.result,_tool:tool,_style:tool.startsWith('diagram:')?localStorage.getItem('rd-diagram-style')||'sketch':undefined});renderMessages();
     var last=$('messages').lastElementChild;if(last)last.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){msgEl.querySelector('.msg-text').textContent=t('research.generateFail')+e.message;}
 }
@@ -1316,9 +1318,27 @@ function switchDiagramStyle(idx,style,item){
   if(menu)menu.querySelectorAll('.msg-tool-item').forEach(function(el){
     el.classList.toggle('active',el.textContent.includes(_sicons[style]));
   });
-  // 重新生成
+  // 原地更新（不 append 新訊息）
   var msg=S.history[idx];if(!msg||!msg._tool)return;
-  runTool(msg._tool);
+  _runToolInPlace(idx,msg._tool,style);
+}
+
+async function _runToolInPlace(idx,tool,style){
+  var msgEls=$('messages').children;
+  var msgEl=msgEls[idx];
+  if(msgEl){var tb=msgEl.querySelector('.msg-text');if(tb)tb.innerHTML='<span style="color:var(--txt3)">'+t('research.generating')+'</span>';}
+  try{
+    var r=await fetch('/api/research/tools/'+tool,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:S.topic,paths:[...S.selected],diagramStyle:style||localStorage.getItem('rd-diagram-style')||'sketch'})});
+    var d=await r.json();
+    S.history[idx].content=d.result;
+    S.history[idx]._style=style;
+    renderMessages();
+    var el=$('messages').children[idx];
+    if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){
+    var mel=$('messages').children[idx];
+    if(mel){var tb2=mel.querySelector('.msg-text');if(tb2)tb2.textContent=t('research.generateFail')+e.message;}
+  }
 }
 
 async function saveAllToVault(btn){
