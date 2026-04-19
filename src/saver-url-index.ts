@@ -83,6 +83,9 @@ export async function isDuplicateUrl(url: string, vaultPath: string): Promise<st
         urlIndex = idx;
         indexBuiltAt = Date.now();
         return idx;
+      }).catch(err => {
+        indexBuilding = null;
+        throw err;
       });
     }
     urlIndex = await indexBuilding;

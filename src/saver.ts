@@ -1,6 +1,5 @@
-import { mkdir, readFile, readdir } from 'node:fs/promises';
-import { join, resolve, sep } from 'node:path';
-import { createHash } from 'node:crypto';
+import { copyFile, mkdir, readFile, readdir } from 'node:fs/promises';
+import { extname, join, resolve, sep } from 'node:path';
 import type { ExtractedContent, Platform } from './extractors/types.js';
 import { formatAsMarkdown } from './formatter.js';
 import { canonicalizeUrl } from './utils/url-canonicalizer.js';
@@ -19,29 +18,6 @@ const VALID_CATEGORIES = new Set(CATEGORIES.map(c => c.name));
 
 /** In-flight saves: second call for same URL waits on the first Promise instead of racing */
 const inFlight = new Map<string, Promise<SaveResult>>();
-
-/** Extract a short, stable ID from a URL for use in filenames */
-function extractPostId(url: string, platform: Platform): string {
-  try {
-    const u = new URL(url);
-    switch (platform) {
-      case 'x':
-        return u.pathname.match(/\/status\/(\d+)/)?.[1] ?? 'unknown';
-      case 'threads':
-        return u.pathname.match(/\/post\/([\w-]+)/)?.[1] ?? 'unknown';
-      case 'youtube':
-        return u.searchParams.get('v') ?? u.pathname.split('/').filter(Boolean).pop() ?? 'unknown';
-      case 'github':
-        return u.pathname.split('/').filter(Boolean).slice(0, 3).join('-').slice(0, 40);
-      case 'tiktok':
-        return u.pathname.match(/\/(?:video|photo)\/(\d+)/)?.[1] ?? createHash('md5').update(url).digest('hex').slice(0, 8);
-      default:
-        return createHash('md5').update(url).digest('hex').slice(0, 8);
-    }
-  } catch {
-    return 'unknown';
-  }
-}
 
 /** Convert a title string into a safe, readable filename slug */
 function slugify(text: string, maxLen = 40): string {
@@ -163,8 +139,6 @@ async function doSave(
     }
   }
 
-  const postId = extractPostId(content.url, content.platform);
-
   // Compute slug early — used for both .md filename and attachment filenames
   const ERROR_TITLE_RE = /^(warning[:\s]|error\s*\d{3}|access denied|forbidden|you've been blocked|未命名|untitled|n\/a|overview|總覽|無標題)$/i;
   let titleForFilename = content.title;
@@ -252,11 +226,9 @@ async function doSave(
       const v = content.videos[i];
       if (v.localPath) {
         try {
-          const { extname, join: pjoin } = await import('node:path');
-          const { copyFile } = await import('node:fs/promises');
           const ext = extname(v.localPath) || '.mp4';
           const vidName = `${imgSlug}-vid${i}${ext}`;
-          await copyFile(v.localPath, pjoin(imagesDir, vidName));
+          await copyFile(v.localPath, join(imagesDir, vidName));
           localVideoPaths.push(`attachments/knowpipe/${content.platform}/${vidName}`);
         } catch { /* skip if copy fails */ }
       }
@@ -273,7 +245,5 @@ async function doSave(
   updateUrlIndex(normUrl, mdPath);
   notifyNoteAdded(rawCategory, vaultPath).catch(() => {});
 
-  // postId used implicitly via slug — suppress unused var warning
-  void postId;
   return { mdPath, imageCount: localImagePaths.length, videoCount: content.videos.length };
 }
