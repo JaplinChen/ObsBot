@@ -101,8 +101,12 @@ export async function runWeeklyCycle(
       subtitle: `${notes.length} 篇筆記 · ${catCount} 個分類 · 近 ${days} 天`,
     });
 
-    // Push to Telegram
-    const message = `📰 每週深度合成\n${today} | ${notes.length} 篇筆記 · ${catCount} 個分類\n\n${synthesis}`;
+    // Push to Telegram（去除 Markdown 標記，純文字輸出）
+    const plainSynthesis = synthesis
+      .replace(/^#{1,3} (.+)$/gm, '▶ $1')
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1');
+    const message = `📰 每週深度合成\n${today} | ${notes.length} 篇筆記 · ${catCount} 個分類\n\n${plainSynthesis}`;
     const userId = getOwnerUserId(config);
     if (userId) {
       await bot.telegram.sendMessage(userId, message.slice(0, 4000));

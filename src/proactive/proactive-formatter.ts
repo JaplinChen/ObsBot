@@ -74,6 +74,13 @@ export function formatDigestMessage(
   return lines.join('\n');
 }
 
+/** Strip plain-text thinking process sections and XML think tags from LLM output. */
+function stripThinkingText(text: string): string {
+  let cleaned = text.replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, '');
+  cleaned = cleaned.replace(/\n*(?:Thinking Process|思考過程|Reasoning|Analysis):[\s\S]*/i, '');
+  return cleaned.trim();
+}
+
 /** Generate AI insight summary for digest (optional, best-effort) */
 export async function generateDigestInsight(digest: ProactiveDigest): Promise<string | undefined> {
   if (digest.totalNotes < 5) return undefined;
@@ -90,15 +97,17 @@ export async function generateDigestInsight(digest: ProactiveDigest): Promise<st
 
   const prompt = [
     '你是知識管理助手。根據以下用戶近期收集的筆記統計，寫一段 100 字以內的洞察。',
-    '語氣中性專業，使用繁體中文。',
+    '語氣中性專業，使用繁體中文。直接輸出洞察內容，不要輸出思考過程、分析步驟或任何前置說明。',
     `分類分佈：${catList}`,
     trendList ? `趨勢關鍵字：${trendList}` : '',
     '重點：1. 用戶近期關注焦點 2. 可能的知識探索方向建議',
   ].filter(Boolean).join('\n');
 
   try {
-    const result = await runLocalLlmPrompt(prompt, { timeoutMs: 20_000, model: 'flash', maxTokens: 256 });
-    return result ?? undefined;
+    const raw = await runLocalLlmPrompt(prompt, { timeoutMs: 20_000, model: 'flash', maxTokens: 256 });
+    if (!raw) return undefined;
+    const result = stripThinkingText(raw);
+    return result || undefined;
   } catch {
     return undefined;
   }
