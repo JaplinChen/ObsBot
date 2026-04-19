@@ -1,5 +1,5 @@
 /**
- * Memoir Generator — assembles an ObsBot development history narrative.
+ * Memoir Generator — assembles an KnowPipe development history narrative.
  * Sources: git log + claude-mem handoff records + CLAUDE.md decision log.
  * Output: a narrative markdown note saved to Vault.
  */
@@ -57,8 +57,8 @@ export async function generateMemoir(
 ): Promise<MemoirResult> {
   const today = new Date().toISOString().split('T')[0];
   // Claude Code project memory 路徑：將 cwd 轉換為 Claude 的 project-slug 格式
-  // Mac: /Users/japlin/Works/ObsBot → -Users-japlin-Works-ObsBot
-  // Win: D:\Works\ObsBot → D--Works-ObsBot
+  // Mac: /Users/japlin/Works/KnowPipe → -Users-japlin-Works-KnowPipe
+  // Win: D:\Works\KnowPipe → D--Works-KnowPipe
   const cwd = process.cwd();
   const projectSlug = cwd.replace(/^[A-Za-z]:/, m => m.replace(':', '')).replace(/[\\/]/g, '-');
   const claudeHome = process.env.CLAUDE_HOME
@@ -83,8 +83,8 @@ export async function generateMemoir(
   ].filter(Boolean).join('\n\n---\n\n');
 
   const prompt =
-    `你是一位技術寫作者。以下是 ObsBot 專案的開發記錄資料：\n\n${contextParts}\n\n` +
-    `請用繁體中文，以「ObsBot 開發史」為題，撰寫一份敘事式技術史文章。\n` +
+    `你是一位技術寫作者。以下是 KnowPipe 專案的開發記錄資料：\n\n${contextParts}\n\n` +
+    `請用繁體中文，以「KnowPipe 開發史」為題，撰寫一份敘事式技術史文章。\n` +
     `格式：每個重要階段一個 ## 章節，包含決策背景、關鍵轉折、實作成果。\n` +
     `目標讀者：未來的自己，用來快速理解這段開發歷程的脈絡。長度：600-1000 字。`;
 
@@ -98,7 +98,7 @@ export async function generateMemoir(
     `## 資料不足\n\nLLM 無回應，以下為原始 Git 記錄：\n\n\`\`\`\n${gitLog.slice(0, 3000)}\n\`\`\``;
 
   const savedPath = await saveReportToVault(vaultPath, {
-    title: `ObsBot 開發史${since ? ` — ${since} 起` : ''}`,
+    title: `KnowPipe 開發史${since ? ` — ${since} 起` : ''}`,
     date: today,
     content,
     tags: ['memoir', 'development-history', 'auto-generated'],

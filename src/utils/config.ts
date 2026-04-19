@@ -4,7 +4,7 @@ import { config as dotenvConfig } from 'dotenv';
 dotenvConfig({ override: true });
 
 /** Vault 中存放筆記的子資料夾名稱 */
-export const VAULT_SUBFOLDER = 'ObsBot';
+export const VAULT_SUBFOLDER = 'KnowPipe';
 /** Vault attachments 子資料夾名稱（保留舊名，避免 282 篇筆記圖片斷連） */
 export const ATTACHMENTS_SUBFOLDER = 'getthreads';
 

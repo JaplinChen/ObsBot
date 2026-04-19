@@ -41,7 +41,7 @@ export class BrowserUseClient {
   private readonly session: string;
   private readonly headed: boolean;
 
-  constructor(session = 'obsbot', headed = false) {
+  constructor(session = 'knowpipe', headed = false) {
     this.session = session;
     this.headed = headed;
   }
@@ -182,5 +182,5 @@ export class BrowserUseClient {
   }
 }
 
-/** Shared singleton — use `obsbot` session by default */
+/** Shared singleton — use `knowpipe` session by default */
 export const browserUseClient = new BrowserUseClient();

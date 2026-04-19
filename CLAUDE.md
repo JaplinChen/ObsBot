@@ -1,4 +1,4 @@
-# ObsBot
+# KnowPipe
 
 ## 硬規則
 

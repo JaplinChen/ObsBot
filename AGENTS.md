@@ -4,7 +4,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-ObsBot is a Telegram Bot that extracts content from 10+ social platforms (X, Threads, Reddit, Bilibili, YouTube, TikTok, GitHub, 微博, 小紅書, 抖音, generic web) and saves it as Markdown notes into an Obsidian Vault. It uses Telegraf, TypeScript/ESM, and a `tsx`-based dev runtime. LLM enrichment is done via an external CLI (OpenCode/Claude/Codex) — no Anthropic/OpenAI SDK is used.
+KnowPipe is a Telegram Bot that extracts content from 10+ social platforms (X, Threads, Reddit, Bilibili, YouTube, TikTok, GitHub, 微博, 小紅書, 抖音, generic web) and saves it as Markdown notes into an Obsidian Vault. It uses Telegraf, TypeScript/ESM, and a `tsx`-based dev runtime. LLM enrichment is done via an external CLI (OpenCode/Claude/Codex) — no Anthropic/OpenAI SDK is used.
 
 ## Commands
 

@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { logger } from '../core/logger.js';
 
-const CACHE_DIR = join(homedir(), '.cache', 'obsbot', 'fonts');
+const CACHE_DIR = join(homedir(), '.cache', 'knowpipe', 'fonts');
 const FACE_CSS_PATH = join(CACHE_DIR, 'noto-sans-tc.fontface.css');
 
 // Google Fonts API returns woff2 URLs; use a modern UA to get woff2 format

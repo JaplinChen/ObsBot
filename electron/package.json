@@ -1,9 +1,9 @@
 {
-  "name": "obsbot-app",
+  "name": "knowpipe-app",
   "version": "1.0.0",
-  "description": "ObsBot Desktop App",
-  "author": "ObsBot",
-  "repository": "https://github.com/JaplinChen/ObsBot",
+  "description": "KnowPipe Desktop App",
+  "author": "KnowPipe",
+  "repository": "https://github.com/JaplinChen/KnowPipe",
   "main": "dist/main.js",
   "type": "commonjs",
   "scripts": {
@@ -16,8 +16,8 @@
     "pack:all": "npm run build && electron-builder --mac --win"
   },
   "build": {
-    "appId": "com.obsbot.app",
-    "productName": "ObsBot",
+    "appId": "com.knowpipe.app",
+    "productName": "KnowPipe",
     "directories": {
       "output": "../release"
     },
@@ -49,7 +49,7 @@
         { "target": "dmg", "arch": ["x64"] }
       ],
       "icon": "assets/icon.icns",
-      "artifactName": "ObsBot-${version}-${arch}.dmg",
+      "artifactName": "KnowPipe-${version}-${arch}.dmg",
       "category": "public.app-category.productivity",
       "darkModeSupport": true
     },
@@ -58,15 +58,15 @@
         { "target": "nsis", "arch": ["x64"] }
       ],
       "icon": "assets/icon.ico",
-      "artifactName": "ObsBot-Setup-${version}-x64.exe",
-      "publisherName": "ObsBot"
+      "artifactName": "KnowPipe-Setup-${version}-x64.exe",
+      "publisherName": "KnowPipe"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "ObsBot"
+      "shortcutName": "KnowPipe"
     }
   },
   "dependencies": {

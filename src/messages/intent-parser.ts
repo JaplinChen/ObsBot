@@ -1,5 +1,5 @@
 /**
- * Natural language intent parser for ObsBot.
+ * Natural language intent parser for KnowPipe.
  * Two-layer approach:
  * - Layer 1: High-confidence regex patterns → auto-trigger
  * - Layer 2: Low-confidence patterns → suggest with InlineKeyboard

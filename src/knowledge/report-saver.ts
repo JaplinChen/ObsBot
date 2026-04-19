@@ -126,7 +126,7 @@ export async function saveReportToVault(
   lines.push('');
   lines.push('');
   lines.push('---');
-  lines.push(`*自動產生 by ObsBot — ${new Date().toISOString().slice(0, 19)}*`);
+  lines.push(`*自動產生 by KnowPipe — ${new Date().toISOString().slice(0, 19)}*`);
 
   await mkdir(outDir, { recursive: true });
   await writeFile(outPath, lines.join('\n'), 'utf-8');

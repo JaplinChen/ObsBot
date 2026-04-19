@@ -43,7 +43,7 @@ describe('user-messages', () => {
   });
 
   it('formats duplicate message with obsidian URI', () => {
-    const msg = formatDuplicateMessage('/Users/me/vault/ObsBot/note.md', '/Users/me/vault');
+    const msg = formatDuplicateMessage('/Users/me/vault/KnowPipe/note.md', '/Users/me/vault');
     expect(msg).toContain('obsidian://open?vault=vault');
     expect(msg).toContain('note.md');
   });
@@ -55,7 +55,7 @@ describe('user-messages', () => {
   it('formats saved summary with title and obsidian link', () => {
     const content = makeContent({ comments: [{ author: 'u', authorHandle: '@u', text: 'long useful comment here', date: '2026-03-08' }] });
     const summary = formatSavedSummary(content, {
-      mdPath: '/Users/me/vault/ObsBot/a.md',
+      mdPath: '/Users/me/vault/KnowPipe/a.md',
       imageCount: 2,
       videoCount: 1,
     }, '/Users/me/vault');

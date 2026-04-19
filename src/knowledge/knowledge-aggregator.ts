@@ -173,7 +173,7 @@ const REL_TYPE_LABEL: Record<string, string> = {
 
 /** Generate a readable knowledge summary note in the Obsidian vault */
 export async function generateKnowledgeNote(vaultPath: string, knowledge: VaultKnowledge): Promise<string> {
-  const outPath = join(vaultPath, 'ObsBot', '知識庫摘要.md');
+  const outPath = join(vaultPath, 'KnowPipe', '知識庫摘要.md');
   const now = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const { stats } = knowledge;
 
@@ -276,7 +276,7 @@ export async function generateKnowledgeNote(vaultPath: string, knowledge: VaultK
   }
 
   L.push('---');
-  L.push(`*自動產生 by ObsBot /vault analyze — ${new Date().toISOString().slice(0, 19)}*`);
+  L.push(`*自動產生 by KnowPipe /vault analyze — ${new Date().toISOString().slice(0, 19)}*`);
 
   const content = L.join('\n');
   await mkdir(dirname(outPath), { recursive: true });

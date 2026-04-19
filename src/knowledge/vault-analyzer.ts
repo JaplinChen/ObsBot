@@ -46,7 +46,7 @@ function parseArray(val: string): string[] {
  * Updates vault-knowledge.json in place.
  */
 export async function runVaultAnalysis(vaultPath: string): Promise<AnalyzeResult> {
-  const rootDir = join(vaultPath, 'ObsBot');
+  const rootDir = join(vaultPath, 'KnowPipe');
   const files = await getAllMdFiles(rootDir);
   const knowledge = await loadKnowledge();
 

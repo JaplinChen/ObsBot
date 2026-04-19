@@ -31,11 +31,11 @@ function replaceFrontmatterField(content: string, field: string, newValue: strin
 }
 
 /**
- * Scan all .md files under {vaultPath}/ObsBot/, reclassify each by title,
+ * Scan all .md files under {vaultPath}/KnowPipe/, reclassify each by title,
  * and move files whose top-level category has changed to the new folder.
  */
 export async function executeReclassify(config: AppConfig): Promise<ReclassifyResult> {
-  const baseDir = join(config.vaultPath, 'ObsBot');
+  const baseDir = join(config.vaultPath, 'KnowPipe');
   const allFiles = await getAllMdFiles(baseDir);
 
   let moved = 0;

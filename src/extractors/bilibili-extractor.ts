@@ -113,7 +113,7 @@ export const bilibiliExtractor: Extractor & {
     // Subtitles & STT
     let transcript: string | undefined;
     let timedTranscript: ExtractedContent['timedTranscript'];
-    const tmpDir = join(tmpdir(), `obsbot-bili-${bvid}`);
+    const tmpDir = join(tmpdir(), `knowpipe-bili-${bvid}`);
     await mkdir(tmpDir, { recursive: true });
 
     try {

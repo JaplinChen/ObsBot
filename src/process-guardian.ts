@@ -95,8 +95,8 @@ export class ProcessGuardian {
     }
   }
 
-  /** Kill orphaned ObsBot processes that have no parent (zombie cleanup).
-   *  Scoped to ObsBot-specific scripts only — never touches unrelated node processes. */
+  /** Kill orphaned KnowPipe processes that have no parent (zombie cleanup).
+   *  Scoped to KnowPipe-specific scripts only — never touches unrelated node processes. */
   private cleanOrphanProcesses(): number {
     try {
       const cwd = process.cwd();
@@ -115,23 +115,23 @@ export class ProcessGuardian {
 
         if (!pid || pid === myPid) continue;
 
-        // Only target ObsBot-related processes (same cwd or known script names)
-        const isObsBotRelated =
+        // Only target KnowPipe-related processes (same cwd or known script names)
+        const isKnowPipeRelated =
           args.includes(cwd) ||
           args.includes('loop.mjs') ||
           args.includes('src/index.ts');
-        if (!isObsBotRelated) continue;
+        if (!isKnowPipeRelated) continue;
 
         // Check if parent is dead → orphan
         if (parentPid && !this.isProcessAlive(parentPid)) {
-          logger.info('guardian', 'killing orphan ObsBot process', { pid, parentPid });
+          logger.info('guardian', 'killing orphan KnowPipe process', { pid, parentPid });
           this.killProcess(pid);
           killed++;
         }
       }
 
       if (killed > 0) {
-        logger.info('guardian', `cleaned ${killed} orphan ObsBot process(es)`);
+        logger.info('guardian', `cleaned ${killed} orphan KnowPipe process(es)`);
       }
       return killed;
     } catch {

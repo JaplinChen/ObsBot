@@ -28,7 +28,7 @@ let botProcess: ChildProcess | null = null;
 let isRunning = false;
 let setupWindow: Electron.BrowserWindow | null = null;
 
-const autoLauncher = new AutoLaunch({ name: 'ObsBot', isHidden: true });
+const autoLauncher = new AutoLaunch({ name: 'KnowPipe', isHidden: true });
 
 // ── 工具函式 ─────────────────────────────────────────────────────────────
 function getIconPath(state: 'running' | 'stopped' | 'error'): string {
@@ -82,7 +82,7 @@ function updateTray() {
       },
     },
     { type: 'separator' },
-    { label: '結束 ObsBot', click: () => quitApp() },
+    { label: '結束 KnowPipe', click: () => quitApp() },
   ]);
 
   // 非同步更新「開機自動啟動」勾選狀態
@@ -93,7 +93,7 @@ function updateTray() {
   });
 
   tray.setContextMenu(menu);
-  tray.setToolTip(isRunning ? 'ObsBot — 運行中' : 'ObsBot — 已停止');
+  tray.setToolTip(isRunning ? 'KnowPipe — 運行中' : 'KnowPipe — 已停止');
 }
 
 // ── Bot 生命週期 ──────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ function startBot() {
   // 找系統 node（打包版用 Electron 內建 node，開發版用系統 node）
   const nodeBin = findNodeBin();
   if (!nodeBin) {
-    notify('啟動失敗', '找不到 Node.js，請重新安裝 ObsBot。');
+    notify('啟動失敗', '找不到 Node.js，請重新安裝 KnowPipe。');
     return;
   }
 
@@ -134,7 +134,7 @@ function startBot() {
       if (botProcess && !botProcess.killed) {
         isRunning = true;
         updateTray();
-        notify('ObsBot 已啟動', '管理介面：' + ADMIN_URL);
+        notify('KnowPipe 已啟動', '管理介面：' + ADMIN_URL);
       }
     }, 3000);
   });
@@ -144,7 +144,7 @@ function startBot() {
     botProcess = null;
     updateTray();
     if (code !== 0 && code !== null) {
-      notify('ObsBot 已停止', `退出代碼 ${code}`);
+      notify('KnowPipe 已停止', `退出代碼 ${code}`);
     }
   });
 }
@@ -205,7 +205,7 @@ function openSetupWizard() {
     width: 560,
     height: 620,
     resizable: false,
-    title: 'ObsBot 設定',
+    title: 'KnowPipe 設定',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -289,7 +289,7 @@ app.whenReady().then(() => {
   const iconPath = getIconPath('stopped');
   const icon = nativeImage.createFromPath(iconPath);
   tray = new Tray(icon);
-  tray.setToolTip('ObsBot');
+  tray.setToolTip('KnowPipe');
   updateTray();
 
   // 首次執行 → 開啟設定精靈

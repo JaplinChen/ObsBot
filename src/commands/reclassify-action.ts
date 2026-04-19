@@ -122,10 +122,10 @@ export async function handleReclassifyMove(ctx: Context): Promise<void> {
     const updated = raw.replace(/^(category:\s*).*$/m, `$1${newCategory}`);
 
     // Compute new path
-    const vaultObsBotDir = pending.mdPath.split('/ObsBot/')[0] + '/ObsBot';
+    const vaultKnowPipeDir = pending.mdPath.split('/KnowPipe/')[0] + '/KnowPipe';
     const fileName = basename(pending.mdPath);
     const newCategoryParts = newCategory.split('/').filter(Boolean);
-    const newDir = join(vaultObsBotDir, ...newCategoryParts);
+    const newDir = join(vaultKnowPipeDir, ...newCategoryParts);
     const newPath = join(newDir, fileName);
 
     const oldDir = dirname(pending.mdPath);

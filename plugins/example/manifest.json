@@ -4,5 +4,5 @@
   "platform": "web",
   "urlPatterns": ["example.com"],
   "entrypoint": "extractor.js",
-  "description": "範例插件 — 展示 ObsBot 插件結構"
+  "description": "範例插件 — 展示 KnowPipe 插件結構"
 }

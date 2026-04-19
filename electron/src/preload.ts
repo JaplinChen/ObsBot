@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-contextBridge.exposeInMainWorld('obsbot', {
+contextBridge.exposeInMainWorld('knowpipe', {
   saveConfig: (config: Record<string, string>) =>
     ipcRenderer.invoke('save-config', config),
   findVaults: () =>

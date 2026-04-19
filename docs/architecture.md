@@ -1,6 +1,6 @@
 # Architecture
 
-This document defines the current module boundaries, data flow, and engineering guardrails for ObsBot.
+This document defines the current module boundaries, data flow, and engineering guardrails for KnowPipe.
 
 ## Runtime Flow
 

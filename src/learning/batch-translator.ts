@@ -81,7 +81,7 @@ function insertTranslation(raw: string, section: string): string {
 /* ------------------------------------------------------------------ */
 
 export async function executeBatchTranslate(config: AppConfig): Promise<BatchTranslateResult> {
-  const baseDir = join(config.vaultPath, 'ObsBot');
+  const baseDir = join(config.vaultPath, 'KnowPipe');
   const allFiles = await getAllMdFiles(baseDir);
 
   const result: BatchTranslateResult = {

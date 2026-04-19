@@ -65,7 +65,7 @@ const SKIP_FILES = new Set(['知識庫摘要.md', '.reprocess-progress.json', '.
 function getAllMdFiles(dir: string): string[] {
   const files: string[] = [];
   for (const entry of readdirSync(dir)) {
-    if (SKIP_DIRS.has(entry) || entry.startsWith('_backup') || entry.startsWith('ObsBot-backup')) continue;
+    if (SKIP_DIRS.has(entry) || entry.startsWith('_backup') || entry.startsWith('KnowPipe-backup')) continue;
     const full = join(dir, entry);
     const stat = statSync(full);
     if (stat.isDirectory()) files.push(...getAllMdFiles(full));
@@ -124,7 +124,7 @@ async function main() {
   const vaultPath = process.env.VAULT_PATH;
   if (!vaultPath) { console.error('VAULT_PATH is required in .env'); process.exit(1); }
 
-  const obsBotDir = join(vaultPath, 'ObsBot');
+  const obsBotDir = join(vaultPath, 'KnowPipe');
   const startTime = Date.now();
 
   registerAllExtractors();

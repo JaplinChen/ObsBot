@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ObsBot 管理</title>
+  <title>KnowPipe 管理</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -311,7 +311,7 @@
 <div class="card">
   <div class="header-row">
     <div>
-      <h1>🤖 <span data-i18n="app.title">ObsBot 管理</span></h1>
+      <h1>🤖 <span data-i18n="app.title">KnowPipe 管理</span></h1>
       <p class="subtitle" data-i18n="app.subtitle">Bot 設定與功能配置</p>
     </div>
     <div class="header-controls">
@@ -461,7 +461,7 @@
 /* ── i18n engine ───────────────────────────────────────────────────── */
 /* __LOCALES_INJECT__ */
 /* ── Dark mode toggle ──────────────────────────────────────────────── */
-var _darkMode = localStorage.getItem('obsbot-theme') === 'dark';
+var _darkMode = localStorage.getItem('knowpipe-theme') === 'dark';
 
 function applyDarkMode() {
   document.documentElement.setAttribute('data-theme', _darkMode ? 'dark' : 'light');
@@ -470,12 +470,12 @@ function applyDarkMode() {
 
 function toggleDarkMode() {
   _darkMode = !_darkMode;
-  localStorage.setItem('obsbot-theme', _darkMode ? 'dark' : 'light');
+  localStorage.setItem('knowpipe-theme', _darkMode ? 'dark' : 'light');
   applyDarkMode();
 }
 
 /* ── i18n engine ───────────────────────────────────────────────────── */
-var _lang = localStorage.getItem('obsbot-lang') || 'zh-TW';
+var _lang = localStorage.getItem('knowpipe-lang') || 'zh-TW';
 var _langMeta = {
   'zh-TW': { flag: '🇹🇼', label: '繁體中文' },
   'en':    { flag: '🇺🇸', label: 'English' },
@@ -504,7 +504,7 @@ function toggleLangMenu() {
 
 function changeLang(lang) {
   _lang = lang;
-  localStorage.setItem('obsbot-lang', lang);
+  localStorage.setItem('knowpipe-lang', lang);
   document.getElementById('langMenu').classList.remove('open');
   var meta = _langMeta[lang];
   document.getElementById('langFlag').textContent = meta.flag;
@@ -528,7 +528,7 @@ document.addEventListener('click', function(e) {
 /* ── Collapsible sections ──────────────────────────────────────────── */
 function toggleSection(titleEl) {
   var body = titleEl.nextElementSibling;
-  var key = 'obsbot-collapse-' + titleEl.textContent.trim().substring(0, 10);
+  var key = 'knowpipe-collapse-' + titleEl.textContent.trim().substring(0, 10);
   titleEl.classList.toggle('collapsed');
   body.classList.toggle('collapsed');
   localStorage.setItem(key, titleEl.classList.contains('collapsed') ? '1' : '0');
@@ -537,7 +537,7 @@ function toggleSection(titleEl) {
 // Restore collapsed state on load
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.section-title.collapsible').forEach(function(el) {
-    var key = 'obsbot-collapse-' + el.textContent.trim().substring(0, 10);
+    var key = 'knowpipe-collapse-' + el.textContent.trim().substring(0, 10);
     if (localStorage.getItem(key) === '1') {
       el.classList.add('collapsed');
       el.nextElementSibling.classList.add('collapsed');

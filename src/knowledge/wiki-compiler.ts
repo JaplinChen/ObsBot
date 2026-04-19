@@ -162,8 +162,8 @@ function buildWikiPrompt(theme: string, notes: WikiNote[]): string {
     '- 跨筆記的交叉發現（每條附 [[來源]]）',
     '- 2-4 條，有具體依據',
     '',
-    '## 與 ObsBot 的連結',
-    '- 此主題如何影響 ObsBot 的設計或功能（1-3 條具體建議）',
+    '## 與 KnowPipe 的連結',
+    '- 此主題如何影響 KnowPipe 的設計或功能（1-3 條具體建議）',
     '',
     '## 延伸閱讀',
     notes.map(n => `- [[${n.title}]]`).join('\n'),
@@ -220,8 +220,8 @@ export async function compileWiki(
   // Resolve folder path
   const isAll = folderName === '--all';
   const scanPath = isAll
-    ? join(vaultPath, 'ObsBot')
-    : join(vaultPath, 'ObsBot', '生產力', folderName);
+    ? join(vaultPath, 'KnowPipe')
+    : join(vaultPath, 'KnowPipe', '生產力', folderName);
 
   logger.info('wiki-compiler', '開始 wiki 編譯', { folder: folderName });
 

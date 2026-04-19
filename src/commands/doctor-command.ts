@@ -119,8 +119,8 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
   // 4. Vault stats
   await updateProgress(4, '正在統計 Vault…');
   const vaultPath = config.vaultPath;
-  const gtPath = join(vaultPath, 'ObsBot');
-  const attachPath = join(vaultPath, 'attachments', 'obsbot');
+  const gtPath = join(vaultPath, 'KnowPipe');
+  const attachPath = join(vaultPath, 'attachments', 'knowpipe');
   const [noteCount, attachCount] = await Promise.all([
     countFiles(gtPath, '.md'),
     countFiles(attachPath, ''),
@@ -200,7 +200,7 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
     `📁 ${noteCount} 筆記 | ${attachCount} 附件`,
     '',
     '━━ 進程與連接埠 ━━',
-    ...(processLines.length > 0 ? processLines : ['（無 ObsBot 進程偵測到）']),
+    ...(processLines.length > 0 ? processLines : ['（無 KnowPipe 進程偵測到）']),
     '',
     `⏱ 診斷耗時 ${elapsed}s`,
   ];

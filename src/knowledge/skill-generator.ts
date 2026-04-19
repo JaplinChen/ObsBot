@@ -120,7 +120,7 @@ export function generateSkillContent(topic: TopicCluster, knowledge: VaultKnowle
   }
 
   L.push('---');
-  L.push(`*自動產生 by ObsBot /vault analyze — ${new Date().toISOString().slice(0, 10)}*`);
+  L.push(`*自動產生 by KnowPipe /vault analyze — ${new Date().toISOString().slice(0, 10)}*`);
 
   return L.join('\n');
 }
@@ -187,7 +187,7 @@ export function compileKnowledgeToSkill(topic: TopicCluster, knowledge: VaultKno
     category: 'knowledge',
     sourceFormat: 'claude',
     metadata: {
-      author: 'obsbot-compiler',
+      author: 'knowpipe-compiler',
       version: '1.0.0',
       tags: [topic.entityType, 'auto-compiled'],
       createdAt: now,

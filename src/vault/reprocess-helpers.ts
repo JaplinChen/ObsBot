@@ -7,9 +7,9 @@ import { join, normalize } from 'node:path';
 /* ── Backup ───────────────────────────────────────────────────────────── */
 
 export async function backupVault(vaultPath: string): Promise<string> {
-  const src = join(vaultPath, 'ObsBot');
+  const src = join(vaultPath, 'KnowPipe');
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const dest = join(vaultPath, `ObsBot-backup-${ts}`);
+  const dest = join(vaultPath, `KnowPipe-backup-${ts}`);
   await cp(src, dest, { recursive: true, filter: (s) => !s.includes('attachments') });
   return dest;
 }
@@ -39,7 +39,7 @@ export class ReprocessProgress {
   private filePath: string;
 
   constructor(vaultPath: string) {
-    this.filePath = join(vaultPath, 'ObsBot', PROGRESS_FILE);
+    this.filePath = join(vaultPath, 'KnowPipe', PROGRESS_FILE);
     this.data = { startedAt: new Date().toISOString(), results: [], completedUrls: [] };
   }
 

@@ -197,7 +197,7 @@ export function formatGapsSummary(gaps: KnowledgeGap[]): string {
 
 /** Generate an Obsidian Map of Content note */
 export async function generateMocNote(vaultPath: string, knowledge: VaultKnowledge): Promise<string> {
-  const outPath = join(vaultPath, 'ObsBot', '知識地圖.md');
+  const outPath = join(vaultPath, 'KnowPipe', '知識地圖.md');
   const now = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const noteLink = (n: NoteAnalysis) => `[[${basename(n.filePath, '.md')}|${n.title.slice(0, 45)}]]`;
 
@@ -251,7 +251,7 @@ export async function generateMocNote(vaultPath: string, knowledge: VaultKnowled
   }
 
   L.push('---');
-  L.push(`*自動產生 by ObsBot /vault analyze — ${new Date().toISOString().slice(0, 19)}*`);
+  L.push(`*自動產生 by KnowPipe /vault analyze — ${new Date().toISOString().slice(0, 19)}*`);
 
   const content = L.join('\n');
   await mkdir(dirname(outPath), { recursive: true });

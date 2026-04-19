@@ -144,7 +144,7 @@ export async function generateThemeMocs(
   const themes = detectThemes(knowledge);
   if (themes.length === 0) return [];
 
-  const mocDir = join(vaultPath, 'ObsBot', 'MOC');
+  const mocDir = join(vaultPath, 'KnowPipe', 'MOC');
   await mkdir(mocDir, { recursive: true });
 
   const results: ThemeMoc[] = [];
@@ -237,7 +237,7 @@ async function saveThemeMoc(
   L.push('');
 
   L.push('---');
-  L.push(`*自動產生 by ObsBot — ${new Date().toISOString().slice(0, 19)}*`);
+  L.push(`*自動產生 by KnowPipe — ${new Date().toISOString().slice(0, 19)}*`);
 
   await writeFile(filePath, L.join('\n'), 'utf-8');
   return filePath;
@@ -261,7 +261,7 @@ async function saveMocIndex(mocDir: string, mocs: ThemeMoc[]): Promise<void> {
   }
 
   L.push('---');
-  L.push(`*自動產生 by ObsBot — ${new Date().toISOString().slice(0, 19)}*`);
+  L.push(`*自動產生 by KnowPipe — ${new Date().toISOString().slice(0, 19)}*`);
 
   await writeFile(filePath, L.join('\n'), 'utf-8');
 }

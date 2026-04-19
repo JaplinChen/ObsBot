@@ -48,12 +48,12 @@ function isVideoNote(fm: Map<string, string>): boolean {
   return VIDEO_SOURCES.has(source) || VIDEO_CATEGORY_RE.test(category);
 }
 
-/** 重建索引（掃描整個 ObsBot vault） */
+/** 重建索引（掃描整個 KnowPipe vault） */
 export async function rebuildVideoIndex(vaultPath: string, dbPath: string): Promise<number> {
   const db = getDb(dbPath);
   db.exec('DELETE FROM video_notes');
 
-  const rootDir = join(vaultPath, 'ObsBot');
+  const rootDir = join(vaultPath, 'KnowPipe');
   const files = await getAllMdFiles(rootDir);
   let count = 0;
 
@@ -65,7 +65,7 @@ export async function rebuildVideoIndex(vaultPath: string, dbPath: string): Prom
       const fm = parseFrontmatter(raw);
       if (!isVideoNote(fm)) continue;
 
-      const relPath = filePath.replace(/.*ObsBot[\\/]/, '');
+      const relPath = filePath.replace(/.*KnowPipe[\\/]/, '');
       const title = fm.get('title') ?? '';
       const summary = fm.get('summary') ?? '';
       const keywords = fm.get('keywords') ?? '';

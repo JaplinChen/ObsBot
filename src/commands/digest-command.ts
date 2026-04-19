@@ -35,7 +35,7 @@ function fm(raw: string, field: string): string {
 export async function collectRecentNotes(
   vaultPath: string, dayLimit: number,
 ): Promise<NoteSummary[]> {
-  const rootDir = join(vaultPath, 'ObsBot');
+  const rootDir = join(vaultPath, 'KnowPipe');
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dayLimit);
   const results: NoteSummary[] = [];
@@ -229,7 +229,7 @@ export async function handleWeeklyDigest(ctx: Context, config: AppConfig): Promi
       subtitle: `${totalNotes} 篇筆記 · ${catCount} 個分類 · 近 ${days} 天`,
     });
 
-    await ctx.reply(`💾 已存入 Vault：${savedPath.split('/ObsBot/')[1] ?? savedPath}`);
+    await ctx.reply(`💾 已存入 Vault：${savedPath.split('/KnowPipe/')[1] ?? savedPath}`);
     logger.info('digest', '週報深度合成完成', { days, notes: totalNotes, categories: catCount });
   } catch (err) {
     await ctx.reply(`週報生成失敗：${(err as Error).message}`);

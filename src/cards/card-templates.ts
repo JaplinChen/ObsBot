@@ -120,7 +120,7 @@ ${fontFaceCSS}
     <div class="keywords">
       ${keywords.map(k => `<span class="kw">${k}</span>`).join('')}
     </div>
-    <span class="brand">ObsBot</span>
+    <span class="brand">KnowPipe</span>
   </div>
 </div>
 </body>

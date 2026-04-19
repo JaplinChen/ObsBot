@@ -45,7 +45,7 @@ export interface MonitorConfig {
 
 /** An auto-fix event logged by vault-healer (ALTK-style correction trajectory) */
 export interface CorrectionEvent {
-  file: string;       // ObsBot 相對路徑
+  file: string;       // KnowPipe 相對路徑
   field: string;      // 'translation' | 'summary' | 'keywords' | 'html' | 'images'
   timestamp: string;  // ISO datetime
   reason?: string;    // 失敗原因分類，供 failure-analyzer 使用

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ObsBot Research</title>
+<title>KnowPipe Research</title>
 <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <style>
@@ -519,7 +519,7 @@ function runMermaid(){
 /* ── i18n engine ── */
 /* __LOCALES_INJECT__ */
 /* ── Dark mode (sync with admin) ── */
-var _darkMode = localStorage.getItem('obsbot-theme') === 'dark';
+var _darkMode = localStorage.getItem('knowpipe-theme') === 'dark';
 function applyDarkMode() {
   document.documentElement.setAttribute('data-theme', _darkMode ? 'dark' : 'light');
   var btn = document.getElementById('themeBtn');
@@ -527,10 +527,10 @@ function applyDarkMode() {
 }
 function toggleDarkMode() {
   _darkMode = !_darkMode;
-  localStorage.setItem('obsbot-theme', _darkMode ? 'dark' : 'light');
+  localStorage.setItem('knowpipe-theme', _darkMode ? 'dark' : 'light');
   applyDarkMode();
 }
-var _lang = localStorage.getItem('obsbot-lang') || 'zh-TW';
+var _lang = localStorage.getItem('knowpipe-lang') || 'zh-TW';
 var _langFlags = {'zh-TW':'🇹🇼','en':'🇺🇸','vi':'🇻🇳'};
 function t(key, params) {
   var s = (_locales[_lang] && _locales[_lang][key]) || (_locales['zh-TW'] && _locales['zh-TW'][key]) || key;
@@ -544,7 +544,7 @@ function applyI18n() {
 }
 function toggleRLangMenu() { document.getElementById('rLangMenu').classList.toggle('open'); }
 function changeRLang(lang) {
-  _lang = lang; localStorage.setItem('obsbot-lang', lang);
+  _lang = lang; localStorage.setItem('knowpipe-lang', lang);
   document.getElementById('rLangMenu').classList.remove('open');
   document.getElementById('rLangBtn').textContent = _langFlags[lang] || '🌐';
   document.querySelectorAll('.lang-sw-opt').forEach(function(el) { el.classList.toggle('active', el.getAttribute('data-lang') === lang); });

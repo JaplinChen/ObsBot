@@ -36,7 +36,7 @@ function isActionableCategory(category: string): boolean {
 }
 
 async function loadNoteMetas(vaultPath: string): Promise<NoteMeta[]> {
-  const rootDir = join(vaultPath, 'ObsBot');
+  const rootDir = join(vaultPath, 'KnowPipe');
   let files: string[];
   try {
     files = await getAllMdFiles(rootDir);
@@ -55,7 +55,7 @@ async function loadNoteMetas(vaultPath: string): Promise<NoteMeta[]> {
       const category = fm.get('category') ?? '';
       if (!isActionableCategory(category)) return;
       metas.push({
-        relPath: fp.replace(/.*ObsBot[\\/]/, ''),
+        relPath: fp.replace(/.*KnowPipe[\\/]/, ''),
         title: fm.get('title') ?? '',
         keywords: parseArrayField(fm.get('keywords') ?? ''),
         summary: fm.get('summary') ?? '',

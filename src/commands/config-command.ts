@@ -42,7 +42,7 @@ export async function handleConfig(ctx: Context): Promise<void> {
   const platforms = getEnabledPlatforms();
 
   const lines = [
-    '⚙️ **ObsBot 配置**',
+    '⚙️ **KnowPipe 配置**',
     '',
     `🔘 功能開關：${onCount}/${totalCount} 啟用`,
     `🤖 LLM：${cfg.llm.order.filter(k => cfg.llm.enabled[k]).join(' → ')}`,

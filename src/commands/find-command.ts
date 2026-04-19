@@ -68,7 +68,7 @@ export async function handleFind(ctx: Context, config: AppConfig): Promise<void>
   const status = await ctx.reply(`正在搜尋 Vault「${query}」...`);
 
   try {
-    const rootDir = join(config.vaultPath, 'ObsBot');
+    const rootDir = join(config.vaultPath, 'KnowPipe');
     const files = await getAllMdFiles(rootDir);
     const matches: MatchedNote[] = [];
 

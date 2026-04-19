@@ -61,7 +61,7 @@ function classifyUsage(title: string, summary: string, keywords: string[]): stri
 
 /** Scan vault and collect free-tool entries. */
 async function scanFreeTools(vaultPath: string): Promise<ToolkitEntry[]> {
-  const files = await getAllMdFiles(join(vaultPath, 'ObsBot'));
+  const files = await getAllMdFiles(join(vaultPath, 'KnowPipe'));
   const entries: ToolkitEntry[] = [];
 
   for (const f of files) {
