@@ -104,10 +104,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .msg-text pre code{background:none;padding:0;font-size:0.85em}
 .msg-text a{color:var(--pu);text-decoration:none}
 .msg-text a:hover{text-decoration:underline}
-.msg-text table{border-collapse:collapse;margin:10px 0;width:100%;font-size:13px}
-.msg-text th,.msg-text td{border:1px solid var(--bdr);padding:6px 10px;text-align:left}
-.msg-text th{background:var(--bg3);font-weight:600;color:var(--txt1)}
-.msg-text tr:nth-child(even){background:var(--bg2)}
+.msg-text .table-wrap{overflow-x:auto;margin:10px 0;border-radius:8px;border:1px solid var(--bdr)}
+.msg-text table{border-collapse:collapse;width:100%;font-size:13px;margin:0}
+.msg-text th,.msg-text td{border:none;border-bottom:1px solid var(--bdr);padding:8px 12px;text-align:left;vertical-align:middle}
+.msg-text th{background:var(--bg3);font-weight:600;color:var(--txt1);white-space:nowrap;position:sticky;top:0}
+.msg-text td:first-child{white-space:nowrap;font-weight:600;color:var(--txt1);background:var(--bg2)}
+.msg-text th:not(:first-child),.msg-text td:not(:first-child){text-align:center;min-width:80px}
+.msg-text tr:last-child td{border-bottom:none}
+.msg-text tbody tr:hover{background:var(--pu2)}
 .msg-text hr{border:none;border-top:1px solid var(--bdr);margin:16px 0}
 .msg-text .wikilink{color:var(--pu);background:var(--pu2);padding:1px 6px;border-radius:4px;font-size:0.92em;cursor:pointer;text-decoration:none;display:inline}
 .msg-text .wikilink:hover{background:var(--pu3);text-decoration:underline}
@@ -724,6 +728,8 @@ function renderMd(s){
       var styleClass='style-'+(localStorage.getItem('rd-diagram-style')||'sketch');
       return '<div class="arch-svg-wrap '+styleClass+'">'+decoded+'</div>';
     });
+    // 將 <table> 包上 .table-wrap 以支援 overflow-x:auto 和圓角邊框
+    html=html.replace(/<table>/gi,'<div class="table-wrap"><table>').replace(/<\/table>/gi,'</table></div>');
     return html;
   }
   return'<p>'+esc(s).replace(/\n/g,'<br>')+'</p>';
