@@ -224,10 +224,17 @@ export async function* streamChatWithNotes(
     .map((m) => `${m.role === 'user' ? '使用者' : '助手'}：${m.content}`)
     .join('\n\n');
 
+  const TYPE_HINTS: Record<string, string> = {
+    flowchart: '流程/步驟', mindmap: '概念關聯', timeline: '時間軸', sequence: '互動時序',
+    architecture: '系統架構', quadrant: '比較/選型', er: '資料關係', class: '類別/元件', state: '狀態機',
+  };
   const diagramInstruction = opts.autodiagramA
-    ? `\n\n【插圖規則】若回覆涉及架構、流程、步驟或比較，可在相關段落後插入標記：[DIAGRAM:type:主題]。`
-      + `type 限：${(opts.allowedTypes ?? ['flowchart', 'architecture']).join('/')}。`
-      + '整個回覆最多插入 2 個標記，只在確實有助理解時才插入，不強制插入。'
+    ? (() => {
+        const types = opts.allowedTypes ?? ['flowchart', 'architecture'];
+        const typeDescs = types.map((t) => `${t}=${TYPE_HINTS[t] ?? t}`).join('、');
+        return `\n\n【插圖規則】回覆中可在適合的段落後插入 [DIAGRAM:type:主題（10字內）]，只在確實有助理解時才插入，整篇最多 2 個。`
+          + `\ntype 說明：${typeDescs}`;
+      })()
     : '';
 
   const fullPrompt = [
