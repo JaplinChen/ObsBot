@@ -1101,6 +1101,10 @@ function renderRight(){
       {icon:'🏗️',label:'架構圖',tool:'diagram:architecture'},
       {icon:'⏱️',label:'時間軸',tool:'diagram:timeline'},
       {icon:'↔️',label:'時序圖',tool:'diagram:sequence'},
+      {icon:'⊞',label:'四象限',tool:'diagram:quadrant'},
+      {icon:'🔗',label:'ER 圖',tool:'diagram:er'},
+      {icon:'📐',label:'類別圖',tool:'diagram:class'},
+      {icon:'🔁',label:'狀態機',tool:'diagram:state'},
     ];
     var curStyle=localStorage.getItem('rd-diagram-style')||'sketch';
     var styleOpts=[{id:'dark',label:'暗黑科技',icon:'🌑'},{id:'sketch',label:'手繪插畫',icon:'✏️'},{id:'minimal',label:'簡約白',icon:'⬜'},{id:'retro',label:'復古終端機',icon:'🖥'},{id:'blueprint',label:'工程藍圖',icon:'📐'},{id:'pastel',label:'粉彩',icon:'🌸'}];
@@ -1117,7 +1121,7 @@ function renderRight(){
     // 自動插圖
     var adMode=_ADConfig.mode,adTypes=_ADConfig.types,adMax=_ADConfig.max;
     var _MODES=[{id:'off',label:'關閉'},{id:'a',label:'LLM標記'},{id:'b',label:'智能分析'},{id:'ab',label:'兩者'}];
-    var _DTYPES=[{id:'architecture',label:'架構圖'},{id:'flowchart',label:'流程圖'},{id:'mindmap',label:'心智圖'},{id:'sequence',label:'時序圖'},{id:'timeline',label:'時間軸'}];
+    var _DTYPES=[{id:'architecture',label:'架構圖'},{id:'flowchart',label:'流程圖'},{id:'mindmap',label:'心智圖'},{id:'sequence',label:'時序圖'},{id:'timeline',label:'時間軸'},{id:'quadrant',label:'四象限'},{id:'er',label:'ER圖'},{id:'class',label:'類別圖'},{id:'state',label:'狀態機'}];
     var adBody='<div class="autodiag-panel"><div class="autodiag-row"><span class="autodiag-label">模式</span><div class="autodiag-grp">'
       +_MODES.map(m=>'<button class="autodiag-btn'+(adMode===m.id?' on':'')+'" onclick="setADMode(\''+m.id+'\')">'+m.label+'</button>').join('')
       +'</div></div>';
@@ -1195,7 +1199,7 @@ async function _fetchDiagram(type,topic){
 }
 
 async function _processDiagramMarkers(text){
-  var RE=/\[DIAGRAM:(flowchart|mindmap|timeline|sequence|architecture):([^\]\n]{1,60})\]/g;
+  var RE=/\[DIAGRAM:(flowchart|mindmap|timeline|sequence|architecture|quadrant|er|class|state):([^\]\n]{1,60})\]/g;
   var matches=[],m,max=_ADConfig.max,types=_ADConfig.types;
   while((m=RE.exec(text))!==null&&matches.length<max){
     if(types.includes(m[1]))matches.push({full:m[0],type:m[1],topic:m[2].trim()});
@@ -1246,6 +1250,10 @@ const TOOL_LABELS={
   'diagram:architecture':{icon:'🏗️', label:'架構圖'},
   'diagram:timeline':    {icon:'📅', label:'時間軸'},
   'diagram:sequence':    {icon:'🔄', label:'時序圖'},
+  'diagram:quadrant':    {icon:'⊞', label:'四象限'},
+  'diagram:er':          {icon:'🔗', label:'ER 圖'},
+  'diagram:class':       {icon:'📐', label:'類別圖'},
+  'diagram:state':       {icon:'🔁', label:'狀態機'},
 };
 async function runTool(tool){
   if(!S.topic){alert(t('research.noTopic'));return;}

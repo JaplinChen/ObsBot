@@ -13,7 +13,7 @@ function stripThinkingTags(text: string): string {
     .trim();
 }
 
-export type DiagramType = 'flowchart' | 'mindmap' | 'timeline' | 'sequence' | 'architecture';
+export type DiagramType = 'flowchart' | 'mindmap' | 'timeline' | 'sequence' | 'architecture' | 'quadrant' | 'er' | 'class' | 'state';
 
 const DIAGRAM_PROMPTS: Record<DiagramType, string> = {
   flowchart:
@@ -38,6 +38,22 @@ const DIAGRAM_PROMPTS: Record<DiagramType, string> = {
     + '{"title":"標題","nodes":[{"id":"英文ID","label":"名稱","sublabel":"技術","type":"類型"}],"edges":[{"from":"ID","to":"ID","label":"協議"}]}\n\n'
     + 'nodes 最多 8 個。type 值：前端→cyan、後端→green、資料庫→purple、雲端→amber、安全→rose、佇列→orange\n'
     + 'label/sublabel 用繁體中文。只輸出 JSON，不輸出任何解釋。',
+  quadrant:
+    '請用 Mermaid quadrantChart 語法，畫出「{topic}」的四象限分析圖。\n'
+    + '選最能區分差異的兩個維度作為 X/Y 軸，每個象限放 2-4 個項目。\n'
+    + '中文標示。只輸出 ```mermaid 代碼塊，不加其他文字。',
+  er:
+    '請用 Mermaid erDiagram 語法，畫出「{topic}」的實體關聯圖（ER Diagram）。\n'
+    + '顯示主要資料實體與彼此關係（一對多、多對多等），屬性用英文。\n'
+    + '只輸出 ```mermaid 代碼塊，不加其他文字。',
+  class:
+    '請用 Mermaid classDiagram 語法，畫出「{topic}」的類別／元件關係圖。\n'
+    + '顯示主要類別或模組及其繼承、組合、依賴關係，中文標示。\n'
+    + '只輸出 ```mermaid 代碼塊，不加其他文字。',
+  state:
+    '請用 Mermaid stateDiagram-v2 語法，畫出「{topic}」的狀態機圖。\n'
+    + '顯示主要狀態與觸發狀態轉換的事件，中文標示。\n'
+    + '只輸出 ```mermaid 代碼塊，不加其他文字。',
 };
 
 /**
@@ -77,7 +93,7 @@ export async function generateDiagram(
   }
 
   if (cleaned.includes('```mermaid')) return cleaned;
-  const mermaidKeywords = ['graph ', 'flowchart ', 'sequenceDiagram', 'mindmap', 'timeline', 'classDiagram', 'gantt'];
+  const mermaidKeywords = ['graph ', 'flowchart ', 'sequenceDiagram', 'mindmap', 'timeline', 'classDiagram', 'gantt', 'quadrantChart', 'erDiagram', 'stateDiagram'];
   if (mermaidKeywords.some((k) => cleaned.includes(k))) {
     return '```mermaid\n' + cleaned.trim() + '\n```';
   }
@@ -102,7 +118,7 @@ export async function analyzeForDiagrams(
   const prompt =
     `以下是研究助手的回覆（前 3000 字）：\n\n${replyText.slice(0, 3000)}\n\n`
     + `找出最多 ${maxDiagrams} 個適合插入圖表的位置，只在能顯著幫助理解的地方建議。\n`
-    + `可用類型：${typesStr}（flowchart=流程/步驟、mindmap=概念關聯、timeline=時間軸、sequence=互動時序、architecture=系統架構）\n`
+    + `可用類型：${typesStr}（flowchart=流程/步驟、mindmap=概念關聯、timeline=時間軸、sequence=互動時序、architecture=系統架構、quadrant=比較/定位、er=資料關聯、class=類別/元件、state=狀態機）\n`
     + '回傳純 JSON 陣列：[{"anchor":"段落開頭前20字（必須與原文完全相符）","type":"類型","topic":"主題（10字內，繁體中文）"}]\n'
     + '若無適合位置回傳 []，不輸出任何其他文字。';
 
