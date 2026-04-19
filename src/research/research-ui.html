@@ -123,6 +123,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 .arch-svg-wrap.style-dark{background:#020617;border:1px solid #1e293b;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .arch-svg-wrap.style-sketch{background:#fafaf9;border:1px solid #e2e8f0;box-shadow:0 2px 12px rgba(0,0,0,.08)}
 .arch-svg-wrap.style-minimal{background:#fff;border:1px solid #e2e8f0;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+.arch-svg-wrap.style-retro{background:#050505;border:1px solid #003010;box-shadow:0 4px 24px rgba(0,255,65,.08)}
+.arch-svg-wrap.style-blueprint{background:#0d2137;border:1px solid #1e4a7a;box-shadow:0 4px 24px rgba(0,0,0,.35)}
+.arch-svg-wrap.style-pastel{background:#fef9f6;border:1px solid #fde8d8;box-shadow:0 2px 12px rgba(0,0,0,.06)}
 .arch-svg-wrap svg{width:100%;height:auto;display:block;border-radius:12px}
 /* 工具結果標題列 */
 .tool-result-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg2);border:1px solid var(--bdr);border-radius:10px 10px 0 0;margin-bottom:-1px;border-bottom:2px solid var(--pu3)}
@@ -1066,7 +1069,7 @@ function renderRight(){
       {icon:'↔️',label:'時序圖',tool:'diagram:sequence'},
     ];
     var curStyle=localStorage.getItem('rd-diagram-style')||'sketch';
-    var styleOpts=[{id:'dark',label:'暗黑科技',icon:'🌑'},{id:'sketch',label:'手繪插畫',icon:'✏️'},{id:'minimal',label:'簡約白',icon:'⬜'}];
+    var styleOpts=[{id:'dark',label:'暗黑科技',icon:'🌑'},{id:'sketch',label:'手繪插畫',icon:'✏️'},{id:'minimal',label:'簡約白',icon:'⬜'},{id:'retro',label:'復古終端機',icon:'🖥'},{id:'blueprint',label:'工程藍圖',icon:'📐'},{id:'pastel',label:'粉彩',icon:'🌸'}];
     var styleRow='<div class="diag-style-row"><span class="diag-style-label">圖表風格</span>'
       +styleOpts.map(s=>'<button class="diag-style-btn'+(curStyle===s.id?' on':'')+'" onclick="setDiagStyle(\''+s.id+'\',this)">'+s.icon+' '+s.label+'</button>').join('')
       +'</div>';

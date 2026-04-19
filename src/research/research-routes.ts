@@ -211,7 +211,7 @@ export async function handleResearchRequest(req: IncomingMessage, res: ServerRes
       if (!note.body) note.body = await loadNoteBody(vp, note.path);
     }
     let result = '';
-    const archStyle = (['dark', 'sketch', 'minimal'].includes(body.diagramStyle ?? '') ? body.diagramStyle : 'sketch') as import('./arch-svg-builder.js').ArchStyle;
+    const archStyle = (['dark', 'sketch', 'minimal', 'retro', 'blueprint', 'pastel'].includes(body.diagramStyle ?? '') ? body.diagramStyle : 'sketch') as import('./arch-svg-builder.js').ArchStyle;
     switch (tool) {
       case 'report': result = await generateResearchReport(body.topic, selected); break;
       case 'compare': result = await generateComparisonTable(body.topic, selected); break;
