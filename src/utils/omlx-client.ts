@@ -5,8 +5,8 @@
  */
 import { fetchWithTimeout } from './fetch-with-timeout.js';
 import type { ModelTier } from './local-llm.js';
-
 import { getUserConfig } from './user-config.js';
+import { logger } from '../core/logger.js';
 
 const AVAILABILITY_CACHE_MS = 30_000;
 
@@ -96,7 +96,7 @@ async function parseOmlxContent(res: Response, label: string): Promise<string | 
   };
   const content = json.choices?.[0]?.message?.content?.trim();
   if (content) {
-    console.log(`[${label}] ✓ (${content.length} chars)`);
+    logger.info('omlx', `${label} ✓`, { chars: content.length });
   }
   return content || null;
 }
@@ -145,7 +145,7 @@ export async function omlxChatCompletion(
     });
 
     if (!res.ok) {
-      console.error(`[omlx] HTTP ${res.status} for model ${modelId}`);
+      logger.warn('omlx', `HTTP ${res.status}`, { model: modelId });
       invalidateCache();
       return null;
     }
@@ -157,7 +157,7 @@ export async function omlxChatCompletion(
     if (msg.includes('abort') || msg.includes('ECONNREFUSED')) {
       invalidateCache();
     }
-    console.error(`[omlx] error: ${msg}`);
+    logger.warn('omlx', `error: ${msg}`);
     return null;
   }
 }
@@ -273,7 +273,7 @@ export async function omlxVisionCompletion(
     });
 
     if (!res.ok) {
-      console.error(`[omlx-vision] HTTP ${res.status}`);
+      logger.warn('omlx', `vision HTTP ${res.status}`);
       invalidateCache();
       return null;
     }
@@ -284,7 +284,7 @@ export async function omlxVisionCompletion(
     if (msg.includes('abort') || msg.includes('ECONNREFUSED')) {
       invalidateCache();
     }
-    console.error(`[omlx-vision] error: ${msg}`);
+    logger.warn('omlx', `vision error: ${msg}`);
     return null;
   }
 }

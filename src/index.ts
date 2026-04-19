@@ -1,6 +1,15 @@
 // 設定 process 顯示名稱（Activity Monitor 顯示為 KnowPipe）
 process.title = 'KnowPipe';
 
+// 全局未捕捉例外處理 — 確保靜默失敗不會消失（console 是刻意的：crash handler 不依賴 logger）
+process.on('unhandledRejection', (reason) => {
+  process.stderr.write(`[fatal] unhandledRejection: ${String(reason)}\n`);
+});
+process.on('uncaughtException', (err) => {
+  process.stderr.write(`[fatal] uncaughtException: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
+  process.exit(1);
+});
+
 import { loadConfig, getOwnerUserId } from './utils/config.js';
 import { logger } from './core/logger.js';
 import { registerAllExtractors } from './extractors/index.js';

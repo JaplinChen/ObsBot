@@ -11,11 +11,15 @@ export async function initDynamicClassifier(rulesPath: string): Promise<void> {
   try {
     const raw = await readFile(rulesPath, 'utf-8');
     const patterns = JSON.parse(raw) as LearnedPatterns;
+    if (!Array.isArray(patterns.classificationRules) || !patterns.formatting?.topKeywordsByCategory) {
+      logger.warn('classifier', '規則檔格式不符，略過載入', { path: rulesPath });
+      return;
+    }
     cachedRules = patterns.classificationRules;
     cachedTopKeywords = patterns.formatting.topKeywordsByCategory;
     logger.info('classifier', '載入學習規則', { count: cachedRules.length });
   } catch {
-    // File doesn't exist yet ??first run, silent fallback
+    // File doesn't exist yet — first run, silent fallback
   }
 }
 

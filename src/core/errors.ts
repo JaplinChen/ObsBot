@@ -19,8 +19,25 @@ export class AppError extends Error {
   }
 }
 
+/** Extract HTTP status code from error objects that carry one (e.g. fetch Response errors). */
+function httpStatusOf(err: unknown): number | null {
+  if (err && typeof err === 'object') {
+    const status = (err as Record<string, unknown>).status ?? (err as Record<string, unknown>).statusCode;
+    if (typeof status === 'number') return status;
+  }
+  return null;
+}
+
 export function classifyError(err: unknown): ErrorCode {
   if (err instanceof AppError) return err.code;
+
+  // HTTP status codes take priority over message-pattern matching
+  const status = httpStatusOf(err);
+  if (status !== null) {
+    if (status === 401 || status === 403) return 'FORBIDDEN';
+    if (status === 404) return 'NOT_FOUND';
+    if (status >= 500) return 'NETWORK';
+  }
 
   const msg = err instanceof Error ? err.message : String(err);
   if (/timeout|timed?\s*out|abort/i.test(msg)) return 'TIMEOUT';
