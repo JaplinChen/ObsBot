@@ -247,11 +247,20 @@ export async function saveToVault(
     const postId = extractPostId(content.url, content.platform);
 
     // Compute slug early — used for both .md filename and attachment filenames
-    const ERROR_TITLE_RE = /^(warning[:\s]|error\s*\d{3}|access denied|forbidden|you've been blocked)/i;
+    const ERROR_TITLE_RE = /^(warning[:\s]|error\s*\d{3}|access denied|forbidden|you've been blocked|未命名|untitled|n\/a|overview|總覽|無標題)$/i;
     let titleForFilename = content.title;
-    if (ERROR_TITLE_RE.test(titleForFilename)) {
+    if (!titleForFilename || titleForFilename.length < 5 || ERROR_TITLE_RE.test(titleForFilename.trim())) {
       try {
-        titleForFilename = new URL(content.url).hostname.replace(/^www\./, '');
+        const u = new URL(content.url);
+        // Derive a readable title from URL: prefer last meaningful path segment over bare hostname
+        const pathParts = u.pathname.split('/').map(p => decodeURIComponent(p)).filter(p => p && p !== 'index.html' && p !== 'README');
+        titleForFilename = pathParts.length > 0
+          ? pathParts[pathParts.length - 1].replace(/\.[a-z]{2,4}$/i, '').replace(/[-_]/g, ' ')
+          : u.hostname.replace(/^www\./, '');
+        // Also repair content.title so frontmatter gets a meaningful value
+        if (!content.title || ERROR_TITLE_RE.test(content.title.trim())) {
+          content.title = titleForFilename;
+        }
       } catch {
         titleForFilename = 'untitled';
       }

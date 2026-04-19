@@ -173,7 +173,11 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
   if (enriched.summary) content.enrichedSummary = enriched.summary;
   if (enriched.analysis) content.enrichedAnalysis = enriched.analysis;
   if (enriched.keyPoints?.length) content.enrichedKeyPoints = enriched.keyPoints;
-  if (enriched.title) content.title = enriched.title;
+  // Only accept enricher title if it's more meaningful than the original
+  const BAD_TITLE_RE = /^(未命名|untitled|n\/a|overview|總覽|無標題)$/i;
+  if (enriched.title && enriched.title.length >= 5 && !BAD_TITLE_RE.test(enriched.title.trim())) {
+    content.title = enriched.title;
+  }
   // enricher 的分類建議轉為語意 tag，不覆蓋 category（固定為 inbox）
   if (enriched.category) {
     content.suggestedTags = [enriched.category, ...(content.suggestedTags ?? [])];
