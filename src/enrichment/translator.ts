@@ -54,9 +54,17 @@ function buildTranslationPrompt(title: string, text: string): string {
   ].join('\n');
 }
 
-function extractTranslatedText(raw: unknown): string | null {
+const ESCAPE_MAP: Record<string, string> = {
+  n: '\n', r: '\r', t: '\t', '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f',
+};
+
+function decodeJsonString(raw: string): string {
+  return raw.replace(/\\(.)/g, (_, ch: string) => ESCAPE_MAP[ch] ?? ch);
+}
+
+/** 處理 JSON.parse 成功後 translatedText 可能仍是嵌套 JSON 的情況 */
+function unwrapTranslatedText(raw: unknown): string | null {
   if (typeof raw !== 'string' || raw.length === 0) return null;
-  // 防止 LLM 回傳嵌套 JSON：translatedText 本身又是 {"translatedTitle":...,"translatedText":...}
   if (raw.trimStart().startsWith('{')) {
     try {
       const inner = JSON.parse(raw) as { translatedText?: unknown };
@@ -68,13 +76,67 @@ function extractTranslatedText(raw: unknown): string | null {
   return raw;
 }
 
+/**
+ * 位置定位法：不依賴 JSON.parse，直接從 JSON 塊中提取 translatedText / translatedTitle。
+ * 可容忍無效逃逸、未逃逸引號、literal 控制字元等常見 LLM 輸出問題。
+ */
+function extractFromMalformedJson(
+  jsonBlock: string,
+): { translatedText: string; translatedTitle?: string } | null {
+  const TEXT_KEY = '"translatedText"';
+  const textKeyIdx = jsonBlock.indexOf(TEXT_KEY);
+  if (textKeyIdx === -1) return null;
+
+  // 找 translatedText 值的開頭引號
+  let valueStart = textKeyIdx + TEXT_KEY.length;
+  while (valueStart < jsonBlock.length && /[ \t:]/.test(jsonBlock[valueStart])) valueStart++;
+  if (jsonBlock[valueStart] !== '"') return null;
+  valueStart++;
+
+  // 從塊末尾倒推找閉合引號（允許末尾多一個 `]`）
+  let blockEnd = jsonBlock.length - 1; // `}`
+  while (blockEnd > 0 && /\s/.test(jsonBlock[blockEnd - 1])) blockEnd--;
+  if (jsonBlock[blockEnd - 1] === ']') {
+    blockEnd--;
+    while (blockEnd > 0 && /\s/.test(jsonBlock[blockEnd - 1])) blockEnd--;
+  }
+  if (jsonBlock[blockEnd - 1] !== '"') return null;
+  const valueEnd = blockEnd - 1;
+
+  const translatedText = decodeJsonString(jsonBlock.slice(valueStart, valueEnd));
+  if (!translatedText) return null;
+
+  // 嘗試提取 translatedTitle（位於 translatedText 之前）
+  const TITLE_KEY = '"translatedTitle"';
+  const titleKeyIdx = jsonBlock.indexOf(TITLE_KEY);
+  let translatedTitle: string | undefined;
+  if (titleKeyIdx !== -1 && titleKeyIdx < textKeyIdx) {
+    let titleStart = titleKeyIdx + TITLE_KEY.length;
+    while (titleStart < jsonBlock.length && /[ \t:]/.test(jsonBlock[titleStart])) titleStart++;
+    if (jsonBlock[titleStart] === '"') {
+      titleStart++;
+      const commaIdx = jsonBlock.indexOf('",', titleStart);
+      const newlineIdx = jsonBlock.indexOf('"\n', titleStart);
+      let titleEnd = -1;
+      if (commaIdx !== -1 && newlineIdx !== -1) titleEnd = Math.min(commaIdx, newlineIdx);
+      else if (commaIdx !== -1) titleEnd = commaIdx;
+      else if (newlineIdx !== -1) titleEnd = newlineIdx;
+      if (titleEnd !== -1) {
+        translatedTitle = decodeJsonString(jsonBlock.slice(titleStart, titleEnd));
+      }
+    }
+  }
+
+  return { translatedText, translatedTitle };
+}
+
 function parseTranslationResponse(response: string): TranslationResult | null {
-  // 優先嘗試 JSON 格式（oMLX / 嚴格 LLM 回傳）
   const match = response.match(/\{[\s\S]*\}/);
   if (match) {
+    // 第一次嘗試：標準 JSON.parse
     try {
       const parsed = JSON.parse(match[0]) as { translatedTitle?: unknown; translatedText?: unknown };
-      const translatedText = extractTranslatedText(parsed.translatedText);
+      const translatedText = unwrapTranslatedText(parsed.translatedText);
       if (translatedText) {
         return {
           detectedLanguage: 'en',
@@ -82,14 +144,23 @@ function parseTranslationResponse(response: string): TranslationResult | null {
           translatedTitle: typeof parsed.translatedTitle === 'string' ? parsed.translatedTitle : undefined,
         };
       }
-    } catch { /* fall through */ }
+    } catch { /* fall through to position-based */ }
+
+    // 第二次嘗試：位置定位法（容忍不合規 JSON）
+    const extracted = extractFromMalformedJson(match[0]);
+    if (extracted?.translatedText) {
+      return {
+        detectedLanguage: 'en',
+        translatedText: extracted.translatedText,
+        translatedTitle: extracted.translatedTitle,
+      };
+    }
   }
 
-  // fallback：opencode / DDG 可能直接回傳純文字翻譯（非 JSON）
-  // 只要回應含有中文字就視為有效翻譯
+  // 最終 fallback：opencode / DDG 直接回傳純文字翻譯（非 JSON 格式）
   const CJK_RE = /[\u4e00-\u9fff\u3400-\u4dbf]/;
   const trimmed = response.trim();
-  if (CJK_RE.test(trimmed) && trimmed.length > 20) {
+  if (!trimmed.startsWith('{') && CJK_RE.test(trimmed) && trimmed.length > 20) {
     return {
       detectedLanguage: 'en',
       translatedText: trimmed,
