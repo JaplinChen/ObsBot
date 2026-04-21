@@ -13,7 +13,6 @@ import TurndownService from 'turndown';
 // @ts-expect-error — no type declarations for turndown-plugin-gfm
 import { gfm } from 'turndown-plugin-gfm';
 import { camoufoxPool } from './camoufox-pool.js';
-import { isCloudflareChallenge } from './cloudflare-detect.js';
 
 export interface HtmlToMarkdownResult {
   title: string;
@@ -157,7 +156,6 @@ export async function htmlToMarkdownWithBrowser(url: string): Promise<HtmlToMark
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
         await page.waitForTimeout(3000);
         const html = await page.content();
-        if (isCloudflareChallenge(html)) return null;
         return htmlToMarkdown(html, url, true);
       })(),
       new Promise<null>((_, reject) =>
@@ -186,7 +184,6 @@ export async function htmlToMarkdownWithBrowserUse(url: string): Promise<HtmlToM
         await new Promise((r) => setTimeout(r, 3000));
         const html = await client.html();
         if (!html || html.length < 200) return null;
-        if (isCloudflareChallenge(html)) return null;
         return htmlToMarkdown(html, url, true);
       })(),
       new Promise<null>((_, reject) =>

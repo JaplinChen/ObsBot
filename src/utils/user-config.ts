@@ -78,7 +78,7 @@ const IS_MACOS = process.platform === 'darwin';
 
 const ALL_PLATFORMS = [
   'x', 'threads', 'youtube', 'github', 'bilibili',
-  'weibo', 'xiaohongshu', 'douyin', 'tiktok', 'ithome', 'zhihu', 'reddit',
+  'weibo', 'xiaohongshu', 'douyin', 'tiktok', 'ithome', 'zhihu',
   'direct-video', 'web',
 ];
 

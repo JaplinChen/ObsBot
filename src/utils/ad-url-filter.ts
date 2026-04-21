@@ -44,12 +44,11 @@ const STATIC_BLOCKED_DOMAINS = new Set([
   'adnxs.com',
 ]);
 
-/** 使用者自訂封鎖域名 — 無法擷取有效內容的網站（登入牆、CF 封鎖等） */
+/** 使用者自訂封鎖域名 — 在當前網路環境（越南）無法存取的網站 */
 const USER_BLOCKED_DOMAINS = new Set([
   'medium.com',
   'daily-co.github.io',
   'dexcheck.ai',
-  'sotwe.com',       // X/Twitter viewer，被 Cloudflare 完全封鎖，無 API 可繞過
 ]);
 
 export interface AdDomainEntry {

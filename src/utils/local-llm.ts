@@ -153,10 +153,19 @@ export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}
   const providers: Record<string, () => Promise<string | null>> = {
     omlx: async () => {
       if (!await isOmlxAvailable()) return null;
-      return omlxChatCompletion(prompt, {
-        model: tier, timeoutMs: remaining(), maxTokens: options.maxTokens,
-        systemPrompt: effectiveSystem || undefined,
-      });
+      // 507 OOM 自動降級：deep → standard → flash（flash 4B 通常可用）
+      const tierOrder: ModelTier[] = ['deep', 'standard', 'flash'];
+      const startIdx = tierOrder.indexOf(tier);
+      const tiersToTry = startIdx >= 0 ? tierOrder.slice(startIdx) : [tier];
+      for (const t of tiersToTry) {
+        if (remaining() <= 0) return null;
+        const result = await omlxChatCompletion(prompt, {
+          model: t, timeoutMs: remaining(), maxTokens: options.maxTokens,
+          systemPrompt: effectiveSystem || undefined,
+        });
+        if (result) return result;
+      }
+      return null;
     },
     ollama: async () => {
       if (!await isProviderAvailable('ollama')) return null;

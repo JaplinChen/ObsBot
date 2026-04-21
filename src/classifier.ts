@@ -94,16 +94,11 @@ export function extractKeywords(title: string, text: string): string[] {
     ? cat.keywords.filter(kw => keywordMatch(titleH, kw) || keywordMatch(bodyH, kw))
     : [];
 
-  // Fallback: extract meaningful CJK/English words from title+body when category matching is thin
+  // Fallback: extract meaningful CJK/English words from title when category matching is thin
   const titleWords: string[] = [];
   if (catMatches.length < 3) {
-    const cjkFromTitle = title.match(/[\u4e00-\u9fff\u3040-\u30ff]{2,4}/g) ?? [];
-    const cjkFromBody = text.slice(0, 300).match(/[\u4e00-\u9fff\u3040-\u30ff]{2,4}/g) ?? [];
-    const cjk = [...new Set([...cjkFromTitle, ...cjkFromBody])];
-    const eng = [
-      ...(title.match(/\b[A-Za-z][a-z]{2,}\b/g)?.map(w => w.toLowerCase()) ?? []),
-      ...(title.match(/(?<![A-Za-z])[A-Z]{2,}(?![A-Za-z])/g)?.map(w => w.toLowerCase()) ?? []),
-    ];
+    const cjk = title.match(/[\u4e00-\u9fff\u3040-\u30ff]{2,6}/g) ?? [];
+    const eng = title.match(/\b[A-Za-z][a-z]{2,}\b/g)?.map(w => w.toLowerCase()) ?? [];
     titleWords.push(...cjk.slice(0, 4), ...eng.slice(0, 3));
   }
 

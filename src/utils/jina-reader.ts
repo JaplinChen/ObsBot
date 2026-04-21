@@ -4,8 +4,6 @@
  * 不拋例外，供 web-extractor 作為 fallback tier 使用。
  */
 
-import { isCloudflareMarkdown } from './cloudflare-detect.js';
-
 const JINA_BASE = 'https://r.jina.ai/';
 const TIMEOUT_MS = 25_000;
 const MIN_LENGTH = 200;
@@ -45,7 +43,6 @@ export async function fetchJina(url: string): Promise<JinaResult | null> {
       };
       const data = json?.data;
       if (!data?.content || data.content.length < MIN_LENGTH) return null;
-      if (isCloudflareMarkdown(data.title || '', data.content)) return null;
       return {
         title: data.title || '',
         markdown: data.content,
@@ -59,10 +56,8 @@ export async function fetchJina(url: string): Promise<JinaResult | null> {
 
     // 嘗試從 markdown 第一行抽取標題
     const titleMatch = text.match(/^#\s+(.+)/m);
-    const title = titleMatch?.[1]?.trim() || '';
-    if (isCloudflareMarkdown(title, text)) return null;
     return {
-      title,
+      title: titleMatch?.[1]?.trim() || '',
       markdown: text,
       url,
     };

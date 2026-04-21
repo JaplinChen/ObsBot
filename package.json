@@ -1,6 +1,6 @@
 {
   "name": "knowpipe",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Telegram Bot that auto-extracts content from 20+ platforms and saves to Obsidian Vault",
   "type": "module",
   "scripts": {

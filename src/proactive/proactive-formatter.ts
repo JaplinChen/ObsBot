@@ -97,18 +97,9 @@ export async function generateDigestInsight(digest: ProactiveDigest): Promise<st
   ].filter(Boolean).join('\n');
 
   try {
-    const raw = await runLocalLlmPrompt(prompt, { timeoutMs: 20_000, model: 'flash', maxTokens: 256 });
-    if (!raw) return undefined;
-    const cleaned = stripThinkingBlocks(raw);
-    return cleaned || undefined;
+    const result = await runLocalLlmPrompt(prompt, { timeoutMs: 20_000, model: 'flash', maxTokens: 256 });
+    return result ?? undefined;
   } catch {
     return undefined;
   }
-}
-
-function stripThinkingBlocks(text: string): string {
-  let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
-  cleaned = cleaned.replace(/\n*(?:Thinking Process|思考過程|Reasoning|Analysis):[\s\S]*/i, '');
-  cleaned = cleaned.replace(/^[#*\s]+/gm, '').trim();
-  return cleaned;
 }

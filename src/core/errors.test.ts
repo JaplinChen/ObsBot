@@ -33,18 +33,6 @@ describe('classifyError', () => {
   it('未知錯誤歸類為 UNKNOWN', () => {
     expect(classifyError(new Error('something weird'))).toBe('UNKNOWN');
   });
-
-  it('HTTP status 屬性優先於訊息正則', () => {
-    // status 屬性（fetch Response error 慣例）
-    expect(classifyError(Object.assign(new Error('頁面找不到'), { status: 404 }))).toBe('NOT_FOUND');
-    expect(classifyError(Object.assign(new Error('需要登入'), { status: 403 }))).toBe('FORBIDDEN');
-    expect(classifyError(Object.assign(new Error('需要認證'), { status: 401 }))).toBe('FORBIDDEN');
-    expect(classifyError(Object.assign(new Error('伺服器錯誤'), { status: 500 }))).toBe('NETWORK');
-  });
-
-  it('statusCode 屬性也能辨識（Node.js 慣例）', () => {
-    expect(classifyError(Object.assign(new Error('not found'), { statusCode: 404 }))).toBe('NOT_FOUND');
-  });
 });
 
 describe('formatErrorMessage', () => {

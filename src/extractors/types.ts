@@ -2,7 +2,7 @@
 export type Platform =
   | 'x' | 'threads' | 'youtube' | 'github' | 'web'
   | 'weibo' | 'xhs' | 'bilibili' | 'douyin' | 'tiktok' | 'ithome'
-  | 'zhihu' | 'reddit';
+  | 'zhihu';
 
 /** A single comment or reply on a post */
 export interface ThreadComment {
