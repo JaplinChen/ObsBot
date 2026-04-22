@@ -44,7 +44,7 @@ async function scanAllNotes(rootDir: string, results: QualityIssue[]): Promise<n
       const raw = await readFile(fullPath, 'utf-8');
       const issues = checkNote(raw);
       if (issues.length > 0) {
-        const relPath = fullPath.replace(/.*ObsBot[\\/]/, '');
+        const relPath = fullPath.replace(/.*KnowPipe[\\/]/, '');
         results.push({ file: relPath, issues });
       }
     } catch { /* skip unreadable */ }
@@ -83,7 +83,7 @@ function checkNote(raw: string): string[] {
 }
 
 async function generateReport(vaultPath: string): Promise<QualityReport> {
-  const rootDir = join(vaultPath, 'ObsBot');
+  const rootDir = join(vaultPath, 'KnowPipe');
   const issues: QualityIssue[] = [];
   const totalNotes = await scanAllNotes(rootDir, issues);
 

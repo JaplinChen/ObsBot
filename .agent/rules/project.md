@@ -1,4 +1,4 @@
-# ObsBot 專案規則
+# KnowPipe 專案規則
 
 > 完整規則定義於 `CLAUDE.md`，此檔案僅列出補充事項。
 

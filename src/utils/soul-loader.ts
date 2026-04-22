@@ -1,5 +1,5 @@
 /**
- * SOUL.md loader — lazy loads and caches the ObsBot personality definition.
+ * SOUL.md loader — lazy loads and caches the KnowPipe personality definition.
  * Injected into LLM system prompts for user-facing interactions.
  */
 import { readFile } from 'node:fs/promises';

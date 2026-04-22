@@ -37,7 +37,7 @@ interface NoteInfo {
 
 /** Load all note metadata from vault frontmatter */
 export async function loadNoteIndex(vaultPath: string): Promise<NoteInfo[]> {
-  const root = join(vaultPath, 'ObsBot');
+  const root = join(vaultPath, 'KnowPipe');
   const files = await getAllMdFiles(root);
   const notes: NoteInfo[] = [];
 

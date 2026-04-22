@@ -1,7 +1,7 @@
 /**
  * LLM Wiki 模式 — 每個 category 維護一份動態 wiki.md
  * 每當同 category 累積 3 篇新筆記時自動觸發更新。
- * wiki 頁面存於 {vaultPath}/ObsBot/{category}/wiki.md
+ * wiki 頁面存於 {vaultPath}/KnowPipe/{category}/wiki.md
  */
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
@@ -35,7 +35,7 @@ async function saveCounter(data: Record<string, CounterEntry>): Promise<void> {
 async function getRecentCategoryNotes(
   vaultPath: string, category: string, limit = 10,
 ): Promise<Array<{ title: string; summary: string; keywords: string }>> {
-  const catPath = join(vaultPath, 'ObsBot', ...category.split('/'));
+  const catPath = join(vaultPath, 'KnowPipe', ...category.split('/'));
   const files = await getAllMdFiles(catPath).catch(() => [] as string[]);
 
   const notes: Array<{ title: string; summary: string; keywords: string; date: string }> = [];
@@ -134,7 +134,7 @@ export async function notifyNoteAdded(
     const notes = await getRecentCategoryNotes(vaultPath, category);
     if (notes.length === 0) return;
 
-    const wikiPath = join(vaultPath, 'ObsBot', ...category.split('/'), 'wiki.md');
+    const wikiPath = join(vaultPath, 'KnowPipe', ...category.split('/'), 'wiki.md');
     const existingWiki = await loadExistingWiki(wikiPath);
     const body = await generateWiki(category, notes, existingWiki);
     if (!body) return;

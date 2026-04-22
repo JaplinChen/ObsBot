@@ -199,7 +199,7 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
   }
 
   if (parsed.mode === 'single') {
-    const vaultNotesDir = join(config.vaultPath, 'ObsBot');
+    const vaultNotesDir = join(config.vaultPath, 'KnowPipe');
     const filePath = join(vaultNotesDir, parsed.path!);
     const status = await ctx.reply(`正在重新處理：${parsed.path}...`);
 

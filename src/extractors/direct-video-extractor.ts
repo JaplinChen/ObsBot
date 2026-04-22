@@ -58,7 +58,7 @@ export const directVideoExtractor: Extractor = {
 
   async extract(url: string): Promise<ExtractedContent> {
     const id = this.parseId(url) ?? 'video';
-    const tmpDir = join(tmpdir(), `obsbot-dv-${id}-${Date.now()}`);
+    const tmpDir = join(tmpdir(), `knowpipe-dv-${id}-${Date.now()}`);
     await mkdir(tmpDir, { recursive: true });
     const videoPath = join(tmpDir, `video.mp4`);
 

@@ -88,7 +88,7 @@ export async function getManifest(): Promise<ProjectManifest> {
   ]);
 
   const manifest: ProjectManifest = {
-    name: 'ObsBot',
+    name: 'KnowPipe',
     description: 'Telegram Bot：從 URL 提取內容，經 AI 豐富化後存入 Obsidian Vault',
     techStack: ['TypeScript', 'Telegraf', 'oMLX (local LLM)', 'Node.js', 'macOS'],
     extractors: { count: platforms.length, platforms },

@@ -275,7 +275,7 @@ export function formatHealthReportTelegram(report: KnowledgeHealthReport): strin
 /* ── Vault note saver ─────────────────────────────────────── */
 
 export async function saveHealthReportNote(vaultPath: string, report: KnowledgeHealthReport): Promise<string> {
-  const outPath = join(vaultPath, 'ObsBot', '知識健康報告.md');
+  const outPath = join(vaultPath, 'KnowPipe', '知識健康報告.md');
   const now = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const L: string[] = [
     '---', `title: 知識健康報告`, `date: ${now}`, 'tags: [knowledge, health, auto-generated]', '---',
@@ -290,7 +290,7 @@ export async function saveHealthReportNote(vaultPath: string, report: KnowledgeH
   }
   L.push('## 建議行動', '');
   for (const rec of report.recommendations) L.push(`- ${rec}`);
-  L.push('', '---', `*自動產生 by ObsBot — ${new Date().toISOString().slice(0, 19)}*`);
+  L.push('', '---', `*自動產生 by KnowPipe — ${new Date().toISOString().slice(0, 19)}*`);
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, L.join('\n'), 'utf-8');
   return outPath;

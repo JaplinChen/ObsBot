@@ -72,9 +72,10 @@ function parseTranslationResponse(response: string): TranslationResult | null {
 
   // fallback：opencode / DDG 可能直接回傳純文字翻譯（非 JSON）
   // 只要回應含有中文字就視為有效翻譯
+  // 若回應仍以 { 開頭表示 JSON 解析已失敗但非純文字，直接放棄
   const CJK_RE = /[\u4e00-\u9fff\u3400-\u4dbf]/;
   const trimmed = response.trim();
-  if (CJK_RE.test(trimmed) && trimmed.length > 20) {
+  if (!trimmed.startsWith('{') && CJK_RE.test(trimmed) && trimmed.length > 20) {
     return {
       detectedLanguage: 'en',
       translatedText: trimmed,

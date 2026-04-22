@@ -102,7 +102,7 @@ export async function analyzeFailures(): Promise<FailureAnalysisResult> {
 
   const prompt = [
     'CAVEMAN RULE: 回覆純文字，不要 JSON，不要 markdown 標題符號(#)。',
-    '你是 ObsBot enrichment 品質分析師。根據以下 corrections-log 統計，找出 enrichment prompt 最需要改進的地方。',
+    '你是 KnowPipe enrichment 品質分析師。根據以下 corrections-log 統計，找出 enrichment prompt 最需要改進的地方。',
     '',
     '統計數據：',
     statsText,

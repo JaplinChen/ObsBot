@@ -59,7 +59,7 @@ export async function extractTextFromImage(
   if (!tesseract) return null;
 
   const id = randomBytes(4).toString('hex');
-  const tempDir = join(tmpdir(), `obsbot-ocr-${id}`);
+  const tempDir = join(tmpdir(), `knowpipe-ocr-${id}`);
   await mkdir(tempDir, { recursive: true });
 
   try {

@@ -1,6 +1,7 @@
 import type { ExtractedContent, ExtractorWithComments, ThreadComment, VideoInfo } from './types.js';
 import { fetchWithTimeout, retry } from '../utils/fetch-with-timeout.js';
 import { camoufoxPool } from '../utils/camoufox-pool.js';
+import { extractThreadViaGraphQL } from './x-graphql-thread.js';
 
 interface ArticleBlock {
   text: string;
@@ -225,56 +226,59 @@ export const xExtractor: ExtractorWithComments = {
   },
 
   async extractComments(url: string, limit = 20): Promise<ThreadComment[]> {
-    const { page, release } = await camoufoxPool.acquire();
+    const domResults: ThreadComment[] = [];
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-      await page.waitForSelector('[data-testid="tweet"]', { timeout: 15_000 });
-
-      for (let i = 0; i < 3; i++) {
-        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-        await page.waitForTimeout(1200);
-      }
-
-      const tweetEls = await page.locator('[data-testid="tweet"]').all();
-      const comments: ThreadComment[] = [];
-
-      // 取 OP handle（第一個推文元素）
-      let opHandle = '';
+      const { page, release } = await camoufoxPool.acquire();
       try {
-        const opHref = await tweetEls[0]?.locator('[data-testid="User-Name"] a').last().getAttribute('href') ?? '';
-        opHandle = opHref.replace('/', '').toLowerCase();
-      } catch { /* ignore */ }
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+        await page.waitForSelector('[data-testid="tweet"]', { timeout: 15_000 });
 
-      // thread 結束旗標：一旦出現非 OP 推文，後續即使是 OP 也視為一般回覆
-      let threadEnded = false;
+        for (let i = 0; i < 3; i++) {
+          await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+          await page.waitForTimeout(1200);
+        }
 
-      for (const el of tweetEls.slice(1)) {
-        if (comments.length >= limit) break;
+        const tweetEls = await page.locator('[data-testid="tweet"]').all();
+        let opHandle = '';
         try {
-          const author = await el.locator('[data-testid="User-Name"] span').first().innerText();
-          const handle = await el.locator('[data-testid="User-Name"] a').last().getAttribute('href') ?? '';
-          const cleanHandle = handle.replace('/', '').toLowerCase();
-          const text = await el.locator('[data-testid="tweetText"]').innerText().catch(() => '');
-          const timeEl = await el.locator('time').getAttribute('datetime').catch(() => '');
-          const date = timeEl ? new Date(timeEl).toISOString().split('T')[0] : '';
+          const opHref = await tweetEls[0]?.locator('[data-testid="User-Name"] a').last().getAttribute('href') ?? '';
+          opHandle = opHref.replace('/', '').toLowerCase();
+        } catch { /* ignore */ }
 
-          if (!text.trim()) continue;
+        let threadEnded = false;
+        for (const el of tweetEls.slice(1)) {
+          if (domResults.length >= limit) break;
+          try {
+            const author = await el.locator('[data-testid="User-Name"] span').first().innerText();
+            const handle = await el.locator('[data-testid="User-Name"] a').last().getAttribute('href') ?? '';
+            const cleanHandle = handle.replace('/', '').toLowerCase();
+            const text = await el.locator('[data-testid="tweetText"]').innerText().catch(() => '');
+            const timeEl = await el.locator('time').getAttribute('datetime').catch(() => '');
+            const date = timeEl ? new Date(timeEl).toISOString().split('T')[0] : '';
 
-          const isOp = opHandle && cleanHandle === opHandle;
-          if (!isOp) threadEnded = true;
+            if (!text.trim()) continue;
+            const isOp = opHandle && cleanHandle === opHandle;
+            if (!isOp) threadEnded = true;
 
-          comments.push({
-            author: author.trim(),
-            authorHandle: `@${handle.replace('/', '')}`,
-            text: text.trim(),
-            date,
-            isThreadContinuation: (isOp && !threadEnded) || undefined,
-          });
-        } catch { /* skip malformed */ }
-      }
-      return comments;
-    } finally {
-      await release();
-    }
+            domResults.push({
+              author: author.trim(),
+              authorHandle: `@${handle.replace('/', '')}`,
+              text: text.trim(),
+              date,
+              isThreadContinuation: (isOp && !threadEnded) || undefined,
+            });
+          } catch { /* skip malformed */ }
+        }
+      } catch { /* DOM 抓取失敗，交由 GraphQL 備援 */ }
+      finally { await release(); }
+    } catch { /* pool 取得失敗 */ }
+
+    if (domResults.length > 0) return domResults;
+
+    // Playwright 抓不到回覆（X 需要登入）→ GraphQL TweetDetail API 備援
+    const match = url.match(X_URL_PATTERN);
+    if (!match) return [];
+    const [, screenName, tweetId] = match;
+    return extractThreadViaGraphQL(tweetId, screenName, limit);
   },
 };

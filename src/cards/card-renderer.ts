@@ -28,7 +28,7 @@ function toCardData(content: ExtractedContent): CardData {
 
 /** Build output path for the card image. */
 function cardPath(vaultPath: string, platform: string, slug: string): string {
-  return join(vaultPath, 'attachments', 'obsbot', 'cards', `${slug}.png`);
+  return join(vaultPath, 'attachments', 'knowpipe', 'cards', `${slug}.png`);
 }
 
 /** Create a URL-safe slug from title. */

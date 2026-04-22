@@ -33,7 +33,7 @@ function extractVersion(raw: string): string | undefined {
 
 /** Scan all vault notes and collect version statistics. */
 async function scanVersions(vaultPath: string): Promise<VersionStats> {
-  const gtPath = join(vaultPath, 'ObsBot');
+  const gtPath = join(vaultPath, 'KnowPipe');
   const notes = await scanVaultNotes(gtPath);
   const distribution: Record<string, number> = {};
   const outdatedPaths: string[] = [];

@@ -230,7 +230,7 @@ ${sample}
       const today = new Date().toISOString().slice(0, 10);
       const content = `---\ntitle: "${topic}——反向論點分析"\ndate: ${today}\ncategory: inbox\nkeywords: [反向論點, 批判性思考, ${topic}]\nsummary: "近 ${days} 天「${topic}」出現 ${titles.length} 篇筆記，本文提出反向思考"\n---\n\n# ${topic}——如果主流敘事是錯的？\n\n> [!warning] 反向論點自動生成\n> 當某主題在 ${days} 天內累積 **${titles.length} 篇**，自動觸發批判性審視。\n\n${result}\n`;
 
-      const outDir = join(config.vaultPath, 'ObsBot', 'inbox', '反向論點');
+      const outDir = join(config.vaultPath, 'KnowPipe', 'inbox', '反向論點');
       await mkdir(outDir, { recursive: true });
       const filename = `${topic.replace(/[/\\:*?"<>|]/g, '-')}-反向論點-${today}.md`;
       const outPath = join(outDir, filename);
@@ -254,7 +254,7 @@ ${sample}
 async function handlePredictions(ctx: Context, config: AppConfig): Promise<void> {
   const status = await ctx.reply('🔮 掃描可驗證預測中…');
   try {
-    const rootDir = join(config.vaultPath, 'ObsBot');
+    const rootDir = join(config.vaultPath, 'KnowPipe');
     const files = await getAllMdFiles(rootDir);
     const today = new Date();
     const cutoff = new Date(today.getTime() + 30 * 86400_000);
@@ -270,7 +270,7 @@ async function handlePredictions(ctx: Context, config: AppConfig): Promise<void>
       const fm = fmEnd > 0 ? raw.slice(0, fmEnd) : raw.slice(0, 500);
       const m = PRED_RE.exec(fm);
       if (!m) continue;
-      const relPath = f.replace(/.*ObsBot[\\/]/, '');
+      const relPath = f.replace(/.*KnowPipe[\\/]/, '');
       for (const em of m[1].matchAll(ENTRY_RE)) {
         const [, text, conf, dl] = em;
         const deadline = new Date(dl);

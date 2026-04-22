@@ -2,7 +2,7 @@ import type { Context } from 'telegraf';
 import { Markup } from 'telegraf';
 
 export const HELP_TEXT = [
-  'ObsBot — 傳送連結即可自動儲存',
+  'KnowPipe — 傳送連結即可自動儲存',
   'X / Threads / Reddit / YouTube / GitHub',
   '微博 / B站 / 小紅書 / 抖音 / 任何網頁',
   '',
@@ -83,7 +83,7 @@ export async function handleHelpCategory(ctx: Context & { match: RegExpExecArray
 }
 
 export const HELP_ALL_TEXT = [
-  'ObsBot 完整指令列表',
+  'KnowPipe 完整指令列表',
   '',
   '📥 搜尋與收集',
   '/search [vault|web|monitor|video] <查詢> — 統一搜尋',

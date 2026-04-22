@@ -75,7 +75,7 @@ export async function handleVaultMemoir(ctx: Context, config: AppConfig, args: s
   const since = sinceMatch?.[1];
 
   const typing = startTyping(ctx);
-  await ctx.reply(`📖 正在生成 ObsBot 開發史${since ? ` (${since} 起)` : ''}…`);
+  await ctx.reply(`📖 正在生成 KnowPipe 開發史${since ? ` (${since} 起)` : ''}…`);
 
   try {
     const result = await generateMemoir(config.vaultPath, since);
@@ -153,7 +153,7 @@ export async function handleVaultDraft(ctx: Context, config: AppConfig, args: st
 
   try {
     // 嘗試先讀該 category 的 wiki.md 作為素材骨架
-    const wikiPath = join(config.vaultPath, 'ObsBot', ...category.split('/'), 'wiki.md');
+    const wikiPath = join(config.vaultPath, 'KnowPipe', ...category.split('/'), 'wiki.md');
     let wikiContext = '';
     try { wikiContext = await readFile(wikiPath, 'utf-8'); } catch { /* wiki 不存在時略過 */ }
 

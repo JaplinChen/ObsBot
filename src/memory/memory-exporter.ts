@@ -31,7 +31,7 @@ function parseList(head: string, field: string): string[] {
 
 /** Collect vault statistics for export. */
 async function collectVaultStats(vaultPath: string): Promise<VaultStats> {
-  const files = await getAllMdFiles(join(vaultPath, 'ObsBot'));
+  const files = await getAllMdFiles(join(vaultPath, 'KnowPipe'));
   const catCount = new Map<string, number>();
   const kwCount = new Map<string, number>();
   const platCount = new Map<string, number>();
@@ -144,7 +144,7 @@ export async function exportMemory(
   vaultPath: string, format: ExportFormat,
 ): Promise<{ path: string; stats: VaultStats }> {
   const stats = await collectVaultStats(vaultPath);
-  const exportDir = join(vaultPath, 'ObsBot', '.exports');
+  const exportDir = join(vaultPath, 'KnowPipe', '.exports');
   await mkdir(exportDir, { recursive: true });
 
   const formatters: Record<ExportFormat, { fn: (s: VaultStats) => string; ext: string }> = {

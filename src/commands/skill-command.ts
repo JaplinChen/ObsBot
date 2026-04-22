@@ -165,7 +165,7 @@ export async function handleSkillVault(ctx: Context, config: AppConfig): Promise
   const typing = startTyping(ctx);
   try {
     const count = await saveAllSkillsToVault(config.vaultPath);
-    await ctx.reply(`✅ 已備份 ${count} 個技能到 Vault/ObsBot/Skills/`);
+    await ctx.reply(`✅ 已備份 ${count} 個技能到 Vault/KnowPipe/Skills/`);
   } finally {
     stopTyping(typing);
   }

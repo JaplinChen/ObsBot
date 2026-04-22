@@ -60,7 +60,7 @@ function parseArray(val: string): string[] {
 }
 
 async function searchVault(vaultPath: string, query: string): Promise<string> {
-  const notesDir = join(vaultPath, 'ObsBot');
+  const notesDir = join(vaultPath, 'KnowPipe');
   const files = await findMdFiles(notesDir);
   const words = query.split(/\s+/).filter((w) => w.length >= 2);
 

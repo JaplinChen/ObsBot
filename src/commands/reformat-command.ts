@@ -184,7 +184,7 @@ export async function handleReformat(ctx: Context, config: AppConfig): Promise<v
   }
 
   if (parsed.mode === 'single') {
-    const filePath = join(config.vaultPath, 'ObsBot', parsed.path!);
+    const filePath = join(config.vaultPath, 'KnowPipe', parsed.path!);
     const status = await ctx.reply(`正在排版修復：${parsed.path}...`);
     const result = await reformatSingle(filePath, false);
     try { await ctx.deleteMessage(status.message_id); } catch { /* */ }

@@ -14,7 +14,7 @@ export function createStatusHandler(stats: BotStats, startTime: number) {
     const recentErrors = logger.getRecent(3, 'error');
 
     const lines = [
-      '📊 ObsBot 狀態',
+      '📊 KnowPipe 狀態',
       '',
       `⏱ 運行時間：${h}h ${m}m`,
       `💾 記憶體：${Math.round(mem.rss / 1024 / 1024)} MB`,

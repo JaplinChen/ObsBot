@@ -1,6 +1,7 @@
 /** Threads extractor — Camoufox-based. Container: [data-pressable-container], spans: span[dir="auto"] */
 import type { ExtractedContent, ExtractorWithComments, ThreadComment } from './types.js';
 import { camoufoxPool } from '../utils/camoufox-pool.js';
+import { injectChromeCookies } from '../utils/chrome-cookies.js';
 
 const THREADS_URL_PATTERN =
   /(?:threads\.net|threads\.com)\/@([\w.]+)\/post\/([\w-]+)/i;
@@ -127,6 +128,7 @@ export const threadsExtractor: ExtractorWithComments = {
 
     const { page, release } = await camoufoxPool.acquire();
     try {
+      await injectChromeCookies(page, 'threads.com').catch(() => {});
       await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 });
       // Wait for content spans to render (not just container existence)
       await page.waitForSelector(
@@ -248,6 +250,7 @@ export const threadsExtractor: ExtractorWithComments = {
   async extractComments(url: string, limit = 20): Promise<ThreadComment[]> {
     const { page, release } = await camoufoxPool.acquire();
     try {
+      await injectChromeCookies(page, 'threads.com').catch(() => {});
       await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 });
       await page.waitForTimeout(2000);
 

@@ -96,7 +96,7 @@ function checkResearchAuth(req: IncomingMessage, res: ServerResponse, isPageRequ
     }
   }
 
-  res.setHeader('WWW-Authenticate', 'Basic realm="ObsBot Research"');
+  res.setHeader('WWW-Authenticate', 'Basic realm="KnowPipe Research"');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.statusCode = 401;
   res.end(JSON.stringify({ error: 'Unauthorized' }));

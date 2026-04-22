@@ -84,7 +84,7 @@ export async function saveConsolidationNote(
   }
 
   L.push('---');
-  L.push(`*自動產生 by ObsBot /consolidate — ${report.generatedAt.slice(0, 19)}*`);
+  L.push(`*自動產生 by KnowPipe /consolidate — ${report.generatedAt.slice(0, 19)}*`);
 
   await mkdir(outDir, { recursive: true });
   await writeFile(outPath, L.join('\n'), 'utf-8');

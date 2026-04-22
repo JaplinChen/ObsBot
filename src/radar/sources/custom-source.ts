@@ -53,7 +53,7 @@ export function createCustomSource(cfg: CustomSourceConfig): RadarSource {
 
       try {
         const res = await fetchWithTimeout(url, 15_000, {
-          headers: { 'User-Agent': 'ObsBot/1.0 (+https://github.com/JaplinChen/ObsBot)' },
+          headers: { 'User-Agent': 'KnowPipe/1.0 (+https://github.com/JaplinChen/KnowPipe)' },
         });
         if (!res.ok) {
           logger.warn('radar-custom', 'HTTP 錯誤', { status: res.status, url, name: cfg.name });

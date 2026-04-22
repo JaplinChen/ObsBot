@@ -94,7 +94,7 @@ export function parseClaudeSkill(skillMd: string, skillId: string): UnifiedSkill
     category: guessCategory(meta.title ?? skillId, body),
     sourceFormat: 'claude',
     metadata: {
-      author: 'obsbot',
+      author: 'knowpipe',
       version: '1.0.0',
       tags: [],
       createdAt: nowIso(),
@@ -133,7 +133,7 @@ export function parseCodexInstructions(agentsMd: string): UnifiedSkill[] {
       category: guessCategory(heading, content),
       sourceFormat: 'codex',
       metadata: {
-        author: 'obsbot',
+        author: 'knowpipe',
         version: '1.0.0',
         tags: [],
         createdAt: nowIso(),

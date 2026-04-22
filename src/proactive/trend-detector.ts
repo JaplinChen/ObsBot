@@ -27,7 +27,7 @@ function parseKeywords(raw: string): string[] {
 
 /** Collect note metadata from vault */
 async function collectNotes(vaultPath: string): Promise<NoteEntry[]> {
-  const files = await getAllMdFiles(join(vaultPath, 'ObsBot'));
+  const files = await getAllMdFiles(join(vaultPath, 'KnowPipe'));
   const notes: NoteEntry[] = [];
 
   for (const f of files) {

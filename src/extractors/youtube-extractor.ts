@@ -105,7 +105,7 @@ async function extractVideo(url: string): Promise<ExtractedContent> {
   const uploader = data.channel ?? data.uploader ?? 'Unknown';
 
   // Download video file (720p max, mp4)
-  const tmpDir = join(tmpdir(), `obsbot-yt-${data.id}`);
+  const tmpDir = join(tmpdir(), `knowpipe-yt-${data.id}`);
   await mkdir(tmpDir, { recursive: true });
   const videoPath = join(tmpDir, 'video.mp4');
 

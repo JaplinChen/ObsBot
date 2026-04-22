@@ -175,7 +175,7 @@ export async function htmlToMarkdownWithBrowser(url: string): Promise<HtmlToMark
  */
 export async function htmlToMarkdownWithBrowserUse(url: string): Promise<HtmlToMarkdownResult | null> {
   const { BrowserUseClient } = await import('./browser-use-client.js');
-  const client = new BrowserUseClient('obsbot-web');
+  const client = new BrowserUseClient('knowpipe-web');
   try {
     const OVERALL_TIMEOUT = 45_000;
     const result = await Promise.race([

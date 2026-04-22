@@ -96,7 +96,7 @@ export async function extractPlaylist(url: string): Promise<ExtractedContent> {
   const data = JSON.parse(stdout) as YtDlpPlaylistOutput;
   const uploader = data.channel ?? data.uploader ?? 'Unknown';
 
-  const tmpDir = join(tmpdir(), `obsbot-yt-pl-${Date.now()}`);
+  const tmpDir = join(tmpdir(), `knowpipe-yt-pl-${Date.now()}`);
   await mkdir(tmpDir, { recursive: true });
 
   const videos: VideoInfo[] = [];

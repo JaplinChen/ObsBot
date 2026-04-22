@@ -127,7 +127,7 @@ export function cleanupDeletedNotes(
 export async function scanVaultNotes(vaultPath: string): Promise<Array<{
   noteId: string; filePath: string; title: string; category: string; rawContent: string;
 }>> {
-  const rootDir = join(vaultPath, 'ObsBot');
+  const rootDir = join(vaultPath, 'KnowPipe');
   const files = await getAllMdFiles(rootDir);
   const results: Array<{
     noteId: string; filePath: string; title: string; category: string; rawContent: string;

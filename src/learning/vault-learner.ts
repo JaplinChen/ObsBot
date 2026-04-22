@@ -63,7 +63,7 @@ const STOP_WORDS = new Set([
   // URL / web noise
   'https', 'http', 'com', 'www', 'net', 'org', 'io', 'co',
   'html', 'htm', 'php', 'jpg', 'png', 'gif', 'view', 'original',
-  'image', 'attachments', 'obsbot', 'source', 'archive',
+  'image', 'attachments', 'knowpipe', 'source', 'archive',
 ]);
 
 export function tokenize(text: string): string[] {
@@ -83,7 +83,7 @@ export function tokenize(text: string): string[] {
 }
 
 export async function scanVaultNotes(vaultPath: string): Promise<NoteStats[]> {
-  const files = await getAllMdFiles(join(vaultPath, 'ObsBot'));
+  const files = await getAllMdFiles(join(vaultPath, 'KnowPipe'));
   const notes: NoteStats[] = [];
 
   for (const f of files) {

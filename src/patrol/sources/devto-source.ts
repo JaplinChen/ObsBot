@@ -24,7 +24,7 @@ async function fetchByTag(tag: string): Promise<PatrolItem[]> {
   const url = `https://dev.to/api/articles?tag=${encodeURIComponent(tag)}&top=7&per_page=${PER_TAG_LIMIT}`;
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'ObsBot/1.0' },
+      headers: { 'User-Agent': 'KnowPipe/1.0' },
       signal: AbortSignal.timeout(FETCH_TIMEOUT),
     });
     if (!res.ok) return [];

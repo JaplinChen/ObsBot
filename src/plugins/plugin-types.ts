@@ -1,5 +1,5 @@
 /**
- * Plugin system types — defines the contract between ObsBot and external plugins.
+ * Plugin system types — defines the contract between KnowPipe and external plugins.
  */
 import type { ExtractedContent } from '../extractors/types.js';
 

@@ -40,5 +40,5 @@ export async function handleConsolidate(ctx: Context, config: AppConfig): Promis
     await ctx.reply(chunk);
   }
 
-  await ctx.reply(`📝 整合筆記已存到 Vault：${notePath.split('ObsBot')[1] ?? notePath}`);
+  await ctx.reply(`📝 整合筆記已存到 Vault：${notePath.split('KnowPipe')[1] ?? notePath}`);
 }

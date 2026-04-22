@@ -35,7 +35,7 @@ function parseKeywords(raw: string): string[] {
 /** Analyze quality patterns from benchmark data and vault notes */
 export async function analyzeQualityPatterns(vaultPath: string): Promise<QualityPattern> {
   const benchData = await loadBenchmarkData();
-  const files = await getAllMdFiles(join(vaultPath, 'ObsBot'));
+  const files = await getAllMdFiles(join(vaultPath, 'KnowPipe'));
 
   // Build note metadata index
   const noteMeta = new Map<string, { source: string; category: string; keywords: string[]; bodyLen: number }>();

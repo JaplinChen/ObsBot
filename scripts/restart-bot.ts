@@ -90,7 +90,7 @@ function sleep(seconds: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  log('🔄 ObsBot 重啟開始');
+  log('🔄 KnowPipe 重啟開始');
 
   // Step 0: Clean orphan processes
   const orphans = cleanOrphanNodeProcesses();

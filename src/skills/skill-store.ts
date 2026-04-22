@@ -100,7 +100,7 @@ export async function listSkills(): Promise<SkillIndexEntry[]> {
 /* ── Vault backup ─────────────────────────────────────────── */
 
 export async function saveSkillToVault(skill: UnifiedSkill, vaultPath: string): Promise<string> {
-  const dir = join(vaultPath, 'ObsBot', 'Skills');
+  const dir = join(vaultPath, 'KnowPipe', 'Skills');
   await mkdir(dir, { recursive: true });
 
   const fileName = `${skill.title.replace(/[/\\:*?"<>|]/g, '-').slice(0, 50)}.md`;

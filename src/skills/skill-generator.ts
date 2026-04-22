@@ -86,7 +86,7 @@ export async function maybeGenerateSkill(query: string, result: ReactResult): Pr
       category: 'generated',
       sourceFormat: 'claude',
       metadata: {
-        author: 'ObsBot',
+        author: 'KnowPipe',
         version: '1.0',
         tags: ['generated', 'react-loop', 'ask'],
         createdAt: new Date().toISOString(),

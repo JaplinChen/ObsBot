@@ -79,7 +79,7 @@ async function downloadImage(
     const fullName = `${filename}${ext}`;
     const fullPath = join(destDir, fullName);
     await copyFile(imageUrl, fullPath);
-    return `attachments/obsbot/${platform}/${fullName}`;
+    return `attachments/knowpipe/${platform}/${fullName}`;
   }
 
   const res = await fetchWithTimeout(imageUrl, 30_000);
@@ -91,7 +91,7 @@ async function downloadImage(
   const fullName = `${filename}${ext}`;
   const fullPath = join(destDir, fullName);
   await writeFile(fullPath, buffer);
-  return `attachments/obsbot/${platform}/${fullName}`;
+  return `attachments/knowpipe/${platform}/${fullName}`;
 }
 
 export interface SaveResult {
@@ -110,7 +110,7 @@ async function loadPersistedIndex(vaultPath: string): Promise<Map<string, string
     const data = JSON.parse(raw) as { version: number; count: number; entries: Record<string, string> };
     if (data.version !== 1) return null;
     // Staleness check: if vault file count differs by >10%, rebuild
-    const rootDir = join(vaultPath, 'ObsBot');
+    const rootDir = join(vaultPath, 'KnowPipe');
     const files = await getAllMdFiles(rootDir);
     if (Math.abs(files.length - data.count) > Math.max(data.count * 0.1, 5)) {
       logger.info('saver', 'URL 索引過期，重新掃描', { cached: data.count, actual: files.length });
@@ -139,7 +139,7 @@ async function buildUrlIndex(vaultPath: string): Promise<Map<string, string>> {
   }
 
   const index = new Map<string, string>();
-  const rootDir = join(vaultPath, 'ObsBot');
+  const rootDir = join(vaultPath, 'KnowPipe');
   const files = await getAllMdFiles(rootDir);
 
   for (const fullPath of files) {
@@ -288,17 +288,17 @@ export async function saveToVault(
     const fullFolderPath = content.subFolder
       ? `${folderPath}/${content.subFolder.replace(/[<>:"/\\|?*]/g, '').trim()}`
       : folderPath;
-    // 知識整合 獨立於 ObsBot 之外（Vault 根目錄），其餘原始資料放 ObsBot/
+    // 知識整合 獨立於 KnowPipe 之外（Vault 根目錄），其餘原始資料放 KnowPipe/
     const isKnowledgeSynthesis = categoryParts[0] === '知識整合';
-    const baseObsBot = resolve(join(vaultPath, 'ObsBot'));
+    const baseKnowPipe = resolve(join(vaultPath, 'KnowPipe'));
     const baseKnowledge = resolve(join(vaultPath, '知識整合'));
     const resolvedNotes = isKnowledgeSynthesis
       ? resolve(join(vaultPath, fullFolderPath))
-      : resolve(join(vaultPath, 'ObsBot', fullFolderPath));
+      : resolve(join(vaultPath, 'KnowPipe', fullFolderPath));
     const notesDir = isKnowledgeSynthesis
       ? (resolvedNotes === baseKnowledge || resolvedNotes.startsWith(baseKnowledge + sep) ? resolvedNotes : baseKnowledge)
-      : (resolvedNotes === baseObsBot || resolvedNotes.startsWith(baseObsBot + sep) ? resolvedNotes : baseObsBot);
-    const imagesDir = join(vaultPath, 'attachments', 'obsbot', content.platform);
+      : (resolvedNotes === baseKnowPipe || resolvedNotes.startsWith(baseKnowPipe + sep) ? resolvedNotes : baseKnowPipe);
+    const imagesDir = join(vaultPath, 'attachments', 'knowpipe', content.platform);
     await mkdir(notesDir, { recursive: true });
     await mkdir(imagesDir, { recursive: true });
     // Non-blocking flood warning — logs if same domain already has ≥5 notes in this category this week
@@ -341,7 +341,7 @@ export async function saveToVault(
             const ext = extname(v.localPath) || '.mp4';
             const vidName = `${imgSlug}-vid${i}${ext}`;
             await copyFile(v.localPath, join(imagesDir, vidName));
-            localVideoPaths.push(`attachments/obsbot/${content.platform}/${vidName}`);
+            localVideoPaths.push(`attachments/knowpipe/${content.platform}/${vidName}`);
           } catch { /* skip if copy fails */ }
         }
       }

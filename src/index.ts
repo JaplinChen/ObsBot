@@ -1,5 +1,5 @@
-// 設定 process 顯示名稱（Activity Monitor 顯示為 ObsBot）
-process.title = 'ObsBot';
+// 設定 process 顯示名稱（Activity Monitor 顯示為 KnowPipe）
+process.title = 'KnowPipe';
 
 import { loadConfig, getOwnerUserId } from './utils/config.js';
 import { logger } from './core/logger.js';
@@ -165,7 +165,7 @@ setTimeout(async () => {
   const mem = process.memoryUsage();
   const heapMB = Math.round(mem.heapUsed / 1024 / 1024);
   const lines = [
-    `🚀 ObsBot 啟動完成`,
+    `🚀 KnowPipe 啟動完成`,
     `✅ ${ok.length} 個服務正常${ok.length > 0 ? `：${ok.join('、')}` : ''}`,
     ...(fail.length > 0 ? [`❌ ${fail.length} 個服務失敗：${fail.map(f => `${f.name}(${f.error?.slice(0, 30)})`).join('、')}`] : []),
     `💾 記憶體：${heapMB} MB | PID：${process.pid}`,

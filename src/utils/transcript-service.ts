@@ -126,7 +126,7 @@ export async function getPlainTranscript(
  */
 export async function fetchYouTubeTranscript(url: string): Promise<string | null> {
   const id = randomBytes(4).toString('hex');
-  const dir = join(tmpdir(), `obsbot-subs-${id}`);
+  const dir = join(tmpdir(), `knowpipe-subs-${id}`);
   await mkdir(dir, { recursive: true });
   try {
     await execFileAsync('yt-dlp', [

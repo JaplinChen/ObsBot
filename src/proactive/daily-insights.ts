@@ -37,7 +37,7 @@ function parseList(head: string, field: string): string[] {
 
 /** Collect recent note metadata from vault. */
 async function collectRecentNotes(vaultPath: string, hours: number): Promise<NoteMeta[]> {
-  const files = await getAllMdFiles(join(vaultPath, 'ObsBot'));
+  const files = await getAllMdFiles(join(vaultPath, 'KnowPipe'));
   const cutoff = Date.now() - hours * 3_600_000;
   const notes: NoteMeta[] = [];
 

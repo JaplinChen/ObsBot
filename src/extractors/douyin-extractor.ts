@@ -71,7 +71,7 @@ async function extractDouyin(url: string, page: import('playwright-core').Page):
   // Try whisper STT for transcript
   let transcript: string | undefined;
   let timedTranscript: ExtractedContent['timedTranscript'];
-  const tmpDir = join(tmpdir(), `obsbot-douyin-${Date.now()}`);
+  const tmpDir = join(tmpdir(), `knowpipe-douyin-${Date.now()}`);
   await mkdir(tmpDir, { recursive: true });
   try {
     const videoPath = join(tmpDir, 'video.mp4');

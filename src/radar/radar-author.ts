@@ -60,7 +60,7 @@ export function promoteNextAuthor(config: RadarConfig): string | null {
  * Skips domain-style authors (containing dots) and very short names.
  */
 async function scanVaultAuthors(vaultPath: string): Promise<Map<string, number>> {
-  const files = await getAllMdFiles(join(vaultPath, 'ObsBot')).catch(() => [] as string[]);
+  const files = await getAllMdFiles(join(vaultPath, 'KnowPipe')).catch(() => [] as string[]);
   const counts = new Map<string, number>();
 
   for (const f of files) {

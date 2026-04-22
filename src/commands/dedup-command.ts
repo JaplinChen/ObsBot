@@ -22,7 +22,7 @@ interface NoteEntry {
 
 /** Scan vault and group notes by canonical URL */
 async function findDuplicates(vaultPath: string): Promise<Map<string, NoteEntry[]>> {
-  const rootDir = join(vaultPath, 'ObsBot');
+  const rootDir = join(vaultPath, 'KnowPipe');
   const files = await getAllMdFiles(rootDir);
 
   const urlMap = new Map<string, NoteEntry[]>();
@@ -59,7 +59,7 @@ async function findDuplicates(vaultPath: string): Promise<Map<string, NoteEntry[
 
 /** Format duplicate report for Telegram */
 function formatReport(dupes: Map<string, NoteEntry[]>, vaultPath: string): string {
-  const rootDir = join(vaultPath, 'ObsBot');
+  const rootDir = join(vaultPath, 'KnowPipe');
   const lines: string[] = [];
   let totalDupes = 0;
 
@@ -111,7 +111,7 @@ export async function handleDedup(ctx: Context, config: AppConfig): Promise<void
   // Execute deletion
   let deleted = 0;
   const errors: string[] = [];
-  const rootDir = join(config.vaultPath, 'ObsBot');
+  const rootDir = join(config.vaultPath, 'KnowPipe');
 
   for (const [, entries] of dupes) {
     entries.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
@@ -145,7 +145,7 @@ export async function handleDedup(ctx: Context, config: AppConfig): Promise<void
 export async function handleDedupFix(ctx: Context, config: AppConfig): Promise<void> {
   const status = await ctx.reply('正在刪除重複筆記…');
   const dupes = await findDuplicates(config.vaultPath);
-  const rootDir = join(config.vaultPath, 'ObsBot');
+  const rootDir = join(config.vaultPath, 'KnowPipe');
   let deleted = 0;
   const errors: string[] = [];
 

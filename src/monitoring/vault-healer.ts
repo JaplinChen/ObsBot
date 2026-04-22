@@ -121,7 +121,7 @@ interface ScanResult {
 
 /** Scan and auto-fix vault issues */
 export async function healVault(vaultPath: string, dryRun: boolean = false): Promise<ScanResult> {
-  const rootDir = join(vaultPath, 'ObsBot');
+  const rootDir = join(vaultPath, 'KnowPipe');
   const files = await getAllMdFiles(rootDir);
   const issues: VaultIssue[] = [];
   const corrections: CorrectionEvent[] = [];
@@ -136,7 +136,7 @@ export async function healVault(vaultPath: string, dryRun: boolean = false): Pro
       const parsed = splitNote(raw);
       if (!parsed) continue;
 
-      const relPath = filePath.replace(/.*ObsBot[\\/]/, '');
+      const relPath = filePath.replace(/.*KnowPipe[\\/]/, '');
       let modified = false;
       let newContent = raw;
 

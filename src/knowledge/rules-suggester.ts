@@ -59,7 +59,7 @@ export async function runRulesSuggester(
   }).join('\n');
 
   const prompt = [
-    `你是 ObsBot 的知識管理助手。`,
+    `你是 KnowPipe 的知識管理助手。`,
     `\n以下是 CLAUDE.md 的關鍵章節（節錄 3000 字）：\n---\n${claudeMd.slice(0, 3000)}\n---`,
     `\n以下是 Vault 中最近的決策相關筆記（${decisionNotes.length} 篇）：\n${noteSummaries}`,
     `\n請比對以上兩份資料，找出 CLAUDE.md 中**可能遺漏或需補充**的決策規則、路由項目或踩坑教訓。`,

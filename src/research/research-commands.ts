@@ -108,7 +108,7 @@ export async function handleSlides(ctx: Context, config: AppConfig): Promise<voi
   const buf = await buildPptx(spec);
 
   // 寫入暫存檔後傳送
-  const tmpPath = join(tmpdir(), `obsbot-slides-${Date.now()}.pptx`);
+  const tmpPath = join(tmpdir(), `knowpipe-slides-${Date.now()}.pptx`);
   await writeFile(tmpPath, buf);
 
   await ctx.telegram.deleteMessage(ctx.chat!.id, typing.message_id).catch(() => {});

@@ -39,7 +39,7 @@ async function getFileMtime(filePath: string): Promise<string> {
 }
 
 async function findRecentFiles(vaultPath: string, days: number): Promise<string[]> {
-  const files = await getAllMdFiles(join(vaultPath, 'ObsBot'));
+  const files = await getAllMdFiles(join(vaultPath, 'KnowPipe'));
   const cutoff = daysAgo(days);
   const recent: string[] = [];
   for (const f of files) {
