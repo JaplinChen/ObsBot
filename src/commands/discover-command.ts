@@ -12,6 +12,7 @@ import { logger } from '../core/logger.js';
 import type { AppConfig } from '../utils/config.js';
 import { isDuplicateUrl } from '../saver.js';
 import { TtlCache } from '../utils/ttl-cache.js';
+import { withTypingIndicator } from './command-runner.js';
 
 const DEFAULT_TOPICS = ['ai-agent', 'obsidian', 'cli-tool'];
 const MAX_RESULTS = 8;
@@ -169,9 +170,7 @@ export async function handleDiscover(ctx: Context, config: AppConfig): Promise<v
     return;
   }
 
-  const status = await ctx.reply(`搜尋 GitHub…`);
-
-  try {
+  await withTypingIndicator(ctx, '搜尋 GitHub…', async () => {
     const query = rawQuery.includes(' stars:')
       ? rawQuery
       : `${rawQuery} stars:>50`;
@@ -190,20 +189,12 @@ export async function handleDiscover(ctx: Context, config: AppConfig): Promise<v
       await ctx.reply(message);
     }
     logger.info('discover', 'searched', { query: rawQuery, found: repos.length });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error('discover', 'failed', { message: msg });
-    await ctx.reply(`搜尋失敗：${msg}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '搜尋失敗');
 }
 
 /** Scan trending repos in default interest areas */
 async function runTrending(ctx: Context, config: AppConfig): Promise<void> {
-  const status = await ctx.reply('掃描熱門專案中…');
-
-  try {
+  await withTypingIndicator(ctx, '掃描熱門專案中…', async () => {
     const topicRepos: Array<{ topic: string; repos: GhRepo[] }> = [];
     const allRepos: GhRepo[] = [];
 
@@ -229,10 +220,5 @@ async function runTrending(ctx: Context, config: AppConfig): Promise<void> {
       await ctx.reply(message);
     }
     logger.info('discover', 'trending-scan', { topics: DEFAULT_TOPICS.length });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await ctx.reply(`掃描失敗：${msg}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '掃描失敗');
 }

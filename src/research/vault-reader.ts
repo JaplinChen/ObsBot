@@ -10,6 +10,21 @@ import type { NoteRecord } from './types.js';
 const PREVIEW_CHARS = 280;
 const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|svg)$/i;
 
+function createLimiter(concurrency: number) {
+  let running = 0;
+  const queue: Array<() => void> = [];
+  return async <T>(fn: () => Promise<T>): Promise<T> => {
+    if (running >= concurrency) {
+      await new Promise<void>((resolve) => queue.push(resolve));
+    }
+    running++;
+    try { return await fn(); } finally {
+      running--;
+      queue.shift()?.();
+    }
+  };
+}
+
 /* ── Frontmatter → NoteRecord ────────────────────────────────── */
 
 function parseNote(filePath: string, vaultRoot: string, raw: string): NoteRecord {
@@ -46,18 +61,21 @@ function parseNote(filePath: string, vaultRoot: string, raw: string): NoteRecord
  */
 export async function scanVaultNotes(vaultPath: string): Promise<NoteRecord[]> {
   const mdFiles = await getAllMdFiles(vaultPath);
+  const limit = createLimiter(32);
 
   const results = await Promise.all(
-    mdFiles.map(async (filePath) => {
-      try {
-        const [raw, s] = await Promise.all([readFile(filePath, 'utf-8'), stat(filePath)]);
-        const note = parseNote(filePath, vaultPath, raw);
-        note.mtime = s.mtimeMs;
-        return note;
-      } catch {
-        return null;
-      }
-    }),
+    mdFiles.map((filePath) =>
+      limit(async () => {
+        try {
+          const [raw, s] = await Promise.all([readFile(filePath, 'utf-8'), stat(filePath)]);
+          const note = parseNote(filePath, vaultPath, raw);
+          note.mtime = s.mtimeMs;
+          return note;
+        } catch {
+          return null;
+        }
+      }),
+    ),
   );
 
   return (results.filter(Boolean) as NoteRecord[]).sort((a, b) => a.path.localeCompare(b.path));

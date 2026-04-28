@@ -15,6 +15,7 @@ import { createHash } from 'node:crypto';
 import { fetchJina } from '../utils/jina-reader.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 import { logger } from '../core/logger.js';
+import { withTypingIndicator } from './command-runner.js';
 
 const SNAPSHOT_FILE = join('data', 'snapshots.json');
 
@@ -88,8 +89,7 @@ export async function handleSnapshot(ctx: Context, _config: AppConfig, arg: stri
     return;
   }
 
-  const status = await ctx.reply('📸 抓取頁面快照中…');
-  try {
+  await withTypingIndicator(ctx, '📸 抓取頁面快照中…', async () => {
     const page = await fetchJina(url);
     if (!page) throw new Error('無法取得頁面內容');
 
@@ -100,7 +100,6 @@ export async function handleSnapshot(ctx: Context, _config: AppConfig, arg: stri
     const now = new Date().toISOString();
 
     if (!prev) {
-      // First snapshot
       snaps[key] = { url, title: page.title, summary: newSummary, takenAt: now };
       await saveSnapshots(snaps);
       await ctx.reply(
@@ -108,7 +107,6 @@ export async function handleSnapshot(ctx: Context, _config: AppConfig, arg: stri
         { parse_mode: 'Markdown' },
       );
     } else {
-      // Diff snapshot
       const diffPrompt = [
         'CAVEMAN RULE: Output ONLY Traditional Chinese text. No JSON.',
         '比較以下兩份網頁摘要，列出具體變化（新功能/定價調整/重大更新）。',
@@ -126,9 +124,5 @@ export async function handleSnapshot(ctx: Context, _config: AppConfig, arg: stri
       );
     }
     logger.info('radar-snapshot', '快照完成', { url, hasChanges: !!prev });
-  } catch (err) {
-    await ctx.reply(`快照失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '快照失敗');
 }

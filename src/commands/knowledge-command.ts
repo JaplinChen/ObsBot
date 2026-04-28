@@ -19,6 +19,7 @@ import { runCompilationManual, type CompilationMode } from '../proactive/compila
 import { compileTopics } from '../knowledge/topic-compiler.js';
 import { replyEmptyKnowledge, replyWithNextSteps, NEXT_STEPS } from './reply-buttons.js';
 import { startTyping, stopTyping } from '../utils/typing-indicator.js';
+import { withTypingIndicator } from './command-runner.js';
 
 /** /knowledge [subcommand] — direct or menu */
 export async function handleKnowledge(ctx: Context, config: AppConfig): Promise<void> {
@@ -92,9 +93,7 @@ export async function handleDashboard(ctx: Context, _config: AppConfig): Promise
 
 /** kb:analyze callback — run vault analysis directly */
 export async function handleAnalyze(ctx: Context, config: AppConfig): Promise<void> {
-  const status = await ctx.reply('🔍 正在分析 Vault 知識庫…');
-
-  try {
+  await withTypingIndicator(ctx, '🔍 正在分析 Vault 知識庫…', async () => {
     const typing = startTyping(ctx);
     const result = await runVaultAnalysis(config.vaultPath);
     stopTyping(typing);
@@ -113,11 +112,7 @@ export async function handleAnalyze(ctx: Context, config: AppConfig): Promise<vo
     }
 
     await replyWithNextSteps(ctx, lines.join('\n'), [...NEXT_STEPS.afterAnalyze]);
-  } catch (err) {
-    await ctx.reply(`分析失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '分析失敗');
 }
 
 /** /compile — manual knowledge compilation trigger */

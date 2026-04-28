@@ -4,6 +4,7 @@
 import type { Context } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
 import { searchVideos } from '../video/video-search.js';
+import { withTypingIndicator } from './command-runner.js';
 
 const PLATFORM_ICONS: Record<string, string> = {
   YouTube: '🎬',
@@ -21,9 +22,7 @@ export async function handleVsearch(ctx: Context, config: AppConfig): Promise<vo
     return;
   }
 
-  const status = await ctx.reply(`🔍 搜尋影片：${query}…`);
-
-  try {
+  await withTypingIndicator(ctx, `🔍 搜尋影片：${query}…`, async () => {
     const results = await searchVideos(config.vaultPath, query);
 
     if (results.length === 0) {
@@ -55,9 +54,5 @@ export async function handleVsearch(ctx: Context, config: AppConfig): Promise<vo
       // @ts-expect-error Telegraf type mismatch
       disable_web_page_preview: true,
     });
-  } catch (err) {
-    await ctx.reply(`搜尋失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '搜尋失敗');
 }

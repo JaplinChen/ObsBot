@@ -9,6 +9,7 @@ import type { AppConfig } from '../utils/config.js';
 import { getAllMdFiles, parseFrontmatter, parseArrayField } from '../vault/frontmatter-utils.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
 import { recordQuery } from '../utils/access-log.js';
+import { withTypingIndicator } from './command-runner.js';
 
 interface MatchedNote {
   title: string;
@@ -65,9 +66,7 @@ export async function handleFind(ctx: Context, config: AppConfig): Promise<void>
     return;
   }
 
-  const status = await ctx.reply(`正在搜尋 Vault「${query}」...`);
-
-  try {
+  await withTypingIndicator(ctx, `正在搜尋 Vault「${query}」...`, async () => {
     const rootDir = join(config.vaultPath, 'KnowPipe');
     const files = await getAllMdFiles(rootDir);
     const matches: MatchedNote[] = [];
@@ -79,7 +78,6 @@ export async function handleFind(ctx: Context, config: AppConfig): Promise<void>
         let score = scoreMatch(fm, query);
         let excerpt: string | undefined;
         if (score === 0) {
-          // Fall back to body full-text search
           excerpt = bodyExcerpt(raw, query);
           if (!excerpt) continue;
           score = 1;
@@ -103,7 +101,6 @@ export async function handleFind(ctx: Context, config: AppConfig): Promise<void>
       return;
     }
 
-    // 記錄查詢行為（fire-and-forget，供 enricher 自適應分析）
     recordQuery(query, top.map(n => n.category)).catch(() => {});
 
     const lines = [`🔎 Vault 搜尋「${query}」：找到 ${matches.length} 篇`, ''];
@@ -117,9 +114,5 @@ export async function handleFind(ctx: Context, config: AppConfig): Promise<void>
     }
 
     await ctx.reply(lines.join('\n'));
-  } catch (err) {
-    await ctx.reply(`Vault 搜尋失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, 'Vault 搜尋失敗');
 }

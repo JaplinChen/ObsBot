@@ -10,6 +10,7 @@ import { webSearch, rewriteQuery } from '../utils/search-service.js';
 import { isDuplicateUrl } from '../saver.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
 import { rememberUrl } from './discover-command.js';
+import { withTypingIndicator } from './command-runner.js';
 
 /** Hosts excluded from /monitor results (auth-required, content not accessible). */
 const MONITOR_SKIP_HOSTS = new Set([
@@ -118,17 +119,11 @@ async function multiPlatformSearch(keyword: string, rewritten: string): Promise<
  * Called from search-hub when user selects a topic.
  */
 export async function handleMonitorTopic(ctx: Context, config: AppConfig, topic: string): Promise<void> {
-  const status = await ctx.reply(`正在搜尋主題「${topic}」...`);
-  try {
+  await withTypingIndicator(ctx, `正在搜尋主題「${topic}」...`, async () => {
     const { rewritten } = await rewriteQuery(topic);
     const posts = await multiPlatformSearch(topic, rewritten);
     await displayResults(ctx, config, topic, posts);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await ctx.reply(`搜尋失敗：${msg}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '搜尋失敗');
 }
 
 /**
@@ -136,10 +131,8 @@ export async function handleMonitorTopic(ctx: Context, config: AppConfig, topic:
  * Called from search-hub when user provides an author name/handle.
  */
 export async function handleMonitorAuthor(ctx: Context, config: AppConfig, author: string): Promise<void> {
-  // Strip leading @ if present
   const handle = author.replace(/^@/, '').trim();
-  const status = await ctx.reply(`正在搜尋作者「${handle}」的文章...`);
-  try {
+  await withTypingIndicator(ctx, `正在搜尋作者「${handle}」的文章...`, async () => {
     const seen = new Set<string>();
     const results: Array<{ title: string; url: string; source: string }> = [];
 
@@ -153,7 +146,6 @@ export async function handleMonitorAuthor(ctx: Context, config: AppConfig, autho
       } catch { /* skip */ }
     }
 
-    // Author-specific site: searches + general author query in parallel
     const searches = [
       webSearch(`"${handle}" blog articles`, 5),
       webSearch(`site:github.com/${handle}`, 4),
@@ -171,12 +163,7 @@ export async function handleMonitorAuthor(ctx: Context, config: AppConfig, autho
     }
 
     await displayResults(ctx, config, handle, results);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await ctx.reply(`搜尋失敗：${msg}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '搜尋失敗');
 }
 
 export async function handleMonitor(ctx: Context, config: AppConfig): Promise<void> {
@@ -225,15 +212,13 @@ export async function handleSearch(ctx: Context, config: AppConfig): Promise<voi
     return;
   }
 
-  const status = await ctx.reply(`正在搜尋「${query}」...`);
-  try {
+  await withTypingIndicator(ctx, `正在搜尋「${query}」...`, async () => {
     const results = await webSearch(query, 8);
     if (results.length === 0) {
       await ctx.reply('沒有找到搜尋結果，請稍後再試。');
       return;
     }
 
-    // Check which URLs are already saved
     const entries: Array<{ title: string; url: string; host: string; saved: boolean }> = [];
     for (const r of results) {
       const dup = await isDuplicateUrl(r.url, config.vaultPath);
@@ -243,7 +228,6 @@ export async function handleSearch(ctx: Context, config: AppConfig): Promise<voi
 
     const unsaved = entries.filter(e => !e.saved);
 
-    // Format result list with save buttons
     const lines = [`🔍 搜尋「${query}」：${entries.length} 筆結果\n`];
     for (const [i, e] of entries.entries()) {
       const icon = e.saved ? '📂' : '🔹';
@@ -263,10 +247,5 @@ export async function handleSearch(ctx: Context, config: AppConfig): Promise<voi
       lines.push('', '所有結果皆已儲存。');
       await ctx.reply(lines.join('\n'));
     }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await ctx.reply(`搜尋失敗：${msg}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '搜尋失敗');
 }

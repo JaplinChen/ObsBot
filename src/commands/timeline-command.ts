@@ -11,6 +11,7 @@ import { camoufoxPool } from '../utils/camoufox-pool.js';
 import { saveToVault } from '../saver.js';
 import { classifyContent } from '../classifier.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
+import { withTypingIndicator } from './command-runner.js';
 
 type SupportedPlatform = 'threads' | 'x';
 
@@ -174,9 +175,7 @@ export async function handleTimeline(ctx: Context, config: AppConfig): Promise<v
     return;
   }
 
-  const status = await ctx.reply(`正在抓取 Threads 用戶 @${username} 的最近 ${count} 篇貼文...`);
-
-  try {
+  await withTypingIndicator(ctx, `正在抓取 Threads 用戶 @${username} 的最近 ${count} 篇貼文...`, async () => {
     const posts = await scrapeThreadsTimeline(username, count);
 
     if (posts.length === 0) {
@@ -202,10 +201,5 @@ export async function handleTimeline(ctx: Context, config: AppConfig): Promise<v
       `⏭ 略過重複：${result.skipped} 篇\n` +
       `❌ 失敗：${result.failed} 篇`,
     );
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await ctx.reply(`時間軸抓取失敗：${msg}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '時間軸抓取失敗');
 }

@@ -18,6 +18,7 @@ import { join } from 'node:path';
 import { collectRecentNotes } from './digest-command.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
+import { withTypingIndicator } from './command-runner.js';
 
 const AVAILABLE_SOURCES = ['github-trending', 'hn', 'reddit', 'devto'];
 
@@ -47,8 +48,7 @@ export async function handlePatrol(ctx: Context, config: AppConfig): Promise<voi
   }
 
   // Default: multi-platform patrol
-  const status = await ctx.reply('🔭 正在巡邏多平臺…');
-  try {
+  await withTypingIndicator(ctx, '🔭 正在巡邏多平臺…', async () => {
     const pConfig = await loadPatrolConfig();
     const { results, notifyItems } = await runMultiPatrolCycle(config, pConfig);
     pConfig.lastPatrolAt = new Date().toISOString();
@@ -68,11 +68,7 @@ export async function handlePatrol(ctx: Context, config: AppConfig): Promise<voi
 
     const summary = results.map((r) => `${r.source}: ${r.found} 項`).join(', ');
     await ctx.reply(`📊 來源統計：${summary}\n\n提示：/patrol sources 管理來源 | /patrol topics 設定主題`);
-  } catch (err) {
-    await ctx.reply(`巡邏失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '巡邏失敗');
 }
 
 async function handleToggleAuto(ctx: Context): Promise<void> {
@@ -133,8 +129,7 @@ async function handleTopics(ctx: Context, args: string[]): Promise<void> {
 }
 
 async function handleGitHubOnly(ctx: Context, config: AppConfig): Promise<void> {
-  const status = await ctx.reply('🔭 正在巡邏 GitHub Trending...');
-  try {
+  await withTypingIndicator(ctx, '🔭 正在巡邏 GitHub Trending...', async () => {
     const pConfig = await loadPatrolConfig();
     const result = await runPatrolCycle(config, pConfig.languages);
     pConfig.lastPatrolAt = new Date().toISOString();
@@ -143,11 +138,7 @@ async function handleGitHubOnly(ctx: Context, config: AppConfig): Promise<void> 
       `🔭 GitHub Trending 巡邏完成\n找到 ${result.found} 個專案\n` +
       `✅ 新儲存 ${result.saved} 篇 | ⏭️ 跳過 ${result.skipped} 篇`,
     );
-  } catch (err) {
-    await ctx.reply(`巡邏失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '巡邏失敗');
 }
 
 /**
@@ -157,8 +148,7 @@ async function handleGitHubOnly(ctx: Context, config: AppConfig): Promise<void> 
  * 存入 Vault/inbox/反向論點/。
  */
 async function handleDevil(ctx: Context, config: AppConfig, days: number): Promise<void> {
-  const status = await ctx.reply(`😈 正在掃描近 ${days} 天熱門主題…`);
-  try {
+  await withTypingIndicator(ctx, `😈 正在掃描近 ${days} 天熱門主題…`, async () => {
     const notes = await collectRecentNotes(config.vaultPath, days);
     if (notes.length === 0) {
       await ctx.reply('近期無筆記，無法產生反向論點。');
@@ -243,17 +233,12 @@ ${sample}
         ? `😈 已生成 ${saved.length} 篇反向論點筆記：\n\n${saved.join('\n')}`
         : '😈 LLM 未能生成任何反向論點，請確認 oMLX 服務正在運行。',
     );
-  } catch (err) {
-    await ctx.reply(`反向論點生成失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '反向論點生成失敗');
 }
 
 /** 掃描 Vault 中到期或即將到期（30 天內）的可驗證預測 */
 async function handlePredictions(ctx: Context, config: AppConfig): Promise<void> {
-  const status = await ctx.reply('🔮 掃描可驗證預測中…');
-  try {
+  await withTypingIndicator(ctx, '🔮 掃描可驗證預測中…', async () => {
     const rootDir = join(config.vaultPath, 'KnowPipe');
     const files = await getAllMdFiles(rootDir);
     const today = new Date();
@@ -292,9 +277,5 @@ async function handlePredictions(ctx: Context, config: AppConfig): Promise<void>
       parts.push('\n回填方式：打開筆記，將 `預測文字[信心%/日期]` 改為 `[✅正確]` 或 `[❌錯誤]`');
       await ctx.reply(parts.join('\n\n'), { parse_mode: 'Markdown' });
     }
-  } catch (err) {
-    await ctx.reply(`預測掃描失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '預測掃描失敗');
 }

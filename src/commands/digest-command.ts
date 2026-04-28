@@ -17,6 +17,7 @@ import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 import { saveReportToVault } from '../knowledge/report-saver.js';
 import { startTyping, stopTyping } from '../utils/typing-indicator.js';
 import { splitMessage } from '../utils/telegram.js';
+import { withTypingIndicator } from './command-runner.js';
 
 export interface NoteSummary {
   title: string;
@@ -185,9 +186,7 @@ function buildWeeklyPrompt(
 /** dg:weekly callback — deep weekly synthesis */
 export async function handleWeeklyDigest(ctx: Context, config: AppConfig): Promise<void> {
   const days = 7;
-  const status = await ctx.reply('正在生成週報深度合成…（約需 30-60 秒）');
-
-  try {
+  await withTypingIndicator(ctx, '正在生成週報深度合成…（約需 30-60 秒）', async () => {
     const notes = await collectRecentNotes(config.vaultPath, days);
     if (notes.length === 0) {
       await ctx.reply(`近 ${days} 天沒有筆記。`);
@@ -231,19 +230,13 @@ export async function handleWeeklyDigest(ctx: Context, config: AppConfig): Promi
 
     await ctx.reply(`💾 已存入 Vault：${savedPath.split('/KnowPipe/')[1] ?? savedPath}`);
     logger.info('digest', '週報深度合成完成', { days, notes: totalNotes, categories: catCount });
-  } catch (err) {
-    await ctx.reply(`週報生成失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '週報生成失敗');
 }
 
 /** dg:digest callback — recent knowledge digest */
 export async function handleDigest(ctx: Context, config: AppConfig): Promise<void> {
   const days = 7;
-  const status = await ctx.reply(`正在彙整近 ${days} 天的知識...`);
-
-  try {
+  await withTypingIndicator(ctx, `正在彙整近 ${days} 天的知識...`, async () => {
     const notes = await collectRecentNotes(config.vaultPath, days);
     if (notes.length === 0) {
       await ctx.reply(`近 ${days} 天沒有筆記。`);
@@ -270,9 +263,5 @@ export async function handleDigest(ctx: Context, config: AppConfig): Promise<voi
 
     await ctx.reply(output);
     logger.info('digest', '摘要完成', { days, notes: notes.length, categories: Object.keys(groups).length });
-  } catch (err) {
-    await ctx.reply(`摘要生成失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '摘要生成失敗');
 }

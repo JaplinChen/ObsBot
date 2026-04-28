@@ -10,6 +10,7 @@ import { join, basename } from 'node:path';
 import type { AppConfig } from '../utils/config.js';
 import { logger } from '../core/logger.js';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
+import { withTypingIndicator } from './command-runner.js';
 
 interface QualityIssue {
   file: string;
@@ -102,9 +103,7 @@ async function generateReport(vaultPath: string): Promise<QualityReport> {
 }
 
 export async function handleQuality(ctx: Context, config: AppConfig): Promise<void> {
-  const status = await ctx.reply('正在掃描 Vault 品質...');
-
-  try {
+  await withTypingIndicator(ctx, '正在掃描 Vault 品質...', async () => {
     const report = await generateReport(config.vaultPath);
 
     const lines = [
@@ -143,9 +142,5 @@ export async function handleQuality(ctx: Context, config: AppConfig): Promise<vo
       await ctx.reply(lines.join('\n'));
     }
     logger.info('quality', '報告完成', { total: report.totalNotes, issues: breakdownEntries.length });
-  } catch (err) {
-    await ctx.reply(`品質掃描失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '品質掃描失敗');
 }

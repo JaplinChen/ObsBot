@@ -19,3 +19,23 @@ export async function runCommandTask(
   }
 }
 
+/**
+ * Send a status message, run fn(), then delete the status message when done.
+ * On error: sends errorPrefix + error message, still deletes the status.
+ */
+export async function withTypingIndicator(
+  ctx: Context,
+  statusText: string,
+  fn: () => Promise<void>,
+  errorPrefix: string,
+): Promise<void> {
+  const status = await ctx.reply(statusText);
+  try {
+    await fn();
+  } catch (err) {
+    await ctx.reply(`${errorPrefix}：${(err as Error).message ?? String(err)}`).catch(() => {});
+  } finally {
+    await ctx.deleteMessage(status.message_id).catch(() => {});
+  }
+}
+

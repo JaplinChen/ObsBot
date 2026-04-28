@@ -6,11 +6,10 @@ import type { Context } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
 import { loadBenchmarkData, generateBenchmarkReport, formatBenchmarkReport } from '../monitoring/benchmark-store.js';
 import { logger } from '../core/logger.js';
+import { withTypingIndicator } from './command-runner.js';
 
 export async function handleBenchmark(ctx: Context, _config: AppConfig): Promise<void> {
-  const status = await ctx.reply('正在生成品質基準報告...');
-
-  try {
+  await withTypingIndicator(ctx, '正在生成品質基準報告...', async () => {
     const data = await loadBenchmarkData();
     const scoreCount = Object.keys(data.scores).length;
 
@@ -23,9 +22,5 @@ export async function handleBenchmark(ctx: Context, _config: AppConfig): Promise
     const formatted = formatBenchmarkReport(report);
     await ctx.reply(formatted);
     logger.info('benchmark', '報告完成', { total: report.totalEnriched });
-  } catch (err) {
-    await ctx.reply(`基準報告失敗：${(err as Error).message}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '基準報告失敗');
 }

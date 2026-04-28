@@ -8,6 +8,7 @@ import type { AppConfig } from '../utils/config.js';
 import { tagForceReply, forceReplyMarkup } from '../utils/force-reply.js';
 import { runReActLoop } from '../utils/react-loop.js';
 import { maybeGenerateSkill } from '../skills/skill-generator.js';
+import { withTypingIndicator } from './command-runner.js';
 
 export async function handleAsk(ctx: Context, config: AppConfig): Promise<void> {
   const text = 'text' in ctx.message! ? (ctx.message as { text: string }).text : '';
@@ -21,9 +22,7 @@ export async function handleAsk(ctx: Context, config: AppConfig): Promise<void> 
     return;
   }
 
-  const status = await ctx.reply('推理中…');
-
-  try {
+  await withTypingIndicator(ctx, '推理中…', async () => {
     const result = await runReActLoop(query, config.vaultPath);
 
     const searchCount = result.steps.filter((s) => s.action === 'search_vault').length;
@@ -32,20 +31,11 @@ export async function handleAsk(ctx: Context, config: AppConfig): Promise<void> 
       : '';
 
     await ctx.reply(header + result.answer);
-
-    // Fire-and-forget: auto-generate reusable skill if ReAct took ≥3 steps
     maybeGenerateSkill(query, result).catch(() => {});
-
     logger.info('ask', 'answered', {
       steps: result.steps.length,
       queryLen: query.length,
       answerLen: result.answer.length,
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error('ask', 'failed', { message: msg });
-    await ctx.reply(`查詢失敗：${msg}`);
-  } finally {
-    await ctx.deleteMessage(status.message_id).catch(() => {});
-  }
+  }, '查詢失敗');
 }

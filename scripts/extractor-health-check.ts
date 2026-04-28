@@ -76,6 +76,7 @@ async function main(): Promise<void> {
   console.log('| 平台 | match | parseId | extract | title | text | 耗時 | 狀態 |');
   console.log('|------|-------|---------|---------|-------|------|------|------|');
 
+  const results: TestResult[] = [];
   for (const [platform, config] of Object.entries(TEST_URLS)) {
     if (config.skip) {
       console.log(`| ${platform} | ⏭ ${config.skip} | — | — | — | — | — | ⏭ |`);
@@ -83,6 +84,7 @@ async function main(): Promise<void> {
     }
 
     const r = await testExtractor(platform, config.url);
+    results.push(r);
     const m = r.match ? '✅' : '❌';
     const p = r.parseId ? '✅' : '❌';
     const e = r.extract ? '✅' : '❌';
@@ -96,17 +98,8 @@ async function main(): Promise<void> {
     }
   }
 
-  // Exit code based on results
-  const testable = Object.entries(TEST_URLS).filter(([, c]) => !c.skip);
-  const results: TestResult[] = [];
-  registerAllExtractors(); // re-register for count
-  for (const [platform, config] of testable) {
-    // Results already printed above; for exit code we just check match
-    const ext = findExtractor(config.url);
-    if (!ext) {
-      process.exitCode = 1;
-      break;
-    }
+  if (results.some(r => !r.extract)) {
+    process.exitCode = 1;
   }
 }
 
