@@ -153,23 +153,22 @@ export async function healVault(vaultPath: string, dryRun: boolean = false): Pro
       const summaryIsBad = summary.length < SUMMARY_MIN_CHARS || isBoilerplateSummary(summary);
       if (summaryIsBad) {
         const reason = summary.length < SUMMARY_MIN_CHARS ? 'summary_too_short' : 'summary_boilerplate';
-        const issueLabel = summary.length < SUMMARY_MIN_CHARS ? `摘要過短（${summary.length} 字` : '摘要為 UI 導覽/HTML 垃圾';
+        const issueLabel = summary.length < SUMMARY_MIN_CHARS ? `摘要過短（${summary.length} 字）` : '摘要為 UI 導覽/HTML 垃圾';
         const extracted = extractSummaryFromBody(bodyText);
         if (extracted.length >= SUMMARY_MIN_CHARS && !isBoilerplateSummary(extracted)) {
           newContent = replaceSummary(newContent, extracted);
           modified = true;
-          issues.push({ file: relPath, issue: `${issueLabel}→已修復）`, autoFixable: true, fixed: true, severity: 'auto_fixed' });
+          issues.push({ file: relPath, issue: `${issueLabel}→已修復`, autoFixable: true, fixed: true, severity: 'auto_fixed' });
           corrections.push({ file: relPath, field: 'summary', timestamp: now, reason });
         } else {
           unfixableIssues.push('摘要品質不足');
-          issues.push({ file: relPath, issue: `${issueLabel}）`, autoFixable: false, severity: 'needs_review' });
+          issues.push({ file: relPath, issue: issueLabel, autoFixable: false, severity: 'needs_review' });
         }
       }
 
-      // Fix 4b: 摘要含 HTML tag → 清除
-      const currentSummary = fm.get('summary') ?? '';
-      if (!summaryIsBad && /<[a-z]+[^>]*>/i.test(currentSummary)) {
-        const cleaned = currentSummary.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      // Fix 4b: 摘要含 HTML tag → 清除（isBoilerplateSummary 已涵蓋 structural HTML，此處補寬鬆覆蓋）
+      if (!summaryIsBad && /<[a-z]+[^>]*>/i.test(summary)) {
+        const cleaned = summary.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
         if (cleaned.length >= SUMMARY_MIN_CHARS) {
           newContent = replaceSummary(newContent, cleaned);
           modified = true;

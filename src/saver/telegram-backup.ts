@@ -1,4 +1,5 @@
 /** Silent Vault-to-Telegram backup. Fire-and-forget from saver. */
+import { logger } from '../core/logger.js';
 
 export async function backupToTelegram(
   filename: string,
@@ -15,8 +16,11 @@ export async function backupToTelegram(
   form.append('caption', caption);
   form.append('document', new Blob([markdown], { type: 'text/plain' }), filename);
 
-  await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
     method: 'POST',
     body: form,
   });
+  if (!res.ok) {
+    logger.warn('telegram-backup', 'sendDocument 失敗', { status: res.status });
+  }
 }

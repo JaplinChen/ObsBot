@@ -3,6 +3,7 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { join, relative, dirname } from 'node:path';
 import type { Context } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
+import { VAULT_SUBFOLDER } from '../utils/config.js';
 import { getAllMdFiles, parseFrontmatter } from '../vault/frontmatter-utils.js';
 import { startTyping, stopTyping } from '../utils/typing-indicator.js';
 import { logger } from '../core/logger.js';
@@ -10,6 +11,10 @@ import { logger } from '../core/logger.js';
 const FEEDS_PER_CATEGORY = 20;
 const COMBINED_LIMIT = 50;
 const SKIP_CATEGORIES = new Set(['inbox', 'MOC']);
+
+function toSlug(category: string): string {
+  return category.replace(/[^a-zA-Z0-9一-鿿]/g, '-');
+}
 
 interface FeedEntry {
   title: string;
@@ -19,7 +24,7 @@ interface FeedEntry {
 }
 
 async function collectEntries(vaultPath: string): Promise<Map<string, FeedEntry[]>> {
-  const knowpipePath = join(vaultPath, 'KnowPipe');
+  const knowpipePath = join(vaultPath, VAULT_SUBFOLDER);
   const files = await getAllMdFiles(knowpipePath);
   const map = new Map<string, FeedEntry[]>();
 
@@ -96,12 +101,14 @@ export async function generateFeeds(vaultPath: string): Promise<{ feedCount: num
   const categories: string[] = [];
   const allEntries: FeedEntry[] = [];
 
+  const writes: Promise<void>[] = [];
   for (const [category, entries] of categoryMap) {
-    const slug = category.replace(/[^a-zA-Z0-9一-鿿]/g, '-');
-    await writeFile(join(outputDir, `${slug}.xml`), buildRss(category, entries), 'utf-8');
+    const slug = toSlug(category);
+    writes.push(writeFile(join(outputDir, `${slug}.xml`), buildRss(category, entries), 'utf-8'));
     categories.push(category);
     allEntries.push(...entries);
   }
+  await Promise.all(writes);
 
   // Combined feed (all categories, newest first)
   const combined = allEntries
@@ -127,7 +134,7 @@ export async function handleVaultFeeds(ctx: Context, config: AppConfig): Promise
       `部署到 Cloudflare Pages 後訂閱：`,
       `• 全部：feeds/all.xml`,
       ...categories.slice(0, 10).map((c) => {
-        const slug = c.replace(/[^a-zA-Z0-9一-鿿]/g, '-');
+        const slug = toSlug(c);
         return `• ${c}：feeds/${slug}.xml`;
       }),
     ];

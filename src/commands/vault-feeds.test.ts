@@ -38,7 +38,7 @@ function makeCtx(overrides: Record<string, unknown> = {}) {
   return {
     reply: vi.fn().mockResolvedValue({}),
     ...overrides,
-  } as never;
+  } as unknown as import('telegraf').Context;
 }
 
 function makeConfig(vaultPath = '/vault') {
