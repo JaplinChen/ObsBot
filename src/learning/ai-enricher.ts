@@ -228,7 +228,7 @@ export async function regenerateFields(
   ].join('\n');
 
   try {
-    const raw = await runLocalLlmPrompt(prompt, { timeoutMs: 30_000, model: 'standard' });
+    const raw = await runLocalLlmPrompt(prompt, { timeoutMs: 30_000, task: 'summarize' });
     if (!raw) return {};
 
     const match = raw.match(/\{[\s\S]*\}/);

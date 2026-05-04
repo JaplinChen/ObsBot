@@ -64,7 +64,7 @@ ${truncated ? '\n[後半部分已截斷]' : ''}`;
 
   try {
     const result = await runLocalLlmPrompt(prompt, {
-      model: 'flash',
+      task: 'classify',
       timeoutMs: SPEAKER_TIMEOUT_MS,
       maxTokens: 2048,
     });

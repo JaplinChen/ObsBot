@@ -145,7 +145,7 @@ export async function runReActLoop(
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const raw = await runLocalLlmPrompt(buildUserMessage(query, steps), {
       systemPrompt,
-      model: 'deep',
+      task: 'analyze',
       timeoutMs: 20_000,
       maxTokens: 512,
     });
@@ -169,7 +169,7 @@ export async function runReActLoop(
   const ctxSummary = steps.map((s) => `搜尋「${s.input}」→ ${s.observation}`).join('\n');
   const fallback = await runLocalLlmPrompt(
     `問題：${query}\n\n知識庫搜尋結果：\n${ctxSummary}\n\n請根據以上資料用繁體中文回答，若資訊不足請坦承說明。`,
-    { soul: true, model: 'deep', timeoutMs: 30_000, maxTokens: 1024 },
+    { soul: true, task: 'analyze', timeoutMs: 30_000, maxTokens: 1024 },
   );
 
   return { answer: fallback ?? '無法生成回答，請稍後再試。', steps };

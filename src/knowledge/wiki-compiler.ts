@@ -114,7 +114,7 @@ async function clusterNotes(notes: WikiNote[]): Promise<ThemeCluster[]> {
   const prompt = buildClusterPrompt(notes);
   const result = await runLocalLlmPrompt(prompt, {
     timeoutMs: 60_000,
-    model: 'flash',
+    task: 'classify',
     maxTokens: 1024,
   });
 
@@ -179,7 +179,7 @@ async function compileWikiArticle(theme: string, notes: WikiNote[]): Promise<Wik
   const prompt = buildWikiPrompt(theme, notes);
   const result = await runLocalLlmPrompt(prompt, {
     timeoutMs: 120_000,
-    model: 'deep',
+    task: 'digest',
     maxTokens: 2048,
   });
 

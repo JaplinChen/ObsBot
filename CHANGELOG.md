@@ -4,6 +4,24 @@ All notable changes to KnowPipe are documented here.
 
 Format: [MAJOR.MINOR.PATCH] — YYYY-MM-DD
 
+## [1.0.1.0] — 2026-05-03
+
+### Added
+
+- **Telegram 備份層**：每次存入 Vault 後自動將筆記備份到 Telegram 頻道，設定 `BACKUP_CHANNEL_ID` 即可啟用，錯誤不影響主流程。
+- **Vault RSS Feed 輸出**：`/vault feeds` 子指令為每個 Vault 分類生成 RSS 2.0 XML，並產生合併的 `all.xml`，輸出至 `public/feeds/`，可部署到 Cloudflare Pages 供訂閱。
+
+### Changed
+
+- **LLM 呼叫語意化路由**：8 個呼叫點從硬編碼 `model: 'flash'|'standard'|'deep'` 改為語意化 `task: 'classify'|'summarize'|'keywords'|'analyze'|'digest'`，路由邏輯集中在 `user-config.ts`，個人設定一鍵調整。
+- **oMLX deep tier 換模型**：預設 deep tier 從 26B Gemma（造成 OOM/Python crash）改為 9B Qwen3.5，並刪除 15GB 模型檔案。
+
+### Fixed
+
+- `vault-feeds`: 用 `VAULT_SUBFOLDER` 常數取代硬編碼 `'KnowPipe'`，避免路徑不一致。
+- `vault-healer`: 修正摘要品質問題訊息中的懸空括號。
+- `telegram-backup`: 補充 HTTP 錯誤回應記錄，非 2xx 回應會寫入 warn log。
+
 ## [1.0.1] — 2026-04-19
 
 ### Fixed

@@ -93,6 +93,32 @@ export function cleanTitle(title: string): string {
   return result.trim();
 }
 
+/** UI navigation / structural boilerplate patterns that indicate a bad summary */
+const BOILERPLATE_PATTERNS: RegExp[] = [
+  // Structural HTML tags
+  /<[a-z][^>]*>/i,
+  // UI navigation phrases
+  /(?:首頁|主頁|登入|登錄|註冊|Sign\s*[Ii]n|Log\s*[Ii]n|Sign\s*[Uu]p|Menu|導航|導覽|跳過廣告|Skip\s*Ad)/,
+  // Cookie / privacy banners
+  /(?:Cookie|隱私政策|Privacy\s*Policy|使用條款|Terms\s*of\s*(?:Service|Use))/i,
+  // Mostly non-Chinese/non-English (e.g. raw JSON fragments)
+];
+
+/**
+ * Returns true when a summary looks like UI navigation, HTML fragments,
+ * or other structural boilerplate rather than actual article content.
+ */
+export function isBoilerplateSummary(text: string): boolean {
+  if (!text || text.trim().length === 0) return true;
+  for (const re of BOILERPLATE_PATTERNS) {
+    if (re.test(text)) return true;
+  }
+  // Ratio guard: if ≥40% of characters are ASCII punctuation / symbols it's likely garbage
+  const symbolCount = (text.match(/[<>{}\[\]|\\\/=&%$#@^*;]/g) ?? []).length;
+  if (symbolCount / text.length >= 0.4) return true;
+  return false;
+}
+
 function truncateAtBoundary(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   const cut = text.slice(0, maxLen);

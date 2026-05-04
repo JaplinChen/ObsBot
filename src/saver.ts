@@ -10,6 +10,7 @@ import { notifyNoteAdded } from './knowledge/wiki-updater.js';
 import { slugify, attachmentSlug, extractPostId } from './saver/slug.js';
 import { isDuplicateUrl, processingUrls, updateIndex } from './saver/url-index.js';
 import { downloadImage, warnIfDomainFlood } from './saver/image-downloader.js';
+import { backupToTelegram } from './saver/telegram-backup.js';
 
 export { isDuplicateUrl, warnIfDomainFlood };
 
@@ -154,6 +155,11 @@ export async function saveToVault(
 
     updateIndex(normUrl, mdPath);
     notifyNoteAdded(rawCategory, vaultPath).catch(() => {});
+    backupToTelegram(mdFilename, markdown, {
+      title: content.title,
+      category: rawCategory,
+      url: content.url,
+    }).catch(() => {});
     return { mdPath, imageCount: localImagePaths.length, videoCount: content.videos.length };
   } finally {
     processingUrls.delete(normUrl);

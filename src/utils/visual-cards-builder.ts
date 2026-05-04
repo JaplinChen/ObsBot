@@ -125,7 +125,7 @@ ASPECT: 16:9
 
   try {
     const result = await runLocalLlmPrompt(prompt, {
-      model: 'flash',
+      task: 'keywords',
       timeoutMs: 25_000,
       maxTokens: 200,
     });

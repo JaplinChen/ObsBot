@@ -106,7 +106,7 @@ async function getLlmSuggestions(failedCases: TuneCase[]): Promise<KeywordSugges
   const prompt = buildSuggestionPrompt(failedCases);
   const result = await runLocalLlmPrompt(prompt, {
     timeoutMs: 60_000,
-    model: 'flash',
+    task: 'classify',
     maxTokens: 1024,
   });
 

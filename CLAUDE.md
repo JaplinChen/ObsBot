@@ -7,6 +7,36 @@
 - TypeScript 檔案 **≤ 300 行**，超過必須拆分。
 - 新功能**整合進現有 pipeline**（extractor → classifier → enricher → reviewer → saver），不另建獨立 command。
 
+## Bot 重啟協議
+
+> **核心原則**：KnowPipe 由 `loop.mjs` supervisor 管理，直接 kill Bot 進程會被自動重啟。**必須先停 loop 父進程。**
+
+### 標準重啟步驟
+
+```bash
+# 1. 停 loop（loop 會自動清理子進程和 PID 檔）
+kill $(cat .loop.pid 2>/dev/null) 2>/dev/null; pkill -f "loop.mjs" 2>/dev/null; sleep 3
+
+# 2. 確認所有進程已清理
+pgrep -f "loop.mjs|tsx.*index|node.*dist/index" && echo "⚠️ 進程仍在" || echo "✅ 已清理"
+
+# 3. TypeScript 編譯確認（有錯誤停止，不要啟動）
+npx tsc --noEmit
+
+# 4. 重啟
+npm run dev:loop   # dev 模式（tsx 直跑）
+# 或
+npm run start:loop # prod 模式（需先 npm run build）
+
+# 5. 確認啟動成功（等 8 秒後看 log）
+sleep 8 && tail -5 /tmp/knowpipe-launch.log
+```
+
+### 常見錯誤
+- ❌ `pkill -f "node.*index"` 單獨執行 → loop 3 秒後重啟子進程，問題不解決
+- ❌ 改完程式碼直接重啟，沒跑 `tsc --noEmit` → 帶著型別錯誤啟動
+- ❌ 在 worktree 目錄重啟 → loop 從 worktree 讀 code，主目錄不生效（hook 會 sync，但要等 commit）
+
 ## 踩坑教訓
 
 - 修改 extractor 或 formatter 後，**同時修復** Vault 中受影響的筆記——不要只修 code 不修 output。

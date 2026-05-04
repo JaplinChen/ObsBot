@@ -11,6 +11,7 @@ import { detectLanguage, translateIfNeeded } from '../enrichment/translator.js';
 import type { VaultIssue, CorrectionEvent } from './health-types.js';
 import { logger } from '../core/logger.js';
 import { appendCorrections, extractSummaryFromBody, stripHtml } from './vault-healer-utils.js';
+import { isBoilerplateSummary } from '../utils/content-cleaner.js';
 
 /** 每次 heal 最多翻譯幾篇，避免週期過長 */
 const MAX_TRANSLATIONS_PER_RUN = 5;
@@ -147,18 +148,32 @@ export async function healVault(vaultPath: string, dryRun: boolean = false): Pro
       const title = fm.get('title') ?? '';
       const bodyText = parsed.body;
 
-      // Fix 4: 摘要過短 → 從正文提取
+      // Fix 4: 摘要過短或為垃圾內容（UI 導覽 / HTML tag）→ 從正文提取
       const summary = fm.get('summary') ?? '';
-      if (summary.length < SUMMARY_MIN_CHARS) {
+      const summaryIsBad = summary.length < SUMMARY_MIN_CHARS || isBoilerplateSummary(summary);
+      if (summaryIsBad) {
+        const reason = summary.length < SUMMARY_MIN_CHARS ? 'summary_too_short' : 'summary_boilerplate';
+        const issueLabel = summary.length < SUMMARY_MIN_CHARS ? `摘要過短（${summary.length} 字）` : '摘要為 UI 導覽/HTML 垃圾';
         const extracted = extractSummaryFromBody(bodyText);
-        if (extracted.length >= SUMMARY_MIN_CHARS) {
+        if (extracted.length >= SUMMARY_MIN_CHARS && !isBoilerplateSummary(extracted)) {
           newContent = replaceSummary(newContent, extracted);
           modified = true;
-          issues.push({ file: relPath, issue: `摘要過短（${summary.length} 字→已修復）`, autoFixable: true, fixed: true, severity: 'auto_fixed' });
-          corrections.push({ file: relPath, field: 'summary', timestamp: now, reason: 'summary_too_short' });
+          issues.push({ file: relPath, issue: `${issueLabel}→已修復`, autoFixable: true, fixed: true, severity: 'auto_fixed' });
+          corrections.push({ file: relPath, field: 'summary', timestamp: now, reason });
         } else {
-          unfixableIssues.push('摘要過短');
-          issues.push({ file: relPath, issue: `摘要過短（${summary.length} 字）`, autoFixable: false, severity: 'needs_review' });
+          unfixableIssues.push('摘要品質不足');
+          issues.push({ file: relPath, issue: issueLabel, autoFixable: false, severity: 'needs_review' });
+        }
+      }
+
+      // Fix 4b: 摘要含 HTML tag → 清除（isBoilerplateSummary 已涵蓋 structural HTML，此處補寬鬆覆蓋）
+      if (!summaryIsBad && /<[a-z]+[^>]*>/i.test(summary)) {
+        const cleaned = summary.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (cleaned.length >= SUMMARY_MIN_CHARS) {
+          newContent = replaceSummary(newContent, cleaned);
+          modified = true;
+          issues.push({ file: relPath, issue: '摘要含 HTML（已修復）', autoFixable: true, fixed: true, severity: 'auto_fixed' });
+          corrections.push({ file: relPath, field: 'summary', timestamp: now, reason: 'summary_html' });
         }
       }
 

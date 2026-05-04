@@ -23,6 +23,7 @@ import {
   handleVaultAnalyzeRules, handleVaultBookmarkGap, handleVaultDraft,
 } from './vault-hub-ext.js';
 import { analyzeFailures, formatFailureReport } from '../monitoring/failure-analyzer.js';
+import { handleVaultFeeds } from './vault-feeds.js';
 
 type SubHandler = (ctx: Context, config: AppConfig) => Promise<void>;
 
@@ -56,7 +57,7 @@ const CAT_DEFS = {
     keyboard: () => Markup.inlineKeyboard([
       [Markup.button.callback('🔄 重新處理', 'vlt:reprocess'), Markup.button.callback('🔁 重試失敗', 'vlt:retry')],
       [Markup.button.callback('🔗 推薦連結', 'vlt:suggest'), Markup.button.callback('📚 Wiki 編譯', 'vlt:compile')],
-      [Markup.button.callback('📝 生成草稿', 'vlt:draft')],
+      [Markup.button.callback('📝 生成草稿', 'vlt:draft'), Markup.button.callback('📡 RSS Feed', 'vlt:feeds')],
       [Markup.button.callback('‹ 返回', 'vlt:back')],
     ]),
   },
@@ -116,6 +117,9 @@ export function createVaultHub(stats: BotStats) {
 
     // analyze-failures — enrichment failure pattern analysis
     if (sub === 'analyze-failures') { await handleVaultAnalyzeFailures(ctx); return; }
+
+    // feeds — RSS 2.0 feed generation
+    if (sub === 'feeds') { await handleVaultFeeds(ctx, config); return; }
 
     // ext sub-commands (graph / dreaming / memoir / analyze / bookmark-gap / draft)
     if (sub === 'graph') { await handleVaultGraph(ctx, config, rest); return; }
@@ -269,6 +273,8 @@ export function createVaultCallback(stats: BotStats) {
       await handleVaultDraft(ctx, config, '');
       return;
     }
+
+    if (mode === 'feeds') { await handleVaultFeeds(ctx, config); return; }
 
     if (mode === 'graph') { await handleVaultGraph(ctx, config, ''); return; }
     if (mode === 'dreaming') { await handleVaultDreaming(ctx, config, ''); return; }
