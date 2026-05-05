@@ -1172,6 +1172,12 @@ function renderRight(){
       +'<button class="tool-btn" onclick="exportPptx()"><span class="icon">📥</span>'+t('research.downloadPptx')+'</button>'
       +'<div class="od-divider"></div>'
       +'<div id="od-status" class="od-status-row"></div>'
+      +'<select id="od-style-sel" class="od-skill-sel" style="display:none">'
+        +'<option value="wired-tech">🎨 WIRED Tech · 靛藍瓷</option>'
+        +'<option value="minimal-white">⬜ 極簡白 · 科技感</option>'
+        +'<option value="warm-magazine">🟠 溫暖雜誌 · 橙金</option>'
+        +'<option value="dark-minimal">⬛ 暗色極簡 · 高端</option>'
+      +'</select>'
       +'<select id="od-skill-sel" class="od-skill-sel" style="display:none"><option value="magazine-web-ppt">magazine-web-ppt</option></select>'
       +'<button class="tool-btn od-btn" id="od-btn" onclick="exportOpenDesign()" disabled><span class="icon">✨</span>AI設計簡報（open-design）</button>';
     checkOpenDesignHealth();
@@ -1451,6 +1457,9 @@ async function checkOpenDesignHealth(){
       status.className='od-status-row ok';
       status.textContent='✅ open-design 就緒（'+d.skillCount+' 個技能）';
       btn.disabled=false;
+      // 顯示風格選擇器
+      var styleSel=document.getElementById('od-style-sel');
+      if(styleSel)styleSel.style.display='';
       // 填入 deck skill 選單
       if(sel&&d.deckSkills&&d.deckSkills.length){
         sel.innerHTML=d.deckSkills.map(function(s){
@@ -1463,12 +1472,16 @@ async function checkOpenDesignHealth(){
       status.innerHTML='⚪ open-design 未啟動 &nbsp;·&nbsp; <code>cd /Users/japlin/Works/open-design && pnpm tools-dev start web</code>';
       btn.disabled=true;
       if(sel)sel.style.display='none';
+      var styleSel2=document.getElementById('od-style-sel');
+      if(styleSel2)styleSel2.style.display='none';
     }
   }catch{
     status.className='od-status-row warn';
     status.innerHTML='⚪ open-design 無法連線';
     btn.disabled=true;
     if(sel)sel.style.display='none';
+    var styleSel3=document.getElementById('od-style-sel');
+    if(styleSel3)styleSel3.style.display='none';
   }
 }
 
@@ -1485,18 +1498,21 @@ async function exportOpenDesign(){
   if(!S.topic){alert('請先設定研究主題再生成簡報');return;}
   var btn=document.getElementById('od-btn');
   var sel=document.getElementById('od-skill-sel');
+  var styleSel=document.getElementById('od-style-sel');
   var skillId=sel?sel.value:'magazine-web-ppt';
+  var stylePreset=styleSel?styleSel.value:'wired-tech';
+  var styleLabel=styleSel&&styleSel.selectedOptions[0]?styleSel.selectedOptions[0].text:stylePreset;
   var content=S.history.filter(function(m){return m.role==='assistant';}).map(function(m){return m.content;}).join('\n\n');
   if(!content){alert('尚無研究內容，請先進行研究再生成簡報');return;}
 
-  _odShowOverlay('<div class="od-spinner"></div><h3>AI 設計中…</h3><p>open-design 正在生成投影片</p><p style="font-size:11px;color:var(--txt3)">Skill：'+skillId+'<br>這可能需要 1–4 分鐘，請稍候</p>');
+  _odShowOverlay('<div class="od-spinner"></div><h3>AI 設計中…</h3><p>open-design 正在生成投影片</p><p style="font-size:11px;color:var(--txt3)">風格：'+styleLabel+'<br>Skill：'+skillId+'<br>這可能需要 1–4 分鐘，請稍候</p>');
   if(btn){btn.disabled=true;btn.querySelector('.icon').textContent='⏳';}
 
   try{
     var r=await fetch('/api/research/opendesign/generate',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({content:content,topic:S.topic,skillId:skillId})
+      body:JSON.stringify({content:content,topic:S.topic,skillId:skillId,stylePreset:stylePreset})
     });
     var d=await r.json();
     _odCloseOverlay();
@@ -1506,21 +1522,21 @@ async function exportOpenDesign(){
       return;
     }
 
-    if(d.artifactHtmlUrl){
+    if(d.artifactHtmlPath){
+      var serveUrl='/api/research/opendesign/serve?p='+encodeURIComponent(d.artifactHtmlPath);
+      var elapsed=d.elapsed?'（生成耗時 '+d.elapsed+'s）':'';
       _odShowOverlay(
-        '<h3>✅ 簡報已生成</h3>'
-        +'<p style="font-size:12px;word-break:break-all;margin-bottom:12px">'+d.artifactHtmlUrl+'</p>'
-        +'<button class="od-close" style="background:var(--pu);color:#fff;border-color:var(--pu)" onclick="window.open(\''+d.artifactHtmlUrl+'\',\'_blank\');_odCloseOverlay()">開啟簡報</button>'
+        '<h3>✅ 簡報已生成 '+elapsed+'</h3>'
+        +'<p style="font-size:11px;color:var(--txt3);word-break:break-all;margin-bottom:12px">'+d.artifactHtmlPath.split('/').pop()+'</p>'
+        +'<button class="od-close" style="background:var(--pu);color:#fff;border-color:var(--pu)" onclick="window.open(\''+serveUrl+'\',\'_blank\');_odCloseOverlay()">🖥 開啟簡報</button>'
         +' <button class="od-close" onclick="_odCloseOverlay()">關閉</button>'
       );
     }else{
-      // Artifact 未在 60 秒內建立 — 引導至 open-design UI
-      var raw=d.rawOutput?d.rawOutput.slice(0,500):'';
+      // Artifact 未找到 — 引導至 open-design UI
+      var elapsed2=d.elapsed?'（等待 '+d.elapsed+'s）':'';
       _odShowOverlay(
-        '<h3>⚠️ 正在生成中…</h3>'
-        +'<p style="font-size:12px">Agent 可能仍在執行，請至 open-design 查看結果。</p>'
-        +(raw?'<pre style="font-size:9px;text-align:left;background:var(--bg2);padding:7px;border-radius:6px;max-height:100px;overflow:auto;word-break:break-all;margin:8px 0">'+raw+'</pre>':'')
-        +'<p style="font-size:11px;color:var(--txt3)">Artifact 目錄：<br>'+d.artifactsDir+'</p>'
+        '<h3>⚠️ 生成中或已逾時 '+elapsed2+'</h3>'
+        +'<p style="font-size:12px">請至 open-design 查看結果，簡報可能仍在生成中。</p>'
         +'<button class="od-close" style="background:var(--pu);color:#fff;border-color:var(--pu)" onclick="window.open(\''+_odWebUrl+'\',\'_blank\');_odCloseOverlay()">開啟 open-design</button>'
         +' <button class="od-close" onclick="_odCloseOverlay()">關閉</button>'
       );

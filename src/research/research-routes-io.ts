@@ -157,6 +157,22 @@ export async function handleIORequest(
 
   /* ── open-design 整合 ──────────────────────────────────────── */
 
+  // 代理服務：讀取本機 HTML artifact 並回傳（繞過 file:// 限制）
+  if (url === '/api/research/opendesign/serve' && method === 'GET') {
+    const filePath = new URL(`http://x${req.url}`).searchParams.get('p') ?? '';
+    const OD_PROJECTS = '/Users/japlin/Works/open-design/.od/projects/';
+    if (!filePath || !filePath.startsWith(OD_PROJECTS) || !filePath.endsWith('.html')) {
+      json(res, { error: '無效路徑' }, 400); return true;
+    }
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.end(content);
+    } catch { json(res, { error: '找不到檔案' }, 404); }
+    return true;
+  }
+
   // Health check：確認 open-design 是否在 port 7456 運行，同時回傳可用 deck skill
   if (url === '/api/research/opendesign/health' && method === 'GET') {
     try {
@@ -180,10 +196,34 @@ export async function handleIORequest(
 
   // 生成進階簡報：呼叫 open-design /api/chat，agentId=claude，skillId 由前端傳入
   if (url === '/api/research/opendesign/generate' && method === 'POST') {
-    const body = parseBody<{ content: string; topic: string; agentId?: string; skillId?: string }>(await readBody(req), res);
+    const body = parseBody<{ content: string; topic: string; agentId?: string; skillId?: string; stylePreset?: string }>(await readBody(req), res);
     if (!body) return true;
 
-    const message = `請根據以下研究內容，製作一份關於「${body.topic}」的專業投影片簡報。\n\n研究內容如下：\n\n${body.content.slice(0, 6000)}`;
+    const STYLE_PRESETS: Record<string, { direction: string; color: string }> = {
+      'wired-tech':    { direction: 'WIRED Tech · 數據 + 工程感（深色背景，大 serif 標題，monospace 數字）', color: '靛藍瓷（深藍底色 #1a2744，白字，靛藍 accent）' },
+      'minimal-white': { direction: '極簡主義 · 留白 + 乾淨線條（白底，深藍文字，細邊框）',                color: '純白底 + 深海藍（#0f1e3c）' },
+      'warm-magazine': { direction: '雜誌排版 · 故事感（暖白背景，橙金 accent，人文感字體）',             color: '暖白 + 橙金（#c97d2a）' },
+      'dark-minimal':  { direction: '暗色極簡 · 高端感（深黑背景，金色 accent，大量留白）',               color: '炭黑（#111111）+ 金色（#d4a843）' },
+    };
+    const preset = STYLE_PRESETS[body.stylePreset ?? 'wired-tech'] ?? STYLE_PRESETS['wired-tech'];
+
+    const message = [
+      `請根據以下研究內容，製作一份關於「${body.topic}」的專業投影片簡報。`,
+      '',
+      '【設計規格 — 以下參數已確認，請勿再詢問，直接開始生成】',
+      `視覺方向：${preset.direction}`,
+      `主題色：${preset.color}`,
+      '原始素材：無，使用佔位色塊',
+      '圖片素材：無（用顏色色塊替代圖片）',
+      '硬性約束：無',
+      '投影片數量：8-10 張，16:9 格式',
+      '目標受眾：企業技術主管',
+      '語言：繁體中文（標題可保留英文關鍵字）',
+      '',
+      '研究內容如下：',
+      '',
+      body.content.slice(0, 6000),
+    ].join('\n');
 
     try {
       const ctrl = new AbortController();
@@ -207,11 +247,12 @@ export async function handleIORequest(
         return true;
       }
 
-      // 讀取 SSE 串流直到 event: end
+      // 讀取 SSE 串流直到 event: end（最長 10 分鐘）
+      const startTs = Date.now();
       let fullOutput = '';
       const decoder = new TextDecoder();
       const reader = (r.body as AsyncIterable<Uint8Array>)[Symbol.asyncIterator]();
-      const deadline = Date.now() + 300_000;
+      const deadline = Date.now() + 600_000;
 
       while (Date.now() < deadline) {
         const { done, value } = await reader.next();
@@ -220,31 +261,42 @@ export async function handleIORequest(
         if (fullOutput.includes('event: end')) break;
       }
 
-      // 從 SSE 輸出擷取 run ID，再掃 open-design artifacts 目錄
+      // 掃 .od/projects/ 找最近修改過的 HTML artifact
       const OD_DIR = '/Users/japlin/Works/open-design';
-      const artifactsBase = join(OD_DIR, '.od', 'artifacts');
-      let artifactHtmlUrl: string | null = null;
+      const projectsBase = join(OD_DIR, '.od', 'projects');
+      let artifactHtmlPath: string | null = null;
+      const RECENCY_MS = 10 * 60 * 1000; // 10 分鐘內建立的視為本次生成
 
       try {
         const { readdirSync, statSync } = await import('node:fs');
-        if (existsSync(artifactsBase)) {
-          const dirs = readdirSync(artifactsBase)
-            .map(d => ({ name: d, mtime: statSync(join(artifactsBase, d)).mtimeMs }))
-            .sort((a, b) => b.mtime - a.mtime); // 最新的在前
-          if (dirs.length > 0) {
-            const latest = join(artifactsBase, dirs[0].name, 'index.html');
-            // 只取 60 秒內新生成的 artifact（避免拿到舊的）
-            if (existsSync(latest) && Date.now() - dirs[0].mtime < 60_000) {
-              artifactHtmlUrl = `file://${latest}`;
+        if (existsSync(projectsBase)) {
+          // 找最近修改的 project 目錄
+          const projectDirs = readdirSync(projectsBase)
+            .map(d => ({ id: d, mtime: statSync(join(projectsBase, d)).mtimeMs }))
+            .filter(d => Date.now() - d.mtime < RECENCY_MS)
+            .sort((a, b) => b.mtime - a.mtime);
+
+          for (const proj of projectDirs) {
+            const projDir = join(projectsBase, proj.id);
+            // 找最新的 .html 檔（排除範本檔）
+            const htmlFiles = readdirSync(projDir)
+              .filter(f => f.endsWith('.html') && !f.startsWith('.'))
+              .map(f => ({ name: f, mtime: statSync(join(projDir, f)).mtimeMs }))
+              .filter(f => Date.now() - f.mtime < RECENCY_MS)
+              .sort((a, b) => b.mtime - a.mtime);
+            if (htmlFiles.length > 0) {
+              artifactHtmlPath = join(projDir, htmlFiles[0].name);
+              break;
             }
           }
         }
       } catch { /* 掃目錄失敗不影響回傳 */ }
 
+      const elapsed = Math.round((Date.now() - startTs) / 1000);
       json(res, {
         ok: true,
-        artifactHtmlUrl,
-        artifactsDir: artifactsBase,
+        artifactHtmlPath,  // 本機路徑，前端用 /api/research/opendesign/serve?p= 讀取
+        elapsed,
         rawOutput: fullOutput.slice(0, 3000),
       });
     } catch (e: unknown) {
