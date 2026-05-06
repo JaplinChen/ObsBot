@@ -207,22 +207,28 @@ export async function handleIORequest(
     };
     const preset = STYLE_PRESETS[body.stylePreset ?? 'wired-tech'] ?? STYLE_PRESETS['wired-tech'];
 
+    // 提取前 2500 字並拆成段落，作為投影片大綱依據
+    const contentSnippet = body.content.slice(0, 2500);
+    const paragraphs = contentSnippet.split(/\n{2,}/).filter(p => p.trim().length > 20);
+    const slideTopics = paragraphs.slice(0, 4).map((p, i) => `第${i + 2}張：${p.trim().slice(0, 60)}`).join('\n');
+
     const message = [
       `請根據以下研究內容，製作一份關於「${body.topic}」的專業投影片簡報。`,
       '',
-      '【設計規格 — 以下參數已確認，請勿再詢問，直接開始生成】',
+      '【設計規格 — 以下已確認，略過所有詢問，直接生成 HTML】',
       `視覺方向：${preset.direction}`,
       `主題色：${preset.color}`,
-      '原始素材：無，使用佔位色塊',
-      '圖片素材：無（用顏色色塊替代圖片）',
-      '硬性約束：無',
-      '投影片數量：8-10 張，16:9 格式',
+      '投影片數量：5 張（固定），16:9 格式',
       '目標受眾：企業技術主管',
       '語言：繁體中文（標題可保留英文關鍵字）',
+      '圖片素材：無，用顏色色塊替代',
       '',
-      '研究內容如下：',
+      '【投影片結構 — 直接用以下結構，不需重新規劃】',
+      `第1張：封面 — 標題「${body.topic}」`,
+      slideTopics || `第2張：核心概念\n第3張：關鍵數據\n第4張：技術架構\n第5張：結論`,
       '',
-      body.content.slice(0, 6000),
+      '研究內容（摘要）：',
+      contentSnippet,
     ].join('\n');
 
     try {
