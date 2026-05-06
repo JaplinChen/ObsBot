@@ -259,6 +259,13 @@ export async function handleIORequest(
         if (done) break;
         fullOutput += decoder.decode(value, { stream: true });
         if (fullOutput.includes('event: end')) break;
+        // 偵測 Claude 額度耗盡
+        if (fullOutput.includes("You've hit your limit") || fullOutput.includes('hit your limit')) {
+          const resetMatch = fullOutput.match(/resets\s+([^\\"\\n]+)/);
+          const resetTime = resetMatch ? resetMatch[1].trim() : '稍後';
+          json(res, { error: `Claude 使用額度已耗盡，將於 ${resetTime} 重置。請稍後再試。`, limitHit: true }, 503);
+          return true;
+        }
       }
 
       // 掃 .od/projects/ 找最近修改過的 HTML artifact
