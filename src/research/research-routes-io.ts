@@ -10,6 +10,29 @@ import { buildPptx } from './slide-pptx.js';
 import { renderSlidePreviewHtml } from './slide-preview.js';
 import { saveReportToVault } from '../knowledge/report-saver.js';
 
+/* ── open-design daemon 動態 port 發現 ─────────────────────────── */
+// OD 每次啟動的 port 不固定，透過讀取 daemon log 取最新 URL
+const OD_DAEMON_LOG = '/Users/japlin/Works/open-design/.tmp/tools-dev/default/logs/daemon/latest.log';
+const OD_FALLBACK_PORT = '7456';
+let _odBaseUrlCache: string | null = null;
+let _odBaseUrlCacheTs = 0;
+
+function getOdBaseUrl(): string {
+  const now = Date.now();
+  if (_odBaseUrlCache && now - _odBaseUrlCacheTs < 30_000) return _odBaseUrlCache;
+  try {
+    const log = readFileSync(OD_DAEMON_LOG, 'utf-8');
+    // 取最後一個 "url" 欄位（最新啟動的 port）
+    const matches = [...log.matchAll(/"url"\s*:\s*"(http:\/\/127\.0\.0\.1:\d+)"/g)];
+    if (matches.length > 0) {
+      _odBaseUrlCache = matches[matches.length - 1][1];
+      _odBaseUrlCacheTs = now;
+      return _odBaseUrlCache;
+    }
+  } catch { /* log 不存在時 fallback */ }
+  return `http://127.0.0.1:${OD_FALLBACK_PORT}`;
+}
+
 /* ── 共用工具 ────────────────────────────────────────────────── */
 
 function readBody(req: IncomingMessage): Promise<string> {
@@ -176,12 +199,12 @@ export async function handleIORequest(
     return true;
   }
 
-  // Health check：確認 open-design 是否在 port 7456 運行，同時回傳可用 deck skill
+  // Health check：確認 open-design 是否在運行，同時回傳可用 deck skill
   if (url === '/api/research/opendesign/health' && method === 'GET') {
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 2500);
-      const r = await fetch('http://127.0.0.1:7456/api/skills', { signal: ctrl.signal });
+      const r = await fetch(`${getOdBaseUrl()}/api/skills`, { signal: ctrl.signal });
       clearTimeout(timer);
       if (r.ok) {
         const raw = await r.json() as { skills?: unknown[] } | unknown[];
@@ -246,7 +269,7 @@ export async function handleIORequest(
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 300_000); // 5 min max
 
-      const r = await fetch('http://127.0.0.1:7456/api/chat', {
+      const r = await fetch(`${getOdBaseUrl()}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
