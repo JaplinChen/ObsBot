@@ -1188,7 +1188,8 @@ function renderRight(){
         +'<option value="3">⚡ 快速 3 張（~3分鐘）</option>'
         +'<option value="5" selected>📊 標準 5 張（~6分鐘）</option>'
       +'</select>'
-      +'<button class="tool-btn od-btn" id="od-btn" onclick="exportOpenDesign()" disabled><span class="icon">✨</span>AI設計簡報（open-design）</button>';
+      +'<button class="tool-btn od-btn" id="od-btn" onclick="exportOpenDesign()" disabled><span class="icon">✨</span>AI設計簡報（open-design）</button>'
+      +_odLastSlideBtn();
     checkOpenDesignHealth();
   }
 }
@@ -1507,6 +1508,28 @@ async function checkOpenDesignHealth(){
 }
 
 var _odAbortCtrl=null;var _odTimerIv=null;var _odStartTs=0;
+var _OD_LAST_KEY='od_last_artifact';
+function _odLastSlideBtn(){
+  try{
+    var saved=JSON.parse(localStorage.getItem(_OD_LAST_KEY)||'null');
+    if(!saved||!saved.path)return '';
+    var label=saved.topic?'《'+saved.topic+'》':'上次';
+    var ts=saved.ts?new Date(saved.ts).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    return '<button class="tool-btn" id="od-reopen-btn" onclick="_odReopenLast()" style="font-size:12px;color:var(--pu);margin-top:4px">'
+      +'<span class="icon">🖥</span>重開 '+label+(ts?' · '+ts:'')+'</button>';
+  }catch{return '';}
+}
+function _odReopenLast(){
+  try{
+    var saved=JSON.parse(localStorage.getItem(_OD_LAST_KEY)||'null');
+    if(!saved||!saved.path){alert('沒有上次的簡報記錄');return;}
+    var serveUrl='/api/research/opendesign/serve?p='+encodeURIComponent(saved.path);
+    window.open(serveUrl,'_blank');
+  }catch(e){alert('無法開啟：'+e.message);}
+}
+function _odSaveLast(path,topic){
+  try{localStorage.setItem(_OD_LAST_KEY,JSON.stringify({path:path,topic:topic||S.topic||'',ts:Date.now()}));}catch{}
+}
 function _odShowOverlay(html){
   var el=document.createElement('div');
   el.className='od-overlay';el.id='od-overlay';
@@ -1589,6 +1612,7 @@ async function exportOpenDesign(){
     }
 
     if(d.artifactHtmlPath){
+      _odSaveLast(d.artifactHtmlPath,S.topic);
       var serveUrl='/api/research/opendesign/serve?p='+encodeURIComponent(d.artifactHtmlPath);
       var elapsedMin=d.elapsed?Math.floor(d.elapsed/60)+'分'+d.elapsed%60+'秒':'';
       _odShowOverlay(
