@@ -1110,11 +1110,6 @@ function renderRight(){
     var noAnalysis=!S.overview,noTopic=!S.topic;
     var eDis=noTopic?' disabled':'',tDis=noAnalysis?' disabled':'';
 
-    // 快速匯出
-    var exportBody=(noTopic?'<div class="tool-section-note">請先執行分析以啟用匯出</div>':'')
-      +'<button class="tool-btn'+eDis+'" onclick="exportPreview()"><span class="icon">👁</span>'+t('research.previewSlides')+'</button>'
-      +'<button class="tool-btn'+eDis+'" onclick="exportPptx()"><span class="icon">📥</span>'+t('research.downloadPptx')+'</button>';
-
     // AI 工具
     var aiBody=(noAnalysis?'<div class="tool-section-note">請先執行分析以啟用 AI 工具</div>':'')
       +apiTools.map(a=>'<button class="tool-btn'+tDis+'" onclick="runTool(\''+a.tool+'\')"><span class="icon">'+a.icon+'</span>'+t(a.labelKey)+'</button>').join('');
@@ -1122,8 +1117,7 @@ function renderRight(){
     // 提示工具
     var promptBody=promptTools.map((p,i)=>'<button class="tool-btn'+tDis+'" onclick="sendPromptTool('+i+')"><span class="icon">'+p.icon+'</span>'+t(p.labelKey)+'</button>').join('');
 
-    let h=_tsec('export','📥',t('research.quickExport'),exportBody)
-      +_tsec('ai','🤖',t('research.aiTools'),aiBody)
+    let h=_tsec('ai','🤖',t('research.aiTools'),aiBody)
       +_tsec('prompt','💡','提示工具',promptBody);
     el.innerHTML=h;
     window._promptTools=promptTools.map(p=>({icon:p.icon,label:t(p.labelKey),prompt:t(p.promptKey)}));
@@ -1133,7 +1127,7 @@ function renderRight(){
   }
 }
 
-var _toolOpen={export:false,ai:true,prompt:false};
+var _toolOpen={ai:true,prompt:false};
 function toggleToolSec(id){_toolOpen[id]=!_toolOpen[id];renderRight();}
 
 function _tsec(id,icon,label,body){
