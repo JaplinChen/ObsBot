@@ -193,10 +193,9 @@ export async function handleResearchRequest(req: IncomingMessage, res: ServerRes
     return true;
   }
 
-  // 投影片/儲存/sessions/open-design — 委派給 IO 模組
+  // 投影片/儲存/sessions — 委派給 IO 模組
   if (url.startsWith('/api/research/export/') || url === '/api/research/save-report'
-      || url === '/api/research/save-all' || url === '/api/research/sessions'
-      || url.startsWith('/api/research/opendesign/')) {
+      || url === '/api/research/save-all' || url === '/api/research/sessions') {
     return handleIORequest(url, method, req, res, getVaultPath());
   }
 
