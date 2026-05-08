@@ -71,11 +71,20 @@ export async function testToken(token: string): Promise<{ ok: boolean; username?
 
 // ── HTTP body reader ──────────────────────────────────────────────────────────
 
+const MAX_BODY_BYTES = 1_048_576; // 1 MB
+
 export function readBody(req: IncomingMessage): Promise<string> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let body = '';
-    req.on('data', (chunk) => { body += chunk; });
+    req.on('data', (chunk: Buffer) => {
+      body += chunk;
+      if (body.length > MAX_BODY_BYTES) {
+        req.destroy();
+        reject(new Error('request body too large'));
+      }
+    });
     req.on('end', () => resolve(body));
+    req.on('error', reject);
   });
 }
 
@@ -83,10 +92,11 @@ export function readBody(req: IncomingMessage): Promise<string> {
 
 export function openBrowser(url: string): void {
   try { new URL(url); } catch { return; }
-  const parsed = new URL(url);
-  const origin = `${parsed.protocol}//${parsed.host}`;
-  // 用 AppleScript 偵測 Chrome 是否已有此 origin 的 tab；有則 focus，沒有才開新 tab
-  const script = `
+
+  if (process.platform === 'darwin') {
+    const parsed = new URL(url);
+    const origin = `${parsed.protocol}//${parsed.host}`;
+    const script = `
 tell application "Google Chrome"
   set tabFound to false
   repeat with w in windows
@@ -105,7 +115,13 @@ tell application "Google Chrome"
     open location "${url}"
   end if
 end tell`;
-  spawn('osascript', ['-e', script], { stdio: 'ignore', detached: true }).unref();
+    spawn('osascript', ['-e', script], { stdio: 'ignore', detached: true }).unref();
+    return;
+  }
+
+  // Linux / Windows fallback
+  const opener = process.platform === 'win32' ? 'start' : 'xdg-open';
+  spawn(opener, [url], { stdio: 'ignore', detached: true, shell: process.platform === 'win32' }).unref();
 }
 
 // ── LLM model detection ───────────────────────────────────────────────────────
@@ -144,6 +160,21 @@ export async function detectModels(
       if (!res.ok) return { ok: false, models: [], error: `HTTP ${res.status}` };
       const data = await res.json() as { data?: Array<{ id: string }> };
       return { ok: true, models: (data.data ?? []).map((m) => m.id).sort() };
+    }
+    if (provider === 'gemini') {
+      const key = resolveKey('GEMINI_API_KEY', cfg.gemini.apiKey);
+      if (!key) return { ok: false, models: [], error: 'Gemini API Key 未設定' };
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`,
+        { signal: AbortSignal.timeout(8_000) },
+      );
+      if (!res.ok) return { ok: false, models: [], error: `HTTP ${res.status}` };
+      const data = await res.json() as { models?: Array<{ name: string }> };
+      const models = (data.models ?? [])
+        .map((m) => m.name.replace('models/', ''))
+        .filter((id) => id.startsWith('gemini'))
+        .sort();
+      return { ok: true, models };
     }
     return { ok: false, models: [], error: `不支援的 provider: ${provider}` };
   } catch (e) {

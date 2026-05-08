@@ -6,7 +6,7 @@ import type { Context } from 'telegraf';
 import { Markup } from 'telegraf';
 import {
   getUserConfig, updateUserConfig, getDefaults, reloadUserConfig,
-  getEnabledPlatforms,
+  getEnabledPlatforms, ALL_PLATFORMS,
 } from '../utils/user-config.js';
 import type { FeatureFlags } from '../utils/user-config.js';
 
@@ -24,6 +24,25 @@ const FEATURE_LABELS: Record<keyof FeatureFlags, string> = {
   qualityReview: '品質審查',
   speakerIdentification: 'YouTube 說話人識別',
 };
+
+function buildFeatureKeyboard(cfg: ReturnType<typeof getUserConfig>) {
+  return Object.entries(FEATURE_LABELS).map(([key, label]) => {
+    const on = cfg.features[key as keyof FeatureFlags];
+    return [Markup.button.callback(`${on ? '✅' : '⬜'} ${label}`, `cfg:feat:${key}`)];
+  });
+}
+
+function buildExtractorKeyboard(enabledSet: Set<string>) {
+  const rows = [];
+  for (let i = 0; i < ALL_PLATFORMS.length; i += 2) {
+    const pair = [ALL_PLATFORMS[i], ALL_PLATFORMS[i + 1]].filter(Boolean) as string[];
+    rows.push(pair.map((p) => Markup.button.callback(
+      `${enabledSet.has(p) ? '✅' : '⬜'} ${p}`,
+      `cfg:ext:${p}`,
+    )));
+  }
+  return rows;
+}
 
 /** Main /config handler */
 export async function handleConfig(ctx: Context): Promise<void> {
@@ -61,17 +80,9 @@ export async function handleConfig(ctx: Context): Promise<void> {
 
 async function showFeatures(ctx: Context): Promise<void> {
   const cfg = getUserConfig();
-  const buttons = Object.entries(FEATURE_LABELS).map(([key, label]) => {
-    const on = cfg.features[key as keyof FeatureFlags];
-    return [Markup.button.callback(
-      `${on ? '✅' : '⬜'} ${label}`,
-      `cfg:feat:${key}`,
-    )];
-  });
-
   await ctx.reply('🔘 **功能開關**（點擊切換）', {
     parse_mode: 'Markdown',
-    ...Markup.inlineKeyboard(buttons),
+    ...Markup.inlineKeyboard(buildFeatureKeyboard(cfg)),
   });
 }
 
@@ -94,24 +105,18 @@ async function showLlm(ctx: Context): Promise<void> {
     `  Deep: \`${cfg.llm.opencode.models.deep}\``,
     `  Timeout: \`${cfg.llm.opencode.timeoutMs}ms\``,
     '',
-    '修改方式：編輯 `data/user-config.json`',
+    '修改方式：管理介面 `http://localhost:3001/` 或編輯 `data/user-config.json`',
   ];
 
   await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
 }
 
 async function showExtractors(ctx: Context): Promise<void> {
-  const cfg = getUserConfig();
   const enabled = new Set(getEnabledPlatforms());
-  const all = cfg.extractors.enabled;
-
-  const lines = ['🌐 **平台 Extractors**', ''];
-  for (const p of all) {
-    lines.push(`${enabled.has(p) ? '✅' : '⬜'} ${p}`);
-  }
-  lines.push('', '停用平台：編輯 `data/user-config.json` 的 `extractors.disabled`');
-
-  await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+  await ctx.reply('🌐 **平台 Extractors**（點擊切換）', {
+    parse_mode: 'Markdown',
+    ...Markup.inlineKeyboard(buildExtractorKeyboard(enabled)),
+  });
 }
 
 async function resetConfig(ctx: Context): Promise<void> {
@@ -136,18 +141,32 @@ export async function handleConfigFeatureToggle(ctx: Context): Promise<void> {
   updateUserConfig({ features: { [key]: newVal } });
 
   await ctx.answerCbQuery(`${FEATURE_LABELS[key]}：${newVal ? '已啟用' : '已停用'}`);
+  await ctx.editMessageReplyMarkup(
+    Markup.inlineKeyboard(buildFeatureKeyboard(getUserConfig())).reply_markup,
+  );
+}
 
-  // Refresh the inline keyboard
-  const updated = getUserConfig();
-  const buttons = Object.entries(FEATURE_LABELS).map(([k, label]) => {
-    const on = updated.features[k as keyof FeatureFlags];
-    return [Markup.button.callback(
-      `${on ? '✅' : '⬜'} ${label}`,
-      `cfg:feat:${k}`,
-    )];
-  });
+/** Toggle an extractor platform via inline keyboard callback. */
+export async function handleConfigExtractorToggle(ctx: Context): Promise<void> {
+  if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
+  const platform = ctx.callbackQuery.data.replace('cfg:ext:', '');
+  if (!ALL_PLATFORMS.includes(platform)) return;
 
-  await ctx.editMessageReplyMarkup(Markup.inlineKeyboard(buttons).reply_markup);
+  const cfg = getUserConfig();
+  const disabled = new Set(cfg.extractors.disabled);
+  const wasEnabled = !disabled.has(platform);
+  if (wasEnabled) {
+    disabled.add(platform);
+  } else {
+    disabled.delete(platform);
+  }
+  updateUserConfig({ extractors: { disabled: [...disabled] } });
+
+  await ctx.answerCbQuery(`${platform}：${wasEnabled ? '已停用' : '已啟用'}`);
+  const newEnabled = new Set(getEnabledPlatforms());
+  await ctx.editMessageReplyMarkup(
+    Markup.inlineKeyboard(buildExtractorKeyboard(newEnabled)).reply_markup,
+  );
 }
 
 /** Reset config to defaults. */

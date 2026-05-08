@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { getUserConfig } from '../utils/user-config.js';
 
 const execFileAsync = promisify(execFile);
 const COMMAND_TIMEOUT_MS = 4_000;
@@ -140,9 +141,10 @@ export async function getSystemHealthSnapshot(): Promise<SystemHealthSnapshot> {
     .sort((a, b) => b.rssMB - a.rssMB);
   const claudeSessions = await getClaudeSessions(entries);
 
+  const threshold = getUserConfig().monitor.freeThresholdPercent;
   return {
     freeMemoryPercent,
-    pressureStatus: freeMemoryPercent !== null && freeMemoryPercent < 15 ? 'degraded' : 'healthy',
+    pressureStatus: freeMemoryPercent !== null && freeMemoryPercent < threshold ? 'degraded' : 'healthy',
     candidateCount: candidates.length,
     topCandidate: candidates[0] ?? null,
     candidates: candidates.slice(0, 5),
