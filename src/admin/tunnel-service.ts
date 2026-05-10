@@ -44,15 +44,19 @@ export function startQuickTunnel(opts: TunnelOptions): () => void {
     currentChild = child;
 
     let urlFound = false;
+    let lastErrLine = '';
     let timeoutId: NodeJS.Timeout | undefined;
 
     function handleChunk(chunk: Buffer): void {
       const text = chunk.toString('utf-8');
+      // 記錄最後一行非空錯誤訊息，供 exit handler 附上原因
+      const errMatch = text.match(/ERR .+/);
+      if (errMatch) lastErrLine = errMatch[0].slice(0, 80);
       if (urlFound) return;
       const match = TUNNEL_URL_RE.exec(text);
       if (match) {
         urlFound = true;
-        retryCount = 0; // 成功後重置重試計數
+        retryCount = 0;
         if (timeoutId !== undefined) clearTimeout(timeoutId);
         onUrl(match[0]);
       }
@@ -72,9 +76,10 @@ export function startQuickTunnel(opts: TunnelOptions): () => void {
       if (retryCount < MAX_RETRIES) {
         const delay = RETRY_DELAYS_MS[retryCount] ?? 120_000;
         retryCount++;
+        const detail = lastErrLine ? `\n${lastErrLine}` : '';
         const reason = urlFound
-          ? `tunnel 斷線（code=${code ?? signal}），${delay / 1000}s 後重連（第 ${retryCount}/${MAX_RETRIES} 次）`
-          : `cloudflared 意外退出（code=${code ?? signal}），${delay / 1000}s 後重試（第 ${retryCount}/${MAX_RETRIES} 次）`;
+          ? `tunnel 斷線（code=${code ?? signal}），${delay / 1000}s 後重連（第 ${retryCount}/${MAX_RETRIES} 次）${detail}`
+          : `cloudflared 意外退出（code=${code ?? signal}），${delay / 1000}s 後重試（第 ${retryCount}/${MAX_RETRIES} 次）${detail}`;
         onError?.(reason);
         retryTimerId = setTimeout(spawnTunnel, delay);
       } else {
