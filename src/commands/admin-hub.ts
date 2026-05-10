@@ -30,6 +30,17 @@ function rewriteText(ctx: Context, newCommand: string, args: string): void {
 
 type CtxHandler = (ctx: Context, config: AppConfig) => Promise<void>;
 
+async function showLearnMenu(ctx: Context): Promise<void> {
+  await ctx.reply(
+    '選擇 Vault 學習操作：',
+    Markup.inlineKeyboard([
+      [Markup.button.callback('📖 更新分類規則', 'lr:scan')],
+      [Markup.button.callback('🔄 重新分類筆記', 'lr:reclassify')],
+      [Markup.button.callback('🌐 批次翻譯', 'lr:translate')],
+    ]),
+  );
+}
+
 async function showCleanupMenu(ctx: Context): Promise<void> {
   await ctx.reply(
     '🧹 記憶體清理\n選擇要清理的背景程序：',
@@ -64,14 +75,7 @@ export function createAdminHub(
     if (sub === 'status') { await statusHandler(ctx); return; }
     if (sub === 'clear') { await clearHandler(ctx); return; }
     if (sub === 'learn') {
-      await ctx.reply(
-        '選擇 Vault 學習操作：',
-        Markup.inlineKeyboard([
-          [Markup.button.callback('📖 更新分類規則', 'lr:scan')],
-          [Markup.button.callback('🔄 重新分類筆記', 'lr:reclassify')],
-          [Markup.button.callback('🌐 批次翻譯', 'lr:translate')],
-        ]),
-      );
+      await showLearnMenu(ctx);
       return;
     }
     if (sub === 'cleanup') {
@@ -154,16 +158,7 @@ export function createAdminCallback(
       case 'upgrade': await handleDoctorUpgrade(ctx, config); break;
       case 'upgrade-run': await handleDoctorUpgradeRun(ctx, config); break;
       case 'upgrade-recent': await handleDoctorUpgradeRun(ctx, config, true); break;
-      case 'learn':
-        await ctx.reply(
-          '選擇 Vault 學習操作：',
-          Markup.inlineKeyboard([
-            [Markup.button.callback('📖 更新分類規則', 'lr:scan')],
-            [Markup.button.callback('🔄 重新分類筆記', 'lr:reclassify')],
-            [Markup.button.callback('🌐 批次翻譯', 'lr:translate')],
-          ]),
-        );
-        break;
+      case 'learn': await showLearnMenu(ctx); break;
     }
   };
 }

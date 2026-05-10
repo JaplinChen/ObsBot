@@ -35,7 +35,7 @@ import { handleCodeAction } from './code-command.js';
 import { handleVsearch } from './vsearch-command.js';
 import { handleToolkit } from './toolkit-command.js';
 import { handleMemoryExport } from './memory-export-command.js';
-import { handleConfig, handleConfigFeatureToggle, handleConfigResetConfirm, handleConfigResetCancel } from './config-command.js';
+import { handleConfig, handleConfigFeatureToggle, handleConfigExtractorToggle, handleConfigResetConfirm, handleConfigResetCancel } from './config-command.js';
 import { handleResearch, handleSlides, handleAnki } from '../research/research-commands.js';
 import { handleReclassifyPicker, handleReclassifyMove } from './reclassify-action.js';
 import { handleSearchHub, handleSearchCallback } from './search-hub.js';
@@ -194,6 +194,7 @@ export function registerCommands(
 
   // --- InlineKeyboard: /config + reclassify actions ---
   bot.action(/^cfg:feat:(.+)$/, (ctx) => { handleConfigFeatureToggle(ctx).catch(() => {}); });
+  bot.action(/^cfg:ext:(.+)$/, (ctx) => { handleConfigExtractorToggle(ctx).catch(() => {}); });
   bot.action(/^cfg:reset:(confirm|cancel)$/, (ctx) => {
     (ctx.match![1] === 'confirm' ? handleConfigResetConfirm : handleConfigResetCancel)(ctx).catch(() => {});
   });

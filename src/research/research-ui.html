@@ -256,6 +256,25 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt1);fo
 /* ── P2: Disabled tool buttons ── */
 .tool-btn.disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
 .tool-section-note{font-size:11px;color:var(--txt3);padding:3px 2px 8px;font-style:italic}
+/* ── open-design 整合 ── */
+.od-divider{border-top:1px solid var(--bdr);margin:10px 0 8px}
+.od-status-row{font-size:11px;color:var(--txt3);margin-bottom:4px;min-height:16px;line-height:1.5}
+.od-status-row.ok{color:var(--gn)}
+.od-status-row.warn{color:var(--txt3)}
+.od-status-row code{background:var(--bg2);border:1px solid var(--bdr);border-radius:4px;padding:1px 5px;font-size:10px;font-family:'SF Mono',Menlo,Consolas,monospace}
+.od-skill-sel{width:100%;background:var(--bg0);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;color:var(--txt2);font-size:12px;font-family:inherit;margin-bottom:6px;outline:none;cursor:pointer}
+.od-skill-sel:focus{border-color:var(--pu)}
+.od-btn:not([disabled]){border-color:rgba(102,126,234,.4);color:var(--pu)}
+.od-btn:not([disabled]):hover{background:var(--pu2);border-color:var(--pu3)}
+.od-btn[disabled]{opacity:.4;cursor:not-allowed}
+.od-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:800;display:flex;align-items:center;justify-content:center}
+.od-modal{background:var(--bg1);border-radius:14px;padding:28px 32px;max-width:460px;width:90%;box-shadow:0 12px 40px rgba(0,0,0,.25);text-align:center}
+.od-modal h3{font-size:16px;color:var(--txt1);margin-bottom:10px}
+.od-modal p{font-size:13px;color:var(--txt2);line-height:1.7;margin-bottom:8px}
+.od-modal .od-close{background:var(--bg2);border:1px solid var(--bdr2);border-radius:8px;padding:7px 18px;font-size:13px;cursor:pointer;font-family:inherit;margin-top:12px;color:var(--txt2)}
+.od-modal .od-close:hover{border-color:var(--pu3);color:var(--pu)}
+.od-spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--pu3);border-top-color:var(--pu);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
 /* ── P3: Selection badge in topic bar ── */
 .sel-badge{background:var(--pu2);color:var(--pu);border:1px solid var(--pu3);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0}
 /* ── P5: Restore session banner ── */
@@ -1150,7 +1169,28 @@ function renderRight(){
     window._promptTools=promptTools.map(p=>({icon:p.icon,label:t(p.labelKey),prompt:t(p.promptKey)}));
   }else if(S.tab==='slides'){
     el.innerHTML='<button class="tool-btn" onclick="exportPreview()"><span class="icon">👁</span>'+t('research.previewSlides')+'</button>'
-      +'<button class="tool-btn" onclick="exportPptx()"><span class="icon">📥</span>'+t('research.downloadPptx')+'</button>';
+      +'<button class="tool-btn" onclick="exportPptx()"><span class="icon">📥</span>'+t('research.downloadPptx')+'</button>'
+      +'<div class="od-divider"></div>'
+      +'<div id="od-status" class="od-status-row"></div>'
+      +'<select id="od-style-sel" class="od-skill-sel" style="display:none">'
+        +'<option value="wired-tech">🎨 WIRED Tech · 靛藍瓷</option>'
+        +'<option value="minimal-white">⬜ 極簡白 · 科技感</option>'
+        +'<option value="warm-magazine">🟠 溫暖雜誌 · 橙金</option>'
+        +'<option value="dark-minimal">⬛ 暗色極簡 · 高端</option>'
+      +'</select>'
+      +'<select id="od-skill-sel" class="od-skill-sel" style="display:none"><option value="magazine-web-ppt">magazine-web-ppt</option></select>'
+      +'<select id="od-model-sel" class="od-skill-sel" style="display:none">'
+        +'<option value="sonnet">Sonnet（省額度，推薦）</option>'
+        +'<option value="opus">Opus（品質最高）</option>'
+        +'<option value="haiku">Haiku（最快）</option>'
+      +'</select>'
+      +'<select id="od-slide-sel" class="od-skill-sel" style="display:none">'
+        +'<option value="3">⚡ 快速 3 張（~3分鐘）</option>'
+        +'<option value="5" selected>📊 標準 5 張（~6分鐘）</option>'
+      +'</select>'
+      +'<button class="tool-btn od-btn" id="od-btn" onclick="exportOpenDesign()" disabled><span class="icon">✨</span>AI設計簡報（open-design）</button>'
+      +_odLastSlideBtn();
+    checkOpenDesignHealth();
   }
 }
 
@@ -1408,6 +1448,198 @@ async function exportPptx(){
     const blob=await r.blob();const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download='research.pptx';a.click();URL.revokeObjectURL(url);
   }catch(e){alert(t('research.exportFail')+e.message);}
+}
+
+/* ── open-design 進階簡報 ─────────────────────────────────── */
+var _odWebUrl='http://127.0.0.1:7456'; // 更新為 tools-dev status 回報的 web URL
+
+async function checkOpenDesignHealth(){
+  var status=document.getElementById('od-status');
+  var btn=document.getElementById('od-btn');
+  var sel=document.getElementById('od-skill-sel');
+  if(!status||!btn)return;
+  status.className='od-status-row warn';
+  status.textContent='⏳ 偵測 open-design…';
+  try{
+    var r=await fetch('/api/research/opendesign/health');
+    var d=await r.json();
+    if(d.available){
+      status.className='od-status-row ok';
+      status.textContent='✅ open-design 就緒（'+d.skillCount+' 個技能）';
+      btn.disabled=false;
+      // 顯示風格選擇器、模型選擇器、投影片數量選擇器
+      var styleSel=document.getElementById('od-style-sel');
+      if(styleSel)styleSel.style.display='';
+      var modelSel=document.getElementById('od-model-sel');
+      if(modelSel)modelSel.style.display='';
+      var slideSel=document.getElementById('od-slide-sel');
+      if(slideSel)slideSel.style.display='';
+      // 填入 deck skill 選單
+      if(sel&&d.deckSkills&&d.deckSkills.length){
+        sel.innerHTML=d.deckSkills.map(function(s){
+          return '<option value="'+s.id+'"'+(s.id==='magazine-web-ppt'?' selected':'')+'>'+s.name+'</option>';
+        }).join('');
+        sel.style.display='';
+      }
+    }else{
+      status.className='od-status-row warn';
+      status.innerHTML='⚪ open-design 未啟動 &nbsp;<button onclick="_odRestart()" style="font-size:11px;background:none;border:1px solid var(--bdr2);border-radius:4px;padding:2px 8px;cursor:pointer;color:var(--pu);font-family:inherit">↺ 重啟</button>';
+      btn.disabled=true;
+      if(sel)sel.style.display='none';
+      var styleSel2=document.getElementById('od-style-sel');
+      if(styleSel2)styleSel2.style.display='none';
+      var modelSel2=document.getElementById('od-model-sel');
+      if(modelSel2)modelSel2.style.display='none';
+      var slideSel2=document.getElementById('od-slide-sel');
+      if(slideSel2)slideSel2.style.display='none';
+    }
+  }catch{
+    status.className='od-status-row warn';
+    status.innerHTML='⚪ open-design 無法連線 &nbsp;<button onclick="_odRestart()" style="font-size:11px;background:none;border:1px solid var(--bdr2);border-radius:4px;padding:2px 8px;cursor:pointer;color:var(--pu);font-family:inherit">↺ 重啟</button>';
+    btn.disabled=true;
+    if(sel)sel.style.display='none';
+    var styleSel3=document.getElementById('od-style-sel');
+    if(styleSel3)styleSel3.style.display='none';
+    var modelSel3=document.getElementById('od-model-sel');
+    if(modelSel3)modelSel3.style.display='none';
+    var slideSel3=document.getElementById('od-slide-sel');
+    if(slideSel3)slideSel3.style.display='none';
+  }
+}
+
+var _odAbortCtrl=null;var _odTimerIv=null;var _odStartTs=0;
+var _OD_LAST_KEY='od_last_artifact';
+function _odLastSlideBtn(){
+  try{
+    var saved=JSON.parse(localStorage.getItem(_OD_LAST_KEY)||'null');
+    if(!saved||!saved.path)return '';
+    var label=saved.topic?'《'+saved.topic+'》':'上次';
+    var ts=saved.ts?new Date(saved.ts).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    return '<button class="tool-btn" id="od-reopen-btn" onclick="_odReopenLast()" style="font-size:12px;color:var(--pu);margin-top:4px">'
+      +'<span class="icon">🖥</span>重開 '+label+(ts?' · '+ts:'')+'</button>';
+  }catch{return '';}
+}
+function _odReopenLast(){
+  try{
+    var saved=JSON.parse(localStorage.getItem(_OD_LAST_KEY)||'null');
+    if(!saved||!saved.path){alert('沒有上次的簡報記錄');return;}
+    var serveUrl='/api/research/opendesign/serve?p='+encodeURIComponent(saved.path);
+    window.open(serveUrl,'_blank');
+  }catch(e){alert('無法開啟：'+e.message);}
+}
+function _odSaveLast(path,topic){
+  try{localStorage.setItem(_OD_LAST_KEY,JSON.stringify({path:path,topic:topic||S.topic||'',ts:Date.now()}));}catch{}
+}
+function _odShowOverlay(html){
+  var el=document.createElement('div');
+  el.className='od-overlay';el.id='od-overlay';
+  el.innerHTML='<div class="od-modal">'+html+'</div>';
+  el.onclick=function(e){if(e.target===el)_odCloseOverlay();};
+  document.body.appendChild(el);
+}
+function _odCloseOverlay(){
+  var el=document.getElementById('od-overlay');if(el)el.remove();
+  if(_odTimerIv){clearInterval(_odTimerIv);_odTimerIv=null;}
+}
+function _odCancelGenerate(){
+  if(_odAbortCtrl)_odAbortCtrl.abort();
+  _odCloseOverlay();
+}
+async function _odRestart(){
+  var status=document.getElementById('od-status');
+  if(status)status.innerHTML='⏳ 重啟 open-design 中…';
+  try{
+    await fetch('/api/research/opendesign/restart',{method:'POST',headers:{'Content-Type':'application/json'}});
+    if(status)status.innerHTML='🔄 重啟指令已送出，10 秒後自動重新確認狀態…';
+    setTimeout(checkOpenDesignHealth,12000);
+  }catch(e){
+    if(status)status.innerHTML='❌ 重啟失敗：'+e.message;
+  }
+}
+
+async function exportOpenDesign(){
+  if(!S.topic){alert('請先設定研究主題再生成簡報');return;}
+  var btn=document.getElementById('od-btn');
+  var sel=document.getElementById('od-skill-sel');
+  var styleSel=document.getElementById('od-style-sel');
+  var modelSel=document.getElementById('od-model-sel');
+  var slideSel=document.getElementById('od-slide-sel');
+  var skillId=sel?sel.value:'magazine-web-ppt';
+  var stylePreset=styleSel?styleSel.value:'wired-tech';
+  var styleLabel=styleSel&&styleSel.selectedOptions[0]?styleSel.selectedOptions[0].text:stylePreset;
+  var model=modelSel?modelSel.value:'sonnet';
+  var modelLabel=modelSel&&modelSel.selectedOptions[0]?modelSel.selectedOptions[0].text:model;
+  var slideCount=slideSel?parseInt(slideSel.value):5;
+  var content=S.history.filter(function(m){return m.role==='assistant';}).map(function(m){return m.content;}).join('\n\n');
+  if(!content){alert('尚無研究內容，請先進行研究再生成簡報');return;}
+
+  // 建立計時器 overlay
+  _odAbortCtrl=new AbortController();
+  _odStartTs=Date.now();
+  var stages=[[0,'🔍 分析研究內容…'],[30,'📐 規劃投影片架構…'],[90,'🎨 設計視覺佈局…'],[180,'✍️ 生成投影片內容…'],[300,'⚙️ 最終調整中…']];
+  _odShowOverlay(
+    '<div class="od-spinner"></div>'
+    +'<h3>AI 設計中…</h3>'
+    +'<p id="od-stage" style="font-size:13px;color:var(--txt2);margin:4px 0">🔍 分析研究內容…</p>'
+    +'<p id="od-timer" style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:2px;margin:10px 0;color:var(--pu)">00:00</p>'
+    +'<p style="font-size:11px;color:var(--txt3)">模型：'+modelLabel+'　風格：'+styleLabel+'　'+slideCount+'張</p>'
+    +'<button class="od-close" onclick="_odCancelGenerate()" style="margin-top:14px;background:none;color:var(--txt3);font-size:12px;border-color:var(--bdr)">✕ 取消</button>'
+  );
+  _odTimerIv=setInterval(function(){
+    var elapsed=Math.floor((Date.now()-_odStartTs)/1000);
+    var m=Math.floor(elapsed/60),s=elapsed%60;
+    var te=document.getElementById('od-timer');
+    if(te)te.textContent=(m<10?'0'+m:m)+':'+(s<10?'0'+s:s);
+    var se=document.getElementById('od-stage');
+    if(se){var st=stages[0][1];for(var i=0;i<stages.length;i++){if(elapsed>=stages[i][0])st=stages[i][1];}se.textContent=st;}
+  },1000);
+  if(btn){btn.disabled=true;btn.querySelector('.icon').textContent='⏳';}
+
+  try{
+    var r=await fetch('/api/research/opendesign/generate',{
+      method:'POST',
+      signal:_odAbortCtrl.signal,
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({content:content,topic:S.topic,skillId:skillId,stylePreset:stylePreset,model:model,slideCount:slideCount})
+    });
+    var d=await r.json();
+    _odCloseOverlay();
+
+    if(!r.ok||d.error){
+      var icon=d.limitHit?'⏰':'❌';
+      _odShowOverlay('<h3>'+icon+' '+(d.limitHit?'使用額度已耗盡':'生成失敗')+'</h3><p style="font-size:13px">'+d.error+(d.detail?'<br><code style="font-size:10px">'+d.detail+'</code>':'')+'</p><button class="od-close" onclick="_odCloseOverlay()">關閉</button>');
+      return;
+    }
+
+    if(d.artifactHtmlPath){
+      _odSaveLast(d.artifactHtmlPath,S.topic);
+      var serveUrl='/api/research/opendesign/serve?p='+encodeURIComponent(d.artifactHtmlPath);
+      var elapsedMin=d.elapsed?Math.floor(d.elapsed/60)+'分'+d.elapsed%60+'秒':'';
+      _odShowOverlay(
+        '<h3>✅ 簡報已生成'+(elapsedMin?' ⏱ '+elapsedMin:'')+'</h3>'
+        +'<p style="font-size:11px;color:var(--txt3);word-break:break-all;margin-bottom:12px">'+d.artifactHtmlPath.split('/').pop()+'</p>'
+        +'<button class="od-close" style="background:var(--pu);color:#fff;border-color:var(--pu)" onclick="window.open(\''+serveUrl+'\',\'_blank\');_odCloseOverlay()">🖥 開啟簡報</button>'
+        +' <button class="od-close" onclick="_odCloseOverlay()">關閉</button>'
+      );
+    }else{
+      // Artifact 未找到 — 引導至 open-design UI
+      var elapsed2=d.elapsed?'（等待 '+Math.floor(d.elapsed/60)+'分'+d.elapsed%60+'秒）':'';
+      _odShowOverlay(
+        '<h3>⚠️ 生成中或已逾時 '+elapsed2+'</h3>'
+        +'<p style="font-size:12px">請至 open-design 查看結果，簡報可能仍在生成中。</p>'
+        +'<button class="od-close" style="background:var(--pu);color:#fff;border-color:var(--pu)" onclick="window.open(\''+_odWebUrl+'\',\'_blank\');_odCloseOverlay()">開啟 open-design</button>'
+        +' <button class="od-close" onclick="_odCloseOverlay()">關閉</button>'
+      );
+    }
+  }catch(e){
+    _odCloseOverlay();
+    if(e.name!=='AbortError'){
+      _odShowOverlay('<h3>❌ 連線失敗</h3><p>'+e.message+'</p><button class="od-close" onclick="_odCloseOverlay()">關閉</button>');
+    }
+  }finally{
+    if(btn){btn.disabled=false;btn.querySelector('.icon').textContent='✨';}
+    checkOpenDesignHealth();
+  }
 }
 
 /* ── Multi-session persistence（後端 API，跨 domain 共享） ── */

@@ -86,10 +86,10 @@ const LOCAL_HOST = IS_DOCKER ? 'host.docker.internal' : '127.0.0.1';
 const IS_WINDOWS = process.platform === 'win32';
 const IS_MACOS = process.platform === 'darwin';
 
-const ALL_PLATFORMS = [
+export const ALL_PLATFORMS = [
   'x', 'threads', 'youtube', 'github', 'bilibili',
   'weibo', 'xiaohongshu', 'douyin', 'tiktok', 'ithome', 'zhihu',
-  'direct-video', 'web',
+  'reddit', 'direct-video', 'web',
 ];
 
 const DEFAULTS: UserConfig = {
@@ -245,11 +245,13 @@ function loadFromDisk(): UserConfig {
   }
 }
 
-/** Get the list of effectively enabled extractor platform keys. */
+/** Get the list of effectively enabled extractor platform keys.
+ *  Always derives from ALL_PLATFORMS so newly added platforms are visible
+ *  to existing users without requiring a config reset.
+ */
 export function getEnabledPlatforms(): string[] {
-  const cfg = getUserConfig().extractors;
-  const disabled = new Set(cfg.disabled);
-  return cfg.enabled.filter((p) => !disabled.has(p));
+  const disabled = new Set(getUserConfig().extractors.disabled);
+  return ALL_PLATFORMS.filter((p) => !disabled.has(p));
 }
 
 /** Export defaults for /config reset. */

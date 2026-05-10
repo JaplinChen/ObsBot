@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, randomBytes } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { updateUserConfig, getUserConfig } from '../utils/user-config.js';
@@ -89,7 +89,7 @@ function parseCookies(req: IncomingMessage): Record<string, string> {
 }
 
 function setSessionCookie(res: ServerResponse): string {
-  const token = [Math.random(), Math.random()].map(n => n.toString(36).slice(2)).join('');
+  const token = randomBytes(32).toString('hex');
   validSessions.add(token);
   persistSession(token);
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
@@ -104,7 +104,7 @@ function setSessionCookie(res: ServerResponse): string {
 function checkResearchAuth(req: IncomingMessage, res: ServerResponse, isPageRequest = false): boolean {
   const user = process.env.RESEARCH_USER;
   const pass = process.env.RESEARCH_PASS;
-  if (!user || !pass) return true; // 未設定則不保護
+  if (!user && !pass) return true; // 未設定則不保護
 
   // 優先接受 session cookie（JS fetch 帶入，省去 Basic Auth 每次驗證）
   const cookies = parseCookies(req);
@@ -116,8 +116,8 @@ function checkResearchAuth(req: IncomingMessage, res: ServerResponse, isPageRequ
     const [u, p] = Buffer.from(encoded, 'base64').toString('utf-8').split(':');
     const uBuf = Buffer.from(u ?? '');
     const pBuf = Buffer.from(p ?? '');
-    const uExp = Buffer.from(user);
-    const pExp = Buffer.from(pass);
+    const uExp = Buffer.from(user ?? '');
+    const pExp = Buffer.from(pass ?? '');
     // 長度不同時 timingSafeEqual 會拋錯，補齊避免
     const uMatch = uBuf.length === uExp.length && timingSafeEqual(uBuf, uExp);
     const pMatch = pBuf.length === pExp.length && timingSafeEqual(pBuf, pExp);
@@ -166,9 +166,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   if (url === '/api/config' && method === 'POST') {
     const data = JSON.parse(await readBody(req)) as { BOT_TOKEN?: string; VAULT_PATH?: string; ALLOWED_USER_IDS?: string };
     const existing = readEnv();
-    const updated: Record<string, string> = { BOT_TOKEN: data.BOT_TOKEN || existing.BOT_TOKEN || '', VAULT_PATH: data.VAULT_PATH || existing.VAULT_PATH || '' };
+    const updated: Record<string, string> = {
+      ...existing,
+      BOT_TOKEN: data.BOT_TOKEN || existing.BOT_TOKEN || '',
+      VAULT_PATH: data.VAULT_PATH || existing.VAULT_PATH || '',
+    };
     const rawIds = (data.ALLOWED_USER_IDS ?? existing.ALLOWED_USER_IDS ?? '').replace(/[^0-9,]/g, '');
     if (rawIds) updated.ALLOWED_USER_IDS = rawIds;
+    else delete updated.ALLOWED_USER_IDS;
     writeEnv(updated);
     res.end(JSON.stringify({ ok: true }));
     return;
