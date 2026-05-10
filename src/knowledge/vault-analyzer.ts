@@ -8,7 +8,7 @@ import { join, basename } from 'node:path';
 import { createHash } from 'node:crypto';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 import { loadKnowledge, saveKnowledge, computeContentHash } from './knowledge-store.js';
-import type { VaultKnowledge, KnowledgeEntity, EntityType } from './types.js';
+import type { VaultKnowledge, KnowledgeEntity, KnowledgeInsight, EntityType } from './types.js';
 import { classifyEntityType } from './entity-classifier.js';
 import { extractRelations } from './relation-extractor.js';
 import { logger } from '../core/logger.js';
@@ -31,6 +31,23 @@ function parseFM(raw: string): Record<string, string> {
     fields[line.slice(0, ci).trim()] = line.slice(ci + 1).trim().replace(/^"|"$/g, '');
   }
   return fields;
+}
+
+/** Build one principle insight from frontmatter summary (no LLM needed). */
+function buildInsight(
+  summary: string, noteId: string, title: string, keywords: string[],
+): KnowledgeInsight | null {
+  const content = summary.trim().slice(0, 100);
+  if (content.length < 30) return null;
+  return {
+    id: `${noteId}-s`,
+    type: 'principle',
+    content,
+    sourceNoteId: noteId,
+    sourceTitle: title,
+    entities: keywords.slice(0, 3),
+    confidence: 0.65,
+  };
 }
 
 /** Parse array field like [a, b, c] */
@@ -84,7 +101,18 @@ export async function runVaultAnalysis(vaultPath: string): Promise<AnalyzeResult
         knowledge.notes[noteId].entities = existing.entities.map(e => ({
           ...e, type: classifyEntityType(e.name, category),
         }));
-        skipped++;
+        // Backfill insights from summary if previously empty
+        if (existing.insights.length === 0) {
+          const insight = buildInsight(summary, noteId, title, keywords);
+          if (insight) {
+            knowledge.notes[noteId].insights = [insight];
+            processed++;
+          } else {
+            skipped++;
+          }
+        } else {
+          skipped++;
+        }
         continue;
       }
 
@@ -104,11 +132,12 @@ export async function runVaultAnalysis(vaultPath: string): Promise<AnalyzeResult
       }
 
       const relations = extractRelations(keywords, summary, noteId);
+      const insight = buildInsight(summary, noteId, title, keywords);
 
       knowledge.notes[noteId] = {
         noteId, filePath: fullPath, title, category, contentHash: hash,
         qualityScore: summary.length > 20 ? 3 : 1,
-        entities, insights: [], relations,
+        entities, insights: insight ? [insight] : [], relations,
         analyzedAt: new Date().toISOString(),
       };
       processed++;
