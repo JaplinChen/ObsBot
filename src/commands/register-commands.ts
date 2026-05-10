@@ -42,6 +42,7 @@ import { handleSearchHub, handleSearchCallback } from './search-hub.js';
 import { handleMonitorTopic, handleMonitorAuthor } from './monitor-command.js';
 import { handleRadarAddKeyword, handleRadarAddAuthor } from './radar-callbacks.js';
 import { handleTrackHub, handleTrackCallback } from './track-hub.js';
+import { handleDislikeAction } from '../utils/dislike-action.js';
 import { createVaultHub, createVaultCallback } from './vault-hub.js';
 import { createAdminHub, createAdminCallback } from './admin-hub.js';
 import {
@@ -200,6 +201,12 @@ export function registerCommands(
   });
   bot.action(/^recat:(.+)$/, (ctx) => { handleReclassifyPicker(ctx).catch(() => {}); });
   bot.action(/^rcmv:(.+)$/, (ctx) => { handleReclassifyMove(ctx).catch(() => {}); });
+
+  // --- InlineKeyboard: 👎 不感興趣 ---
+  registerAsyncAction(bot, /^dislike:(.+)$/, 'dislike-action', async (ctx) => {
+    const token = ctx.match![1];
+    await handleDislikeAction(ctx, token);
+  });
 
   // --- InlineKeyboard: /code action ---
   registerAsyncAction(bot, /^code:(.+)$/, 'code-action', handleCodeAction);
