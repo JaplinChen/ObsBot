@@ -40,6 +40,9 @@ function parseArgs(text: string): ParsedArgs | null {
     return { mode: 'batch', sinceDays, dryRun, useLlm };
   }
 
+  // Reject URLs — user likely replied with a link instead of a vault path
+  if (/^https?:\/\//i.test(args)) return null;
+
   return { mode: 'single', path: args, dryRun: false, useLlm: false };
 }
 
