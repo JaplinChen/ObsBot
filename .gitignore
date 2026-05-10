@@ -32,6 +32,7 @@ scripts/*
 !scripts/setup.mjs
 !scripts/copy-assets.mjs
 !scripts/memory-audit.sh
+!scripts/test-extractors.mjs
 test.ts
 
 # External tools and local models

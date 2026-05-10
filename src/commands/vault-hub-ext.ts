@@ -17,6 +17,7 @@ import { runDreaming } from '../knowledge/dreaming-engine.js';
 import { generateMemoir } from '../knowledge/memoir-generator.js';
 import { runRulesSuggester } from '../knowledge/rules-suggester.js';
 import { analyzeBookmarkGaps } from '../knowledge/bookmark-analyzer.js';
+export { handleVaultAudit } from './vault-audit.js';
 
 /** /vault graph [--topic <kw>] [--top N] */
 export async function handleVaultGraph(ctx: Context, config: AppConfig, args: string): Promise<void> {
@@ -213,3 +214,4 @@ ${wikiSection}
     await ctx.reply(`草稿生成失敗：${String(err)}`);
   }
 }
+

@@ -20,7 +20,7 @@ import { startTyping, stopTyping } from '../utils/typing-indicator.js';
 import type { BotStats } from '../messages/types.js';
 import {
   handleVaultGraph, handleVaultDreaming, handleVaultMemoir,
-  handleVaultAnalyzeRules, handleVaultBookmarkGap, handleVaultDraft,
+  handleVaultAnalyzeRules, handleVaultBookmarkGap, handleVaultDraft, handleVaultAudit,
 } from './vault-hub-ext.js';
 import { analyzeFailures, formatFailureReport } from '../monitoring/failure-analyzer.js';
 import { handleVaultFeeds } from './vault-feeds.js';
@@ -128,6 +128,7 @@ export function createVaultHub(stats: BotStats) {
     if (sub === 'analyze' && rest.startsWith('rules')) { await handleVaultAnalyzeRules(ctx, config, rest); return; }
     if (sub === 'bookmark-gap') { await handleVaultBookmarkGap(ctx, config, rest); return; }
     if (sub === 'draft') { await handleVaultDraft(ctx, config, rest); return; }
+    if (sub === 'audit') { await handleVaultAudit(ctx, config); return; }
 
     // retry needs special handling (uses stats closure)
     if (sub === 'retry') {
