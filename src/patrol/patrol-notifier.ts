@@ -1,11 +1,11 @@
 /**
- * Format patrol results for Telegram notification with inline save buttons.
- * Reuses discover-command's token cache for button callbacks.
+ * Format patrol results for Telegram notification with inline save/👎 buttons.
+ * Reuses discover-command's token cache for save callbacks.
  */
 import type { PatrolItem } from './sources/source-types.js';
 import { rememberUrl } from '../commands/discover-command.js';
 import { isDuplicateUrl } from '../saver.js';
-import { loadContentFilter, isBlockedContent } from '../utils/content-filter.js';
+import { loadContentFilter, isBlockedContent, fireRecordBlocked } from '../utils/content-filter.js';
 import { rememberDislikeKeyword } from '../utils/dislike-action.js';
 import { Markup } from 'telegraf';
 
@@ -29,7 +29,10 @@ export async function filterUnsaved(
     items.map(async (item) => {
       const dup = await isDuplicateUrl(item.url, vaultPath);
       if (dup) return null;
-      if (filter && isBlockedContent(filter, undefined, item.title)) return null;
+      if (filter && isBlockedContent(filter, undefined, item.title)) {
+        fireRecordBlocked();
+        return null;
+      }
       return item;
     }),
   );
@@ -65,13 +68,16 @@ export function formatPatrolNotification(items: PatrolItem[]): string {
   return lines.join('\n');
 }
 
-/** Build inline keyboard with save + 👎 buttons for unsaved items. */
+/**
+ * Build inline keyboard: each row has [📥 save] [👎 kw_pick].
+ * Clicking 👎 triggers a keyword-picker step before blocking.
+ */
 export function buildPatrolButtons(items: PatrolItem[]) {
   const buttons = items.slice(0, 8).map((item) => {
     const saveToken = rememberUrl(item.url);
-    const dislikeToken = rememberDislikeKeyword(item.title.split(/\s+/).slice(0, 2).join(' '));
+    const dislikeToken = rememberDislikeKeyword(item.title);
     return [
-      Markup.button.callback(`📥 ${truncTitle(item.title, 28)}`, `dsc:${saveToken}`),
+      Markup.button.callback(`📥 ${truncTitle(item.title, 26)}`, `dsc:${saveToken}`),
       Markup.button.callback('👎', `dislike:${dislikeToken}`),
     ];
   });

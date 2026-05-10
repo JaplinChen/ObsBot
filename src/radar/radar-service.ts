@@ -29,7 +29,8 @@ import type { CustomSourceConfig } from './sources/custom-source.js';
 import { buildCycleSummary } from './radar-cycle-utils.js';
 import { notifyAutoPausedQueries, notifyRadarResults } from './radar-notifier.js';
 import { isAdUrl } from '../utils/ad-url-filter.js';
-import { type ContentFilter, loadContentFilter, isBlockedContent } from '../utils/content-filter.js';
+import { type ContentFilter, loadContentFilter, isBlockedContent, fireRecordBlocked } from '../utils/content-filter.js';
+import type { RadarSavedArticle } from './radar-types.js';
 
 /** Max consecutive failures before auto-pausing a query. */
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -69,7 +70,7 @@ async function runQuery(
   wallToolIndex?: ToolEntry[] | null,
   contentFilter?: ContentFilter,
 ): Promise<{ result: RadarResult; matches: ToolMatchResult[] }> {
-  const result: RadarResult = { query, saved: 0, skipped: 0, errors: 0, queued: 0 };
+  const result: RadarResult = { query, saved: 0, skipped: 0, errors: 0, queued: 0, savedArticles: [] };
   const matches: ToolMatchResult[] = [];
 
   try {
@@ -121,6 +122,7 @@ async function runQuery(
         content.category = await classifyContent(content.title, content.text);
         if (contentFilter && isBlockedContent(contentFilter, content.category, content.title)) {
           logger.info('radar', '略過封鎖內容', { url: sr.url.slice(0, 80), category: content.category });
+          fireRecordBlocked(content.category);
           result.skipped++;
           continue;
         }
@@ -134,6 +136,12 @@ async function runQuery(
           result.skipped++;
         } else {
           result.saved++;
+          result.savedArticles?.push({
+            url: content.url,
+            title: content.title ?? content.url,
+            category: content.category ?? '',
+            mdPath: saveResult.mdPath,
+          } satisfies RadarSavedArticle);
 
           // Wall: collect match for batch write
           if (wallToolIndex && wallToolIndex.length > 0) {

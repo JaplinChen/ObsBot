@@ -14,6 +14,7 @@ import {
   saveSubscriptions,
   addSubscription,
   removeSubscription,
+  getSubscription,
 } from '../subscriptions/subscription-store.js';
 
 export async function handleSubscribe(ctx: Context, config: AppConfig): Promise<void> {
@@ -58,6 +59,30 @@ export async function handleSubscribe(ctx: Context, config: AppConfig): Promise<
       await ctx.reply(`✅ 已取消訂閱 @${username.replace(/^@/, '')}`);
     } else {
       await ctx.reply(`找不到 @${username.replace(/^@/, '')} 的訂閱。`);
+    }
+    return;
+  }
+
+  // --- Allow (whitelist categories per subscription) ---
+  // /subscribe allow @username AI工具 開源
+  if (args.toLowerCase().startsWith('allow ')) {
+    const parts = args.slice(6).trim().split(/\s+/);
+    const username = parts[0]?.replace(/^@/, '') ?? '';
+    const categories = parts.slice(1);
+    if (!username || categories.length === 0) {
+      await ctx.reply('用法：/subscribe allow @username 分類1 分類2\n例：/subscribe allow @user AI工具 開源\n清空白名單：/subscribe allow @user clear');
+      return;
+    }
+    const sub = getSubscription(store, username);
+    if (!sub) { await ctx.reply(`找不到 @${username} 的訂閱，請先 /subscribe @${username}`); return; }
+    if (categories[0] === 'clear') {
+      sub.allowedCategories = undefined;
+      await saveSubscriptions(store);
+      await ctx.reply(`✅ @${username} 白名單已清除，將抓取所有分類`);
+    } else {
+      sub.allowedCategories = categories;
+      await saveSubscriptions(store);
+      await ctx.reply(`✅ @${username} 只抓取：${categories.join('、')}`);
     }
     return;
   }

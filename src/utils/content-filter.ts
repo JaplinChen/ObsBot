@@ -8,13 +8,19 @@ import { join, dirname } from 'path';
 
 const STORE_PATH = join(process.cwd(), 'data', 'content-filter.json');
 
+export interface FilterStats {
+  date: string;           // YYYY-MM-DD, resets daily
+  total: number;
+  byCategory: Record<string, number>;
+}
+
 export interface ContentFilter {
   version: 1;
   blockedCategories: string[];
   blockedKeywords: string[];
+  stats?: FilterStats;
 }
 
-/** Default blocked categories (matching radar's historical RADAR_SKIP_CATEGORIES). */
 const DEFAULTS: ContentFilter = {
   version: 1,
   blockedCategories: ['新聞時事', '生活', '其他'],
@@ -47,6 +53,32 @@ export function isBlockedContent(
     return filter.blockedKeywords.some((kw) => lower.includes(kw.toLowerCase()));
   }
   return false;
+}
+
+/** Record a block event for daily statistics (fire-and-forget). */
+export function fireRecordBlocked(category?: string): void {
+  recordBlocked(category).catch(() => {});
+}
+
+async function recordBlocked(category?: string): Promise<void> {
+  const filter = await loadContentFilter();
+  const today = new Date().toISOString().slice(0, 10);
+  const stats = filter.stats?.date === today
+    ? filter.stats
+    : { date: today, total: 0, byCategory: {} };
+  stats.total++;
+  if (category) stats.byCategory[category] = (stats.byCategory[category] ?? 0) + 1;
+  filter.stats = stats;
+  await saveContentFilter(filter);
+}
+
+/** Read today's stats and reset them (called by daily digest). */
+export async function readAndResetStats(): Promise<FilterStats | null> {
+  const filter = await loadContentFilter();
+  const stats = filter.stats ?? null;
+  filter.stats = undefined;
+  await saveContentFilter(filter);
+  return stats;
 }
 
 export async function addBlockedCategory(category: string): Promise<ContentFilter> {

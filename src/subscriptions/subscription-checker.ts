@@ -10,8 +10,8 @@ import { saveSubscriptions } from './subscription-store.js';
 import { scrapeThreadsTimeline } from '../commands/timeline-command.js';
 import { classifyContent } from '../classifier.js';
 import { saveToVault, isDuplicateUrl } from '../saver.js';
-import { loadContentFilter, isBlockedContent } from '../utils/content-filter.js';
-import { rememberDislike } from '../utils/dislike-action.js';
+import { loadContentFilter, isBlockedContent, fireRecordBlocked } from '../utils/content-filter.js';
+import { rememberDislike, rememberDelete } from '../utils/dislike-action.js';
 import { logger } from '../core/logger.js';
 
 const MAX_CHECK_POSTS = 5;
@@ -20,6 +20,7 @@ interface SavedPost {
   url: string;
   title: string;
   category: string;
+  mdPath: string;
 }
 
 /** Check a single subscription for new posts */
@@ -38,10 +39,21 @@ async function checkSubscription(
       if (existing) continue;
 
       post.category = await classifyContent(post.title, post.text);
+      const cat = post.category ?? '';
 
-      if (isBlockedContent(filter, post.category, post.title)) {
-        logger.info('subscribe', '略過封鎖內容', { url: post.url, category: post.category });
+      // Global blocklist
+      if (isBlockedContent(filter, cat, post.title)) {
+        fireRecordBlocked(cat);
+        logger.info('subscribe', '略過封鎖內容', { url: post.url, category: cat });
         continue;
+      }
+
+      // Per-subscription whitelist
+      if (sub.allowedCategories && sub.allowedCategories.length > 0) {
+        if (!sub.allowedCategories.includes(cat)) {
+          logger.info('subscribe', '略過白名單外分類', { url: post.url, category: cat });
+          continue;
+        }
       }
 
       try {
@@ -50,7 +62,8 @@ async function checkSubscription(
           saved.push({
             url: post.url,
             title: post.title ?? post.url,
-            category: post.category ?? '',
+            category: cat,
+            mdPath: result.mdPath,
           });
         }
       } catch (err) {
@@ -83,11 +96,15 @@ async function runCheckCycle(
 
     if (userId && savedPosts.length > 0) {
       for (const post of savedPosts) {
-        const token = rememberDislike(post.category);
+        const dislikeToken = rememberDislike(post.category);
+        const deleteToken = rememberDelete(post.category, post.mdPath, post.url);
         const label = post.category ? `[${post.category}] ` : '';
         const text = `📬 @${sub.username}\n\n${label}${post.title}`;
         const keyboard = Markup.inlineKeyboard([
-          [Markup.button.callback(`👎 不感興趣：${post.category}`, `dislike:${token}`)],
+          [
+            Markup.button.callback(`👎 不感興趣：${post.category}`, `dislike:${dislikeToken}`),
+            Markup.button.callback('🗑️ 刪除+封鎖', `dislike:${deleteToken}`),
+          ],
         ]);
         await bot.telegram.sendMessage(userId, text, keyboard).catch(() => {});
       }

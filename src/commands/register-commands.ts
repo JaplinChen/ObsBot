@@ -43,6 +43,7 @@ import { handleMonitorTopic, handleMonitorAuthor } from './monitor-command.js';
 import { handleRadarAddKeyword, handleRadarAddAuthor } from './radar-callbacks.js';
 import { handleTrackHub, handleTrackCallback } from './track-hub.js';
 import { handleDislikeAction } from '../utils/dislike-action.js';
+import { handleFilter } from './filter-command.js';
 import { createVaultHub, createVaultCallback } from './vault-hub.js';
 import { createAdminHub, createAdminCallback } from './admin-hub.js';
 import {
@@ -109,6 +110,7 @@ export function registerCommands(
     { command: 'research', tag: 'research', handler: handleResearch },
     { command: 'slides', tag: 'slides', handler: handleSlides },
     { command: 'anki', tag: 'anki', handler: handleAnki },
+    { command: 'filter', tag: 'filter', handler: handleFilter },
   ];
   registerCommandSet(bot, config, commandRegistrations);
   // --- InlineKeyboard sub-actions ---

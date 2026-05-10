@@ -105,7 +105,7 @@ async function runDigestCycle(
       wallLines = formatWallSummaryForDigest(wallConfig);
     } catch { /* best-effort */ }
 
-    const message = formatDigestMessage(digest, radarSummary, wallLines);
+    const message = await formatDigestMessage(digest, radarSummary, wallLines);
     const userId = getOwnerUserId(config);
     if (userId) {
       await bot.telegram.sendMessage(userId, message.slice(0, 4000));
