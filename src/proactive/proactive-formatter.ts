@@ -5,6 +5,7 @@
 import type { ProactiveDigest } from './proactive-types.js';
 import type { RadarCycleSummary } from '../radar/radar-types.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
+import { readAndResetStats } from '../utils/content-filter.js';
 
 /** Format radar cycle summary for digest. */
 export function formatRadarSection(summary: RadarCycleSummary | undefined): string[] {
@@ -24,9 +25,9 @@ export function formatRadarSection(summary: RadarCycleSummary | undefined): stri
 }
 
 /** Build formatted digest message for Telegram */
-export function formatDigestMessage(
+export async function formatDigestMessage(
   digest: ProactiveDigest, radarSummary?: RadarCycleSummary, wallLines?: string[],
-): string {
+): Promise<string> {
   const lines: string[] = ['📊 每日知識摘要', ''];
   lines.push(`📅 ${digest.period} | 共 ${digest.totalNotes} 篇新筆記`);
   lines.push('');
@@ -69,6 +70,19 @@ export function formatDigestMessage(
 
   if (digest.insights && digest.insights.length > 0) {
     lines.push(...digest.insights);
+  }
+
+  // 封鎖統計（讀取後重置，下次日報重新累計）
+  const stats = await readAndResetStats().catch(() => null);
+  if (stats && stats.total > 0) {
+    lines.push('');
+    lines.push(`🚫 今日自動過濾 ${stats.total} 篇`);
+    const topCats = Object.entries(stats.byCategory)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+    if (topCats.length > 0) {
+      lines.push(topCats.map(([cat, n]) => `  • ${cat} ×${n}`).join('\n'));
+    }
   }
 
   return lines.join('\n');

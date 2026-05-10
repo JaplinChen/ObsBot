@@ -29,15 +29,11 @@ import type { CustomSourceConfig } from './sources/custom-source.js';
 import { buildCycleSummary } from './radar-cycle-utils.js';
 import { notifyAutoPausedQueries, notifyRadarResults } from './radar-notifier.js';
 import { isAdUrl } from '../utils/ad-url-filter.js';
+import { type ContentFilter, loadContentFilter, isBlockedContent, fireRecordBlocked } from '../utils/content-filter.js';
+import type { RadarSavedArticle } from './radar-types.js';
 
 /** Max consecutive failures before auto-pausing a query. */
 const MAX_CONSECUTIVE_FAILURES = 3;
-
-/**
- * 非科技分類 — 雷達自動跳過，避免 RSS 寬泛 feed（如 /atom/everything/）
- * 帶入個人生活、時事等非 Vault 關注內容。
- */
-const RADAR_SKIP_CATEGORIES = new Set(['新聞時事', '生活', '其他']);
 
 /** Fetch candidates depending on query type. */
 async function fetchCandidates(
@@ -72,8 +68,9 @@ async function runQuery(
   config: AppConfig,
   maxResults: number,
   wallToolIndex?: ToolEntry[] | null,
+  contentFilter?: ContentFilter,
 ): Promise<{ result: RadarResult; matches: ToolMatchResult[] }> {
-  const result: RadarResult = { query, saved: 0, skipped: 0, errors: 0, queued: 0 };
+  const result: RadarResult = { query, saved: 0, skipped: 0, errors: 0, queued: 0, savedArticles: [] };
   const matches: ToolMatchResult[] = [];
 
   try {
@@ -121,10 +118,11 @@ async function runQuery(
         // Extract content
         const content = await extractor.extract(sr.url);
 
-        // 先做便宜的分類，跳過非科技內容，再做昂貴的 enrich
+        // 先做便宜的分類，跳過封鎖分類，再做昂貴的 enrich
         content.category = await classifyContent(content.title, content.text);
-        if (RADAR_SKIP_CATEGORIES.has(content.category ?? '')) {
-          logger.info('radar', '略過非科技分類', { url: sr.url.slice(0, 80), category: content.category });
+        if (contentFilter && isBlockedContent(contentFilter, content.category, content.title)) {
+          logger.info('radar', '略過封鎖內容', { url: sr.url.slice(0, 80), category: content.category });
+          fireRecordBlocked(content.category);
           result.skipped++;
           continue;
         }
@@ -138,6 +136,12 @@ async function runQuery(
           result.skipped++;
         } else {
           result.saved++;
+          result.savedArticles?.push({
+            url: content.url,
+            title: content.title ?? content.url,
+            category: content.category ?? '',
+            mdPath: saveResult.mdPath,
+          } satisfies RadarSavedArticle);
 
           // Wall: collect match for batch write
           if (wallToolIndex && wallToolIndex.length > 0) {
@@ -193,6 +197,8 @@ export async function runRadarCycle(
     }
   } catch { /* wall matching is best-effort */ }
 
+  const contentFilter = await loadContentFilter().catch(() => undefined);
+
   logger.info('radar', '開始掃描', { queries: radarConfig.queries.length });
   const results: RadarResult[] = [];
   const allMatches: ToolMatchResult[] = [];
@@ -207,7 +213,7 @@ export async function runRadarCycle(
 
     const remaining = radarConfig.maxTotalPerCycle - totalSaved;
     const maxResults = Math.min(radarConfig.maxResultsPerQuery, remaining);
-    const { result, matches } = await runQuery(query, config, maxResults, toolIndex);
+    const { result, matches } = await runQuery(query, config, maxResults, toolIndex, contentFilter);
     results.push(result);
     allMatches.push(...matches);
     totalSaved += result.saved;

@@ -75,3 +75,10 @@ export function updateIndex(normUrl: string, mdPath: string): void {
   urlIndex.set(normUrl, mdPath);
   persistIndex(urlIndex).catch(() => {});
 }
+
+/** Remove a URL from the in-memory index (used when deleting a vault note). */
+export function removeFromIndex(url: string): void {
+  if (!urlIndex) return;
+  urlIndex.delete(canonicalizeUrl(url));
+  persistIndex(urlIndex).catch(() => {});
+}

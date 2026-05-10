@@ -85,6 +85,7 @@ async function processNext(bot: Telegraf, config: AppConfig): Promise<void> {
     const content = await extractor.extract(item.url);
     content.category = await classifyContent(content.title, content.text);
 
+    content.extraTags = [...(content.extraTags ?? []), 'bot-discovered'];
     const saveResult = await saveToVault(content, config.vaultPath);
 
     item.status = 'done';

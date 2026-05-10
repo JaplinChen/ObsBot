@@ -7,6 +7,7 @@ import { logger } from './core/logger.js';
 import { CATEGORIES } from './classifier-categories.js';
 import { sanitizeContent } from './utils/content-sanitizer.js';
 import { notifyNoteAdded } from './knowledge/wiki-updater.js';
+import { invalidateVideoIndex } from './video/video-index.js';
 import { slugify, attachmentSlug, extractPostId } from './saver/slug.js';
 import { isDuplicateUrl, processingUrls, updateIndex } from './saver/url-index.js';
 import { downloadImage, warnIfDomainFlood } from './saver/image-downloader.js';
@@ -155,6 +156,8 @@ export async function saveToVault(
 
     updateIndex(normUrl, mdPath);
     notifyNoteAdded(rawCategory, vaultPath).catch(() => {});
+    const VIDEO_PLATFORMS_SET = new Set(['youtube', 'bilibili', 'tiktok', 'douyin', 'direct-video']);
+    if (VIDEO_PLATFORMS_SET.has(content.platform.toLowerCase())) invalidateVideoIndex();
     backupToTelegram(mdFilename, markdown, {
       title: content.title,
       category: rawCategory,
