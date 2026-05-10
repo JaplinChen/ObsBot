@@ -13,6 +13,8 @@ import { getRegisteredExtractors } from '../extractors/index.js';
 import type { Extractor } from '../extractors/types.js';
 import { cleanupSystemProcesses, getSystemHealthSnapshot } from '../admin/system-health.js';
 import { getUserConfig } from '../utils/user-config.js';
+import { runIncidentScan, formatIncidentAlert, KNOWN_SIGNATURES } from './incident-detector.js';
+import { getDailyDigest } from './incident-log.js';
 
 /** Send Telegram notification to owner */
 async function notify(bot: Telegraf, config: AppConfig, message: string): Promise<void> {
@@ -188,6 +190,23 @@ export async function startMonitorService(
       () => { runMemoryCleanupCycle(bot, config, monConfig).catch((e) => logger.warn('monitor', 'memory cleanup 失敗', { message: (e as Error).message })); },
       memoryCleanupIntervalMs,
     ),
+  );
+
+  // Incident scan: check every 5 min，偵測已知錯誤簽名並推播警報
+  const INCIDENT_SCAN_MS = 5 * 60 * 1000;
+  timers.push(
+    setInterval(() => {
+      runIncidentScan().then(async (count) => {
+        if (count === 0) return;
+        const digest = await getDailyDigest();
+        const topSig = Object.entries(digest.bySignature)
+          .sort(([, a], [, b]) => b - a)[0];
+        if (topSig) {
+          const msg = formatIncidentAlert(topSig[0], topSig[1]);
+          await notify(bot, config, msg);
+        }
+      }).catch((e) => logger.warn('monitor', 'incident scan 失敗', { message: (e as Error).message }));
+    }, INCIDENT_SCAN_MS),
   );
 
   // Initial vault check after 10 min (non-blocking)

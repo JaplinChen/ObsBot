@@ -147,6 +147,7 @@ export async function runPatrolCycle(
       if (!extractor) { result.skipped++; continue; }
       const content = await extractor.extract(repo.url);
       await enrichExtractedContent(content, config);
+      content.extraTags = [...(content.extraTags ?? []), 'bot-discovered'];
       const sr = await saveToVault(content, config.vaultPath);
       if (!sr.duplicate) result.saved++; else result.skipped++;
     } catch { result.skipped++; }

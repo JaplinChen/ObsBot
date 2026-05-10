@@ -7,6 +7,7 @@
  * /patrol github      → run GitHub Trending only (legacy)
  * /patrol devil [N]   → 反指標注射器：找出近 N 天熱門主題，生成反向論點筆記
  * /patrol predictions → 掃描 Vault 中到期或即將到期的可驗證預測
+ * /patrol stats       → Bot 主動值班效率報告（proactive ratio）
  */
 import type { Context } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
@@ -19,6 +20,7 @@ import { collectRecentNotes } from './digest-command.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 import { getAllMdFiles } from '../vault/frontmatter-utils.js';
 import { withTypingIndicator } from './command-runner.js';
+import { computeProactiveStats, formatProactiveStats } from '../patrol/proactive-stats.js';
 
 const AVAILABLE_SOURCES = ['github-trending', 'hn', 'reddit', 'devto'];
 
@@ -45,6 +47,9 @@ export async function handlePatrol(ctx: Context, config: AppConfig): Promise<voi
   }
   if (sub === 'predictions') {
     return handlePredictions(ctx, config);
+  }
+  if (sub === 'stats') {
+    return handlePatrolStats(ctx, config);
   }
 
   // Default: multi-platform patrol
@@ -278,4 +283,10 @@ async function handlePredictions(ctx: Context, config: AppConfig): Promise<void>
       await ctx.reply(parts.join('\n\n'), { parse_mode: 'Markdown' });
     }
   }, '預測掃描失敗');
+}
+
+async function handlePatrolStats(ctx: Context, config: AppConfig): Promise<void> {
+  await ctx.reply('📊 正在統計主動採集比例…');
+  const stats = await computeProactiveStats(config.vaultPath);
+  await ctx.reply(formatProactiveStats(stats));
 }

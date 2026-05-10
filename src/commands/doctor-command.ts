@@ -14,6 +14,7 @@ import { probeAllExtractors } from '../monitoring/extractor-probe.js';
 import { loadMonitorConfig, saveMonitorConfig } from '../monitoring/monitor-store.js';
 import { camoufoxPool } from '../utils/camoufox-pool.js';
 import { logger } from '../core/logger.js';
+import { getDailyDigest } from '../monitoring/incident-log.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -201,6 +202,20 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
     '',
     '━━ 進程與連接埠 ━━',
     ...(processLines.length > 0 ? processLines : ['（無 KnowPipe 進程偵測到）']),
+    '',
+    '━━ 自癒事件（24h）━━',
+    ...await (async () => {
+      const digest = await getDailyDigest().catch(() => null);
+      if (!digest || digest.total === 0) return ['✅ 無異常事件'];
+      const sigLines = Object.entries(digest.bySignature)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([sig, n]) => `  • ${sig} × ${n}`);
+      return [
+        `📊 總計 ${digest.total} 件｜自動修復 ${digest.autoFixed}｜待審查 ${digest.needsReview}`,
+        ...sigLines,
+      ];
+    })(),
     '',
     `⏱ 診斷耗時 ${elapsed}s`,
   ];
