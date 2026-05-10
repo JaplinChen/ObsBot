@@ -1,5 +1,79 @@
 /** Content cleaning utilities — filter ad-speak, emoji spam, and title noise. */
 
+/**
+ * Promotional block signals — each matches a paragraph-level CTA or solicitation.
+ * Non-global flags so `.test()` is safe to call repeatedly.
+ */
+const PROMO_BLOCK_SIGNALS: RegExp[] = [
+  // 聯絡/合作邀請
+  /私訊(?:我|一下)|加(?:我)?(?:微信|LINE|IG|WeChat|Telegram)|找我合作|商業合作|合作邀請|聯絡我|聯繫我/,
+  // 課程/產品銷售（需要明確的銷售上下文，避免「課程學習」等術語被誤判）
+  /(?:我的|本人)課程|(?:付費|收費)課程|課程(?:報名|購買|加入|連結)|報名(?:連結|鏈接|入口)|購買連結|下單連結|免費(?:領取|獲取)(?:資料|模板|工具|指南|教程)/,
+  /限時(?:報名|優惠|折扣|購買|秒殺)|搶購(?:名額|資格)|特惠價|早鳥價/,
+  // 強制關注 / 訂閱 CTA
+  /(?:關注|追蹤|訂閱)(?:我的)?(?:頻道|帳號|主頁|公眾號|小紅書|抖音|微博).*(?:更多|乾貨|每天|精彩)/,
+  /follow\s+(?:me|us|my).*(?:for more|更多|daily|content)/i,
+  // 郵件/掃碼推廣
+  /(?:發(?:郵件|email|mail)|掃(?:二維碼|QR碼?)).*(?:了解|諮詢|獲取|詳情)/i,
+  // 引流話術
+  /想(?:學|了解|掌握|入門).{0,15}(?:的朋友|的話)?[，,]?(?:私訊|加我|來找我|找我)/,
+  /(?:感興趣|有興趣).{0,10}(?:歡迎)?(?:私訊|加我|留言)/,
+];
+
+/**
+ * Remove entire paragraphs that are primarily promotional / solicitation content.
+ * Runs AFTER cleanAdSpeak: targets blocks that survive phrase-level cleaning
+ * because they're structurally promotional rather than just using ad words.
+ *
+ * Removal criteria (applied per double-newline block):
+ *  - Block length < 120 chars AND ≥1 promo signal → standalone CTA, drop it
+ *  - Block has ≥2 promo signals regardless of length → drop it
+ *  - Block becomes < 8 chars after stripping (skeleton left by cleanAdSpeak) → drop it
+ */
+export function stripPromoBlocks(text: string): string {
+  if (!text) return text;
+
+  const blocks = text.split(/\n{2,}/);
+  const kept: string[] = [];
+
+  for (const block of blocks) {
+    const trimmed = block.trim();
+    if (!trimmed) continue;
+
+    // Drop skeleton lines left by cleanAdSpeak (< 8 non-whitespace chars)
+    const compact = trimmed.replace(/\s/g, '');
+    if (compact.length < 8) continue;
+
+    let signals = 0;
+    for (const re of PROMO_BLOCK_SIGNALS) {
+      if (re.test(trimmed)) signals++;
+    }
+
+    if (trimmed.length < 120 && signals >= 1) continue;  // short standalone CTA
+    if (signals >= 2) continue;                           // high promo density
+
+    // For longer blocks: filter individual promo lines (if block itself survived)
+    if (signals === 1 && trimmed.includes('\n')) {
+      const lines = trimmed.split('\n');
+      const filtered = lines.filter(line => {
+        const t = line.trim();
+        if (!t) return false;
+        let lineSigs = 0;
+        for (const re of PROMO_BLOCK_SIGNALS) {
+          if (re.test(t)) lineSigs++;
+        }
+        return lineSigs === 0 || t.length > 100; // keep long lines even with one signal
+      });
+      if (filtered.length > 0) kept.push(filtered.join('\n'));
+      continue;
+    }
+
+    kept.push(trimmed);
+  }
+
+  return kept.join('\n\n');
+}
+
 /** Exaggerated modifiers to remove from body text */
 const AD_SPEAK_PATTERNS: RegExp[] = [
   // 誇張修飾詞

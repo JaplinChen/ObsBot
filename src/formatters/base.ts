@@ -7,7 +7,7 @@ import {
   buildComments,
   buildImageDescriptions,
 } from './shared.js';
-import { cleanAdSpeak } from '../utils/content-cleaner.js';
+import { cleanAdSpeak, stripPromoBlocks } from '../utils/content-cleaner.js';
 import { reformatBody } from './body-reformatter.js';
 import { isLikelyStatsLine, splitSentences, toPlainText } from './text-utils.js';
 
@@ -154,7 +154,7 @@ export function assembleNote(
   }
 
   const { text: rawBodyText, usedPaths, inlinedVideoIndices: bodyInlinedVideos } = formatter.formatBody(displayText, imageUrlMap, localVideoPaths, content.videos);
-  const bodyText = reformatBody(cleanAdSpeak(rawBodyText));
+  const bodyText = reformatBody(stripPromoBlocks(cleanAdSpeak(rawBodyText)));
   lines.push(bodyText, '');
 
   const cleanSummary = content.enrichedSummary
