@@ -1,10 +1,12 @@
 /**
- * Format patrol results for Telegram notification with inline save buttons.
- * Reuses discover-command's token cache for button callbacks.
+ * Format patrol results for Telegram notification with inline save/👎 buttons.
+ * Reuses discover-command's token cache for save callbacks.
  */
 import type { PatrolItem } from './sources/source-types.js';
 import { rememberUrl } from '../commands/discover-command.js';
 import { isDuplicateUrl } from '../saver.js';
+import { loadContentFilter, isBlockedContent, fireRecordBlocked } from '../utils/content-filter.js';
+import { rememberDislikeKeyword } from '../utils/dislike-action.js';
 import { Markup } from 'telegraf';
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -17,14 +19,21 @@ function truncTitle(title: string, max = 40): string {
   return title.length > max ? title.slice(0, max - 1) + '…' : title;
 }
 
-/** Filter out items already saved in Vault. */
+/** Filter out items already saved in Vault and items blocked by content-filter. */
 export async function filterUnsaved(
   items: PatrolItem[], vaultPath: string,
 ): Promise<PatrolItem[]> {
+  const filter = await loadContentFilter().catch(() => null);
+
   const results = await Promise.allSettled(
     items.map(async (item) => {
       const dup = await isDuplicateUrl(item.url, vaultPath);
-      return dup ? null : item;
+      if (dup) return null;
+      if (filter && isBlockedContent(filter, undefined, item.title)) {
+        fireRecordBlocked();
+        return null;
+      }
+      return item;
     }),
   );
   return results
@@ -59,12 +68,18 @@ export function formatPatrolNotification(items: PatrolItem[]): string {
   return lines.join('\n');
 }
 
-/** Build inline keyboard with save buttons for unsaved items. */
+/**
+ * Build inline keyboard: each row has [📥 save] [👎 kw_pick].
+ * Clicking 👎 triggers a keyword-picker step before blocking.
+ */
 export function buildPatrolButtons(items: PatrolItem[]) {
   const buttons = items.slice(0, 8).map((item) => {
-    const token = rememberUrl(item.url);
-    const label = `📥 ${truncTitle(item.title, 30)}`;
-    return [Markup.button.callback(label, `dsc:${token}`)];
+    const saveToken = rememberUrl(item.url);
+    const dislikeToken = rememberDislikeKeyword(item.title);
+    return [
+      Markup.button.callback(`📥 ${truncTitle(item.title, 26)}`, `dsc:${saveToken}`),
+      Markup.button.callback('👎', `dislike:${dislikeToken}`),
+    ];
   });
   return Markup.inlineKeyboard(buttons);
 }

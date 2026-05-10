@@ -51,6 +51,13 @@ export interface RadarQuery {
   authorHandle?: string;
 }
 
+export interface RadarSavedArticle {
+  url: string;
+  title: string;
+  category: string;
+  mdPath: string;
+}
+
 export interface RadarResult {
   query: RadarQuery;
   saved: number;
@@ -58,6 +65,8 @@ export interface RadarResult {
   errors: number;
   /** URLs pushed to async video queue instead of extracted inline. */
   queued: number;
+  /** Articles saved this cycle — used for per-article 👎 notifications. */
+  savedArticles?: RadarSavedArticle[];
 }
 
 /** Summary of a full radar cycle — used by proactive digest. */
