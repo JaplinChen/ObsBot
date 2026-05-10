@@ -1,20 +1,9 @@
-/**
- * Cloudflare Quick Tunnel 管理
- *
- * 啟動 `cloudflared tunnel --url http://localhost:<PORT>`，
- * 從 stdout/stderr 解析 trycloudflare.com URL，
- * 透過 onUrl callback 回傳給呼叫端（用於 Telegram 通知）。
- *
- * 設計：
- * - cloudflared 不存在時優雅降級（僅 warn，不 crash）
- * - bot 進程退出時自動 kill cloudflared 子進程
- * - Quick Tunnel URL 每次重啟都不同，透過 Telegram 通知使用者
- */
-
 import { spawn, spawnSync } from 'node:child_process';
 
 const TUNNEL_URL_RE = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/;
-const READY_TIMEOUT_MS = 30_000;
+const READY_TIMEOUT_MS = 60_000;
+const MAX_RETRIES = 5;
+const RETRY_DELAYS_MS = [10_000, 20_000, 30_000, 60_000, 120_000];
 
 export interface TunnelOptions {
   port: number;
@@ -25,63 +14,95 @@ export interface TunnelOptions {
 export function startQuickTunnel(opts: TunnelOptions): () => void {
   const { port, onUrl, onError } = opts;
 
-  // 確認 cloudflared 是否存在（跨平台：Windows 用 where，其他用 which）
   const findCmd = process.platform === 'win32' ? 'where' : 'which';
   const whichResult = spawnSync(findCmd, ['cloudflared'], { encoding: 'utf-8' });
   const bin = whichResult.stdout.trim().split('\n')[0].trim();
   if (!bin) {
-    const installHint = process.platform === 'win32'
-      ? 'winget install Cloudflare.cloudflared'
-      : process.platform === 'darwin'
-        ? 'brew install cloudflared'
+    const installHint = process.platform === 'darwin'
+      ? 'brew install cloudflared'
+      : process.platform === 'win32'
+        ? 'winget install Cloudflare.cloudflared'
         : 'apt install cloudflared';
     onError?.(`cloudflared 未安裝，跳過 Quick Tunnel（${installHint}）`);
     return () => {};
   }
 
-  const child = spawn(bin, ['tunnel', '--url', `http://localhost:${port}`], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  // 殺掉同 port 的孤兒 cloudflared（防止多進程同時搶佔）
+  spawnSync('pkill', ['-f', `cloudflared tunnel --url http://localhost:${port}`], { encoding: 'utf-8' });
 
-  let urlFound = false;
-  let timeoutId: NodeJS.Timeout | undefined;
+  let stopped = false;
+  let retryCount = 0;
+  let currentChild: ReturnType<typeof spawn> | undefined;
+  let retryTimerId: NodeJS.Timeout | undefined;
 
-  function handleChunk(chunk: Buffer): void {
-    const text = chunk.toString('utf-8');
-    if (urlFound) return;
-    const match = TUNNEL_URL_RE.exec(text);
-    if (match) {
-      urlFound = true;
-      if (timeoutId !== undefined) clearTimeout(timeoutId);
-      onUrl(match[0]);
+  function spawnTunnel(): void {
+    if (stopped) return;
+
+    const child = spawn(bin, ['tunnel', '--url', `http://localhost:${port}`], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    currentChild = child;
+
+    let urlFound = false;
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    function handleChunk(chunk: Buffer): void {
+      const text = chunk.toString('utf-8');
+      if (urlFound) return;
+      const match = TUNNEL_URL_RE.exec(text);
+      if (match) {
+        urlFound = true;
+        retryCount = 0; // 成功後重置重試計數
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        onUrl(match[0]);
+      }
     }
+
+    child.stdout?.on('data', handleChunk);
+    child.stderr?.on('data', handleChunk);
+
+    child.on('error', (err) => {
+      onError?.(`cloudflared 啟動失敗：${err.message}`);
+    });
+
+    child.on('exit', (code, signal) => {
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+      if (stopped || signal === 'SIGTERM' || signal === 'SIGKILL') return;
+
+      if (retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAYS_MS[retryCount] ?? 120_000;
+        retryCount++;
+        const reason = urlFound
+          ? `tunnel 斷線（code=${code ?? signal}），${delay / 1000}s 後重連（第 ${retryCount}/${MAX_RETRIES} 次）`
+          : `cloudflared 意外退出（code=${code ?? signal}），${delay / 1000}s 後重試（第 ${retryCount}/${MAX_RETRIES} 次）`;
+        onError?.(reason);
+        retryTimerId = setTimeout(spawnTunnel, delay);
+      } else {
+        onError?.(`cloudflared 已重試 ${MAX_RETRIES} 次仍失敗，停止自動重連`);
+      }
+    });
+
+    // 超時未拿到 URL 時提示（不終止，讓 exit handler 處理重試）
+    timeoutId = setTimeout(() => {
+      if (!urlFound) {
+        onError?.(`cloudflared 啟動超時（${READY_TIMEOUT_MS / 1000}s），未取得 Tunnel URL`);
+      }
+    }, READY_TIMEOUT_MS);
   }
 
-  child.stdout?.on('data', handleChunk);
-  child.stderr?.on('data', handleChunk);
+  spawnTunnel();
 
-  child.on('error', (err) => {
-    onError?.(`cloudflared 啟動失敗：${err.message}`);
-  });
-
-  child.on('exit', (code, signal) => {
-    if (urlFound) return; // 正常完成後退出不需警告
-    if (code !== 0 && signal !== 'SIGTERM' && signal !== 'SIGKILL') {
-      onError?.(`cloudflared 意外退出（code=${code ?? signal}）`);
-    }
-  });
-
-  // 超時未拿到 URL 時提示
-  timeoutId = setTimeout(() => {
-    if (!urlFound) {
-      onError?.(`cloudflared 啟動超時（${READY_TIMEOUT_MS / 1000}s），未取得 Tunnel URL`);
-    }
-  }, READY_TIMEOUT_MS);
-
-  // bot 進程退出時清理子進程（同時移除 process listeners，避免重複呼叫堆積）
   const cleanup = (): void => {
-    if (timeoutId !== undefined) clearTimeout(timeoutId);
-    if (!child.killed) child.kill('SIGTERM');
+    stopped = true;
+    if (retryTimerId !== undefined) clearTimeout(retryTimerId);
+    const child = currentChild;
+    if (child && !child.killed) {
+      child.kill('SIGTERM');
+      // SIGKILL fallback：若 3 秒後仍未退出則強制終止
+      setTimeout(() => {
+        if (!child.killed) child.kill('SIGKILL');
+      }, 3_000);
+    }
     process.off('exit', cleanup);
     process.off('SIGINT', cleanup);
     process.off('SIGTERM', cleanup);
