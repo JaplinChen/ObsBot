@@ -1,0 +1,100 @@
+{
+  "_comment": "提取器測試 fixtures — 定義每個平台的測試 URL 與預期輸出 schema。",
+  "_last_updated": "2026-05-10",
+  "extractors": [
+    {
+      "platform": "reddit",
+      "probeUrl": "https://www.reddit.com/r/programming/top/?t=week",
+      "testCases": [
+        {
+          "url": "https://www.reddit.com/r/programming/comments/1ckx7k8/whats_your_biggest_software_engineering_regret/",
+          "description": "Reddit 討論帖（含留言）",
+          "mustHaveFields": ["title", "body", "platform", "author"],
+          "expectations": {
+            "platform": "reddit",
+            "title": { "minLength": 10 },
+            "body": { "minLength": 50 }
+          },
+          "knownIssues": ["cookie_bytestring", "stale_url_index"]
+        }
+      ]
+    },
+    {
+      "platform": "youtube",
+      "probeUrl": "https://www.youtube.com/",
+      "testCases": [
+        {
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "description": "YouTube 影片（字幕提取）",
+          "mustHaveFields": ["title", "platform", "url"],
+          "expectations": {
+            "platform": "youtube",
+            "title": { "minLength": 5 }
+          },
+          "knownIssues": ["innertube_api_failure", "hls_jwt_expiry"]
+        }
+      ]
+    },
+    {
+      "platform": "github",
+      "probeUrl": "https://github.com/",
+      "testCases": [
+        {
+          "url": "https://github.com/anthropics/anthropic-sdk-python",
+          "description": "GitHub repo（README 提取）",
+          "mustHaveFields": ["title", "body", "platform", "url"],
+          "expectations": {
+            "platform": "github",
+            "title": { "minLength": 5 },
+            "body": { "minLength": 100 }
+          }
+        }
+      ]
+    },
+    {
+      "platform": "x",
+      "probeUrl": "https://api.fxtwitter.com/status/1585341984679469056",
+      "testCases": [
+        {
+          "url": "https://x.com/sama/status/1585341984679469056",
+          "description": "X/Twitter 單推文",
+          "mustHaveFields": ["title", "body", "platform", "author"],
+          "expectations": {
+            "platform": "x",
+            "body": { "minLength": 10 }
+          }
+        }
+      ]
+    },
+    {
+      "platform": "threads",
+      "probeUrl": "https://www.threads.net/",
+      "testCases": [
+        {
+          "url": "https://www.threads.net/@zuck",
+          "description": "Threads 用戶頁面",
+          "mustHaveFields": ["title", "platform"],
+          "expectations": {
+            "platform": "threads"
+          }
+        }
+      ]
+    },
+    {
+      "platform": "web",
+      "probeUrl": "https://www.google.com/",
+      "testCases": [
+        {
+          "url": "https://blog.pragmaticengineer.com/the-real-reason-why-uber-migrated-away-from-microservices/",
+          "description": "一般部落格文章（通用 web 提取器）",
+          "mustHaveFields": ["title", "body", "platform", "url"],
+          "expectations": {
+            "platform": "web",
+            "title": { "minLength": 10 },
+            "body": { "minLength": 200 }
+          }
+        }
+      ]
+    }
+  ]
+}

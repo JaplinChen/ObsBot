@@ -20,6 +20,8 @@
     "format:check": "prettier . --check",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
+    "test:extractors": "node scripts/test-extractors.mjs",
+    "test:extractors:full": "node scripts/test-extractors.mjs --full",
     "setup": "node scripts/setup.mjs",
     "postinstall": "node scripts/postinstall.mjs",
     "app:install": "cd electron && npm install",
