@@ -100,23 +100,25 @@ async function getTranscript(
   return getPlainTranscript(videoPath, tmpDir);
 }
 
-/** Build clean display text from metadata */
+/** Build clean display text from metadata — description first, stats at end */
 function buildText(meta: TikTokMeta): string {
   const lines: string[] = [];
+  // Description comes first so AI enricher and summary fallback see meaningful content
+  if (meta.description) {
+    lines.push(meta.description.length > 1000 ? meta.description.slice(0, 1000) + '...' : meta.description);
+    lines.push('');
+  }
+  // Stats appended at the end as reference metadata
+  const stats: string[] = [];
+  if (meta.view_count != null) stats.push(`Views: ${meta.view_count.toLocaleString()}`);
+  if (meta.like_count != null) stats.push(`Likes: ${meta.like_count.toLocaleString()}`);
+  if (meta.comment_count != null) stats.push(`Comments: ${meta.comment_count.toLocaleString()}`);
   if (meta.duration) {
     const m = Math.floor(meta.duration / 60);
     const s = meta.duration % 60;
     lines.push(`**Duration:** ${m}:${String(s).padStart(2, '0')}`);
   }
-  const stats: string[] = [];
-  if (meta.view_count != null) stats.push(`Views: ${meta.view_count.toLocaleString()}`);
-  if (meta.like_count != null) stats.push(`Likes: ${meta.like_count.toLocaleString()}`);
-  if (meta.comment_count != null) stats.push(`Comments: ${meta.comment_count.toLocaleString()}`);
   if (stats.length > 0) lines.push(`**Stats:** ${stats.join(' | ')}`);
-  if (meta.description) {
-    if (lines.length > 0) lines.push('');
-    lines.push(meta.description.length > 1000 ? meta.description.slice(0, 1000) + '...' : meta.description);
-  }
   return lines.join('\n');
 }
 

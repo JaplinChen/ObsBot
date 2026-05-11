@@ -11,7 +11,7 @@ import { computeEnrichmentScore } from '../../monitoring/benchmark-scorer.js';
 import { loadBenchmarkData, saveBenchmarkData, recordPlatformAttempt } from '../../monitoring/benchmark-store.js';
 import { suggestAction } from '../../learning/action-suggester.js';
 import { ocrContentImages, isLikelyScreenshot } from '../../enrichment/ocr-service.js';
-import { cleanTitle } from '../../utils/content-cleaner.js';
+import { cleanTitle, cleanAdSpeak, stripPromoBlocks } from '../../utils/content-cleaner.js';
 import { getUserConfig } from '../../utils/user-config.js';
 import { fetchYouTubeTranscript } from '../../utils/transcript-service.js';
 import { identifySpeakers } from '../../utils/speaker-identifier.js';
@@ -37,11 +37,11 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
   logger.info('msg', 'category', { category: content.category });
 
   const hints = getTopKeywordsForCategory(content.category);
-  const cleanText = content.text
-    .replace(/\*\*Duration:\*\*.*(?:\r?\n|$)/gi, ' ')
-    .replace(/\*\*Stats:\*\*.*(?:\r?\n|$)/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const cleanText = stripPromoBlocks(cleanAdSpeak(
+    content.text
+      .replace(/\*\*Duration:\*\*.*(?:\r?\n|$)/gi, ' ')
+      .replace(/\*\*Stats:\*\*.*(?:\r?\n|$)/gi, ' ')
+  )).replace(/\s+/g, ' ').trim();
 
   const features = getUserConfig().features;
 
@@ -112,9 +112,23 @@ export async function enrichExtractedContent(content: ExtractedContent, config: 
       }).join('\n').slice(0, 4000)
     : '';
 
-  let textForAI = content.transcript
-    ? `${cleanText}${AI_TRANSCRIPT_PREFIX}${content.transcript.slice(0, 2500)}`
-    : cleanText;
+  // R6: YouTube/TikTok 有字幕時，字幕優先。description 截短到 300 字避免廣告污染分析。
+  const hasSubstantialTranscript = !!content.transcript && content.transcript.length > 500;
+  const isVideoWithTranscript = hasSubstantialTranscript &&
+    (content.platform === 'youtube' || content.platform === 'tiktok' ||
+     content.platform === 'bilibili' || content.platform === 'douyin');
+
+  let textForAI: string;
+  if (isVideoWithTranscript) {
+    // 字幕當主體，description 僅保留前 300 字作補充背景
+    const descPreview = cleanText.slice(0, 300);
+    textForAI = `${AI_TRANSCRIPT_PREFIX}${content.transcript!.slice(0, 3000)}` +
+      (descPreview ? `\n\n[影片描述摘要]\n${descPreview}` : '');
+  } else {
+    textForAI = content.transcript
+      ? `${cleanText}${AI_TRANSCRIPT_PREFIX}${content.transcript.slice(0, 2500)}`
+      : cleanText;
+  }
   if (ocrText) textForAI += `\n\n[OCR 文字辨識]\n${ocrText.slice(0, 1500)}`;
   if (content.embeddedVideoTranscripts?.length) {
     const videoText = content.embeddedVideoTranscripts

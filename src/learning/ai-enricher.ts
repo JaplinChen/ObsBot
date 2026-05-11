@@ -87,6 +87,16 @@ export async function enrichContent(
   const wantPredictions = tier !== 'flash' && text.length > 400;
   // 薄內容（原文 < 300 字）跳過 analysis，避免 LLM 複述 summary
   const isThinContent = text.length < 300;
+  // 短內容（< 200 字）提示 LLM 必須改寫而非複製
+  const isShortContent = text.length < 200;
+  // Source-aware analysis label
+  const VIDEO_PLATFORMS = new Set(['youtube', 'tiktok', 'bilibili', 'douyin', 'direct-video']);
+  const POST_PLATFORMS = new Set(['x', 'threads', 'weibo', 'xhs', 'xiaohongshu']);
+  const analysisLabel = VIDEO_PLATFORMS.has(platform ?? '')
+    ? '影片核心重點'
+    : POST_PLATFORMS.has(platform ?? '')
+      ? '貼文核心重點'
+      : '內容核心重點';
   const jsonKeys = isGithub
     ? 'keywords, summary, analysis, keyPoints, title, category, githubAnalysis'
     : hasChapterRequest
@@ -107,14 +117,16 @@ export async function enrichContent(
     'CAVEMAN RULE: Output ONLY the JSON object. No text before {. No text after }. No "Sure", no "Here is", no explanation.',
     'You are a strict JSON generator for content enrichment.',
     `Return ONLY valid JSON with keys: ${jsonKeys}.`,
-    'keywords: array of up to 5 concise keywords.',
+    'keywords: array of up to 5 concise keywords. Each keyword MUST be a complete meaningful term (≥3 chars). Do NOT split one concept into multiple entries (e.g. "開源跨裝置資料同步工具" must stay as ONE keyword, not split). Do NOT use stopwords (的/是/在) as keywords.',
     'All text output MUST be Traditional Chinese (zh-TW).',
     'CRITICAL: 必須過濾掉原文中的廢話、語助詞、誇張修飾、廣告話術。',
     '禁止出現：感嘆詞(哇靠/天啊)、誇張語(太震撼/巨好用/猛到不真實)、催促語(趕快/必須馬上)、按讚轉發數據。',
     '只保留可驗證的事實、具體工具名、操作步驟、技術細節。',
-    'summary: <= 120字，客觀陳述核心主題與實用價值，語氣中性專業。',
-    'analysis: 2-4句，引用內容中的具體做法/技術細節，不引用情緒語言。',
-    'keyPoints: 3-5條，每條<=24字，必須可執行或可驗證，不可出現泛用模板語或推銷語。',
+    isShortContent
+      ? 'summary: 原文很短，必須用自己的話【改寫】，說明這是什麼工具/概念、適合誰用——禁止逐字複製原文。長度 ≤ 80字。'
+      : 'summary: <= 120字，客觀陳述核心主題與實用價值，語氣中性專業。',
+    `analysis: 2-4句，直接陳述具體技術細節或做法（${analysisLabel}）。禁止以「影片重點聚焦在」「本文介紹」「這篇文章」等元描述詞開頭，直接講重點。`,
+    'keyPoints: 3-5條，每條<=24字，必須以動詞開頭（使用/選擇/避免/設定/整合...），可執行或可驗證，不可出現廣告推廣或訂閱追蹤文字。',
     'CRITICAL: summary / analysis / keyPoints 三個欄位絕對不可出現相同的句子或重複的描述。每個欄位必須提供不同維度的資訊：summary 說「是什麼」，analysis 說「怎麼做/技術原理」，keyPoints 說「能對用戶帶來什麼具體行動」。若原文內容不足以填充三個欄位，analysis 可縮短至 1 句，keyPoints 可減至 2 條，但不可直接複述 summary 的文字。',
     'title: 格式「{工具或概念名}-{簡短描述}」，<=40字，語意清楚，不要作者前綴，不要感嘆號。',
     '例：「Kaku-整合AI的深度定製終端」「Symphony-AI自動完成CI和PR」「Obsidian-雙向連結筆記管理工具」',
@@ -140,7 +152,15 @@ export async function enrichContent(
     // 確保所有文字欄位為繁體中文（LLM 可能回傳簡體）
     return {
       keywords: Array.isArray(parsed.keywords)
-        ? (parsed.keywords.filter((v): v is string => typeof v === 'string').slice(0, 5).map(s2tw))
+        ? (parsed.keywords
+            .filter((v): v is string => typeof v === 'string')
+            .map(s2tw)
+            // 過濾碎片 token：< 3 字、只含英數空白、或看起來是被截斷的片語結尾
+            .filter(k => {
+              const t = k.trim();
+              return t.length >= 3 && !/^[\w\s]{1,2}$/.test(t) && !/^(的|是|在|和|與|或|及)$/.test(t);
+            })
+            .slice(0, 5))
         : null,
       summary: typeof parsed.summary === 'string' ? s2tw(parsed.summary) : null,
       analysis: typeof parsed.analysis === 'string' ? s2tw(parsed.analysis) : null,
