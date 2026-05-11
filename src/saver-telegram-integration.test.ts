@@ -71,6 +71,7 @@ describe('backupToTelegram fire-and-forget contract', () => {
         title: 'Test',
         category: 'AI',
         url: 'https://ex.com',
+        mdPath: '/vault/note.md',
       }).catch(() => {});
 
     await expect(run()).resolves.toBeUndefined();
@@ -83,12 +84,13 @@ describe('backupToTelegram fire-and-forget contract', () => {
       title: 'Article Title',
       category: 'AI/Research',
       url: 'https://example.com/article',
+      mdPath: '/vault/2026-01-01-test-slug.md',
     }).catch(() => {});
 
     expect(mockBackup).toHaveBeenCalledWith(
       '2026-01-01-test-slug.md',
       '# markdown body',
-      { title: 'Article Title', category: 'AI/Research', url: 'https://example.com/article' },
+      { title: 'Article Title', category: 'AI/Research', url: 'https://example.com/article', mdPath: expect.any(String) },
     );
   });
 });

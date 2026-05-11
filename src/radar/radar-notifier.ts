@@ -45,7 +45,7 @@ export async function notifyRadarResults(
     const dislikeToken = rememberDislike(article.category);
     const deleteToken = rememberDelete(article.category, article.mdPath, article.url);
     const label = article.category ? `[${article.category}] ` : '';
-    const text = `📡 雷達新增\n\n${label}${article.title}`;
+    const text = `📡 雷達新增\n\n${label}${article.title}\n${article.url}`;
     const keyboard = Markup.inlineKeyboard([
       [
         Markup.button.callback(`👎 不感興趣：${article.category}`, `dislike:${dislikeToken}`),
