@@ -144,17 +144,60 @@ export const AI_CATEGORIES: CategoryRule[] = [
   { name: 'AI/設計工具', keywords: ['設計工具', 'design tool', '平面設計'] },
   { name: 'AI/Logo生成', keywords: ['logo生成', 'logo 生成', 'logo design', 'logo設計'] },
 
-  // ── AI 通用兜底 ──
+  // ── AI 工具介紹：開源工具、平台、GitHub repo ──
+  {
+    name: 'AI/工具介紹',
+    keywords: [
+      'github.com/', 'github -', '開源工具', '開源專案', 'open source',
+      '工具推薦', '工具介紹', '工具合集', '神器', '好用', '必裝', '必備',
+      '免費工具', 'free tool', '瀏覽器擴充', 'chrome extension',
+      'app 推薦', 'app 介紹', '應用推薦', 'mac app',
+    ],
+  },
+
+  // ── AI 模型動態：模型發布、效能比較、版本更新 ──
+  {
+    name: 'AI/模型動態',
+    keywords: [
+      '模型發布', '模型更新', '正式發布', '開源發布', 'model release',
+      'benchmark', 'leaderboard', '效能比較', '性能測試', '評測',
+      '版本更新', 'v0.', 'v1.', 'v2.', 'v3.', 'v4.',
+      'minimax', 'qwen', 'llama', 'mistral', 'gemma', 'phi-',
+      'deepseek', 'glm-', 'kimi', 'moonshot',
+      '免费 claude', '免費 claude', 'claude 3', 'claude 4', 'o1', 'o3',
+      'gpt-4', 'gpt-5', 'gpt4', 'gpt5',
+    ],
+  },
+
+  // ── AI 部署教學：本地部署、安裝、配置指南 ──
+  {
+    name: 'AI/部署教學',
+    keywords: [
+      '本地部署', '本地安裝', '本地运行', '本機部署', 'local deploy',
+      '部署教學', '部署教程', '安裝教學', '配置指南', 'setup guide',
+      '手把手', '从0到1', '从零到一', '從0到1', '從零到一',
+      '完全教程', '入門指南', '入门指南', '小白教程', '新手教程',
+      'docker compose', 'docker run', 'ollama pull', 'lm studio',
+    ],
+  },
+
+  // ── AI 研究對話：學術論文、技術原理、深度分析（兜底收窄）──
   {
     name: 'AI/研究對話',
     keywords: [
+      '研究論文', '技術報告', 'arxiv', 'paper', '學術研究',
+      '原理解析', '技術原理', '架構分析', '深度解讀',
+      '研究發現', '實驗結果', '消融實驗', 'ablation',
+    ],
+  },
+
+  // ── AI 產業觀察：趨勢、觀點、新聞（最終兜底）──
+  {
+    name: 'AI/產業觀察',
+    keywords: [
       'ai', 'gpt', 'llm', 'copilot', 'diffusion',
       '人工智慧', '大語言模型', '大语言模型', '機器學習', 'machine learning', 'deep learning',
-      '完全教程', '教程', '小白', '新手', '入門指南', '入门指南', '入門教學', '入门教学',
-      '从0开始', '从零开始', '零基礎', '零基础', 'getting started', '手把手', '3分钟', '0代码',
       '大模型', '模型评测', '模型評測',
-      'minimax', 'qwen', 'llama', 'mistral', 'gemma', 'phi-', 'benchmark', 'leaderboard',
-      '免费 claude', '免費 claude', 'claude 3', 'claude 4', 'o1', 'o3',
     ],
   },
 ];
