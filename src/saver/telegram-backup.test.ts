@@ -21,7 +21,7 @@ describe('backupToTelegram', () => {
     delete process.env.BOT_TOKEN;
     delete process.env.BACKUP_CHANNEL_ID;
 
-    await backupToTelegram('note.md', '# content', { title: 'T', category: 'AI', url: 'https://ex.com' });
+    await backupToTelegram('note.md', '# content', { title: 'T', category: 'AI', url: 'https://ex.com', mdPath: '/vault/note.md' });
 
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -30,7 +30,7 @@ describe('backupToTelegram', () => {
     process.env.BOT_TOKEN = 'tok';
     delete process.env.BACKUP_CHANNEL_ID;
 
-    await backupToTelegram('note.md', '# content', { title: 'T', category: 'AI', url: 'https://ex.com' });
+    await backupToTelegram('note.md', '# content', { title: 'T', category: 'AI', url: 'https://ex.com', mdPath: '/vault/note.md' });
 
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -39,7 +39,7 @@ describe('backupToTelegram', () => {
     process.env.BOT_TOKEN = 'mytoken';
     process.env.BACKUP_CHANNEL_ID = '-100123';
 
-    await backupToTelegram('note.md', '# markdown', { title: 'My Article', category: 'AI', url: 'https://ex.com/a' });
+    await backupToTelegram('note.md', '# markdown', { title: 'My Article', category: 'AI', url: 'https://ex.com/a', mdPath: '/vault/note.md' });
 
     expect(fetch).toHaveBeenCalledOnce();
     const [url, opts] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -53,7 +53,7 @@ describe('backupToTelegram', () => {
     process.env.BACKUP_CHANNEL_ID = '-100';
 
     const longTitle = 'T'.repeat(2000);
-    await backupToTelegram('note.md', '# content', { title: longTitle, category: 'AI', url: 'https://ex.com' });
+    await backupToTelegram('note.md', '# content', { title: longTitle, category: 'AI', url: 'https://ex.com', mdPath: '/vault/note.md' });
 
     const formData: FormData = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body;
     const caption = formData.get('caption') as string;
@@ -65,7 +65,7 @@ describe('backupToTelegram', () => {
     process.env.BACKUP_CHANNEL_ID = '-100';
 
     const markdown = '# Hello World\nsome content';
-    await backupToTelegram('backup.md', markdown, { title: 'T', category: 'Dev', url: 'https://ex.com' });
+    await backupToTelegram('backup.md', markdown, { title: 'T', category: 'Dev', url: 'https://ex.com', mdPath: '/vault/backup.md' });
 
     const formData: FormData = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body;
     expect(formData.get('chat_id')).toBe('-100');

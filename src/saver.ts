@@ -162,6 +162,7 @@ export async function saveToVault(
       title: content.title,
       category: rawCategory,
       url: content.url,
+      mdPath,
     }).catch(() => {});
     return { mdPath, imageCount: localImagePaths.length, videoCount: content.videos.length };
   } finally {
