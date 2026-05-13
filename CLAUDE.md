@@ -71,6 +71,31 @@ sleep 8 && tail -5 /tmp/knowpipe-launch.log
 - 每個 agent 寫完一筆觀察後即退出，下一個視窗再生成新 agent。
 - 不要讓 observer agent 跨越 session 邊界持續運行。
 
+### Observer 記錄範疇（只記這些，其餘跳過）
+
+| 記錄 ✅ | 跳過 ❌ |
+|--------|--------|
+| 檔案寫入 / 編輯（路徑、行數變化）| 純讀取、grep、glob 搜尋結果 |
+| tsc 編譯結果（pass/fail + 錯誤訊息）| 中間探索步驟 |
+| 測試結果（pass/fail + 數量）| 進度檢查點（無具體決策） |
+| Commit hash + message | 重複性 Bash 輸出 |
+| 明確架構決策（含原因）| 純資訊性的 console.log |
+| 用戶的明確指令轉向 | 工具呼叫的參數細節 |
+
+### Observer prompt 範本
+
+```
+你是 KnowPipe 觀察代理。只記錄以下事件類型的觀察：
+檔案變更、編譯結果、測試結果、commit、架構決策、用戶指令轉向。
+
+本次 delta（最近工具呼叫）：
+<delta>
+{最近 N 個工具呼叫的輸出，不帶歷史累積}
+</delta>
+
+寫出一筆 XML 觀察後立即退出。若 delta 中無上述事件類型，輸出 <skip/> 後退出。
+```
+
 ## 路由索引
 
 > 新任務先對照此表找入口，不確定再往下查代碼。
