@@ -10,8 +10,9 @@ import type { ExtractedContent } from '../../extractors/types.js';
 import type { AppConfig } from '../../utils/config.js';
 import { logger } from '../../core/logger.js';
 import { getUserConfig } from '../../utils/user-config.js';
-import { isOmlxAvailable, omlxChatCompletion } from '../../utils/omlx-client.js';
+import { runLocalLlmPrompt } from '../../utils/local-llm.js';
 import { regenerateFields } from '../../learning/ai-enricher.js';
+import { getSignalTag } from '../../utils/signal-scorer.js';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -165,10 +166,20 @@ async function runGeneratorFix(
 
 /* ── Main exported function ───────────────────────────────────────── */
 
+function applySignalTag(content: ExtractedContent): void {
+  const tag = getSignalTag(content);
+  if (!tag) return;
+  content.suggestedTags = [...(content.suggestedTags ?? []).filter(t => t !== 'high-signal' && t !== 'low-signal'), tag];
+  logger.info('review', `信號標籤：${tag}`, { platform: content.platform });
+}
+
 export async function reviewEnrichedContent(
   content: ExtractedContent,
   _config: AppConfig,
 ): Promise<ReviewResult> {
+  // Signal scoring runs unconditionally — zero cost, no LLM
+  applySignalTag(content);
+
   if (!getUserConfig().features.qualityReview) return PASS_RESULT;
 
   // 短文（<500 字）內容簡單，規則檢查足夠，跳過 LLM 審查
@@ -198,24 +209,22 @@ async function doReview(content: ExtractedContent): Promise<ReviewResult> {
   // Layer 1: Rule-based checks
   const ruleIssues = runRuleBasedChecks(content);
   if (ruleIssues.some(i => i.severity === 'high')) {
-    // Critical rule failure — go straight to Generator fix
-    if (await isOmlxAvailable()) {
-      const instructions = ruleIssues.map(i => ({
-        field: i.field,
-        instruction: i.problem,
-      }));
-      const fixedFields = await runGeneratorFix(content, instructions);
-      if (fixedFields.length > 0) {
-        const remaining = runRuleBasedChecks(content);
-        logger.info('review', 'L1 修復完成', { fixedFields, remaining: remaining.length });
-        return {
-          passed: remaining.length === 0,
-          issues: remaining,
-          autoFixed: true,
-          fixedFields,
-          durationMs: Date.now() - start,
-        };
-      }
+    // Critical rule failure — go straight to Generator fix (routing handles provider selection)
+    const instructions = ruleIssues.map(i => ({
+      field: i.field,
+      instruction: i.problem,
+    }));
+    const fixedFields = await runGeneratorFix(content, instructions);
+    if (fixedFields.length > 0) {
+      const remaining = runRuleBasedChecks(content);
+      logger.info('review', 'L1 修復完成', { fixedFields, remaining: remaining.length });
+      return {
+        passed: remaining.length === 0,
+        issues: remaining,
+        autoFixed: true,
+        fixedFields,
+        durationMs: Date.now() - start,
+      };
     }
     return {
       passed: false, issues: ruleIssues,
@@ -223,15 +232,9 @@ async function doReview(content: ExtractedContent): Promise<ReviewResult> {
     };
   }
 
-  // Layer 2: Evaluator (semantic scoring)
-  if (!await isOmlxAvailable()) {
-    return ruleIssues.length === 0
-      ? { passed: true, issues: [], autoFixed: false, fixedFields: [], durationMs: Date.now() - start }
-      : { passed: false, issues: ruleIssues, autoFixed: false, fixedFields: [], durationMs: Date.now() - start };
-  }
-
+  // Layer 2: Evaluator — routes via model-router (task: 'review' → standard tier)
   const evalPrompt = buildEvaluatorPrompt(content);
-  const evalRaw = await omlxChatCompletion(evalPrompt, { model: 'standard', timeoutMs: 10_000 });
+  const evalRaw = await runLocalLlmPrompt(evalPrompt, { task: 'review', timeoutMs: 10_000 });
   if (!evalRaw) {
     return { passed: ruleIssues.length === 0, issues: ruleIssues,
       autoFixed: false, fixedFields: [], durationMs: Date.now() - start };

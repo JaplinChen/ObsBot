@@ -157,6 +157,8 @@ const DEFAULTS: UserConfig = {
       keywords: 'flash',
       vision: 'standard',
       summarize: 'standard',
+      enrich: 'standard',
+      review: 'standard',
       general: 'standard',
       analyze: 'deep',
       digest: 'deep',
