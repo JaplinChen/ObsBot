@@ -37,6 +37,12 @@ sleep 8 && tail -5 /tmp/knowpipe-launch.log
 - ❌ 改完程式碼直接重啟，沒跑 `tsc --noEmit` → 帶著型別錯誤啟動
 - ❌ 在 worktree 目錄重啟 → loop 從 worktree 讀 code，主目錄不生效（hook 會 sync，但要等 commit）
 
+## Worktree & 部署
+
+- 套用改動前，先確認當前目錄是主目錄還是 worktree（`git branch --show-current`）
+- Bot 重啟走 `dev:loop` supervisor，不要直接呼叫 `npm start`
+- TypeScript 改動後先跑 `tsc --noEmit` 再部署（PostToolUse hook 會自動執行，但要確認 hook 輸出無錯）
+
 ## 踩坑教訓
 
 - 修改 extractor 或 formatter 後，**同時修復** Vault 中受影響的筆記——不要只修 code 不修 output。
@@ -49,6 +55,13 @@ sleep 8 && tail -5 /tmp/knowpipe-launch.log
 - 批量操作前先 dry-run，輸出完整變更清單讓用戶確認後再執行。
 - CJK/Unicode regex 編輯優先使用 Python script，避免 Edit tool 跳脫字元問題。
 - frontmatter regex 改動前，先對 legacy 格式（含格式不一致的舊筆記）做測試，確認 regex 能正確匹配。
+
+## Vault 執行規範
+
+- Vault 路徑從 `.env` 讀取，禁止寫死路徑
+- 執行分析腳本前必須先清除 `vault-knowledge.json` 快取
+- 不要把 MOC（Map of Content）組織用檔案標記為 `pending-review`
+- 移動檔案後必須同步更新 frontmatter 的 `category` 欄位（`rename()` 有已知覆寫 bug）
 
 ## UI / Frontend 規範
 
@@ -81,6 +94,10 @@ sleep 8 && tail -5 /tmp/knowpipe-launch.log
 | Commit hash + message | 重複性 Bash 輸出 |
 | 明確架構決策（含原因）| 純資訊性的 console.log |
 | 用戶的明確指令轉向 | 工具呼叫的參數細節 |
+
+**額外限制**：
+- **pure-read / grep 探索**：一律輸出 `<skip/>`，不記錄任何內容
+- **每 session 硬性上限 20 筆觀察**，超過後停止記錄（避免觸發 Prompt is too long）
 
 ### Observer prompt 範本
 
@@ -135,6 +152,7 @@ sleep 8 && tail -5 /tmp/knowpipe-launch.log
 | 2026-04-14 | 先讀再改，不憑記憶改 | 修改任何現有邏輯前 | 架構細節容易記錯，讀檔再改比重工便宜 |
 | 2026-04-14 | 功能旗標 > 條件編譯 | 新功能上線時 | flash tier 跳過 predictions 生成——用運行時條件比修改型別更安全 |
 | 2026-04-14 | log 要有上限（slice -N）| 所有成長型 JSON log | corrections-log 每次 append，無限成長最終拖垮 healer 執行 |
+| 2026-05-13 | 先釘定交付物再探索 | 大型 Vault 稽核任務 | 不事先指定輸出 artifact，容易在探索階段就耗盡 context，無實質交付 |
 
 ## 品質閾值
 

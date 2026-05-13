@@ -19,7 +19,7 @@ import { splitMessage } from '../utils/telegram.js';
 import { startTyping, stopTyping } from '../utils/typing-indicator.js';
 import type { BotStats } from '../messages/types.js';
 import {
-  handleVaultGraph, handleVaultDreaming, handleVaultMemoir,
+  handleVaultGraph, handleVaultDreaming, handleVaultMemoir, handleVaultGuardian,
   handleVaultAnalyzeRules, handleVaultBookmarkGap, handleVaultDraft, handleVaultAudit,
 } from './vault-hub-ext.js';
 import { analyzeFailures, formatFailureReport } from '../monitoring/failure-analyzer.js';
@@ -130,6 +130,7 @@ export function createVaultHub(stats: BotStats) {
     if (sub === 'bookmark-gap') { await handleVaultBookmarkGap(ctx, config, rest); return; }
     if (sub === 'draft') { await handleVaultDraft(ctx, config, rest); return; }
     if (sub === 'audit') { await handleVaultAudit(ctx, config); return; }
+    if (sub === 'guardian') { await handleVaultGuardian(ctx as Parameters<typeof handleVaultGuardian>[0], config, rest); return; }
 
     // retry needs special handling (uses stats closure)
     if (sub === 'retry') {
@@ -289,7 +290,6 @@ export function createVaultCallback(stats: BotStats) {
     if (mode === 'memoir') { await handleVaultMemoir(ctx, config, ''); return; }
     if (mode === 'analyze') { await handleVaultAnalyzeRules(ctx, config, 'rules'); return; }
     if (mode === 'bookmark-gap') { await handleVaultBookmarkGap(ctx, config, ''); return; }
-    if (mode === 'draft') { await handleVaultDraft(ctx, config, ''); return; }
 
     const m = MODES[mode];
     if (m) {

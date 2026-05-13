@@ -1,13 +1,14 @@
 /**
  * vault-hub-ext — extended /vault subcommand handlers.
  * Imported by vault-hub.ts to keep that file under 300 lines.
- * Covers: graph, dreaming, memoir, analyze rules, bookmark-gap, draft.
+ * Covers: graph, dreaming, memoir, analyze rules, bookmark-gap, draft, guardian.
  */
 import type { Context } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
 import { writeFile, mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { startTyping, stopTyping } from '../utils/typing-indicator.js';
+import { runGuardianCycle } from '../monitoring/vault-guardian-service.js';
 import { splitMessage } from '../utils/telegram.js';
 import { runLocalLlmPrompt } from '../utils/local-llm.js';
 import { collectRecentNotes } from './digest-command.js';
@@ -212,6 +213,41 @@ ${wikiSection}
   } catch (err) {
     stopTyping(typing);
     await ctx.reply(`草稿生成失敗：${String(err)}`);
+  }
+}
+
+/** /vault guardian [--since 24h] [--dry-run] — 品質守護週期 */
+export async function handleVaultGuardian(ctx: Context & { bot?: import('telegraf').Telegraf }, config: AppConfig, args: string): Promise<void> {
+  const sinceMatch = args.match(/--since\s+(\S+)/);
+  const since = sinceMatch?.[1] ?? '24h';
+  const dryRun = args.includes('--dry-run');
+  const typing = startTyping(ctx);
+  await ctx.reply(`🛡️ 品質守護掃描中（最近 ${since}${dryRun ? '，dry-run 模式' : ''}）…`);
+
+  try {
+    // @ts-expect-error bot is injected at registration time
+    const bot = ctx.bot ?? ctx.telegram?._client;
+    if (!bot) { stopTyping(typing); await ctx.reply('無法取得 bot 實例，請用標準啟動方式執行。'); return; }
+
+    const result = await runGuardianCycle(bot, config, since, dryRun);
+    stopTyping(typing);
+
+    const lines = [
+      `✅ Vault Guardian 完成`,
+      '',
+      `掃描：${result.scanned} 篇（最近 ${since}）`,
+      `  ✅ 優質（≥ 7.5）：${result.excellent} 篇`,
+      `  🟡 普通（5–7.4）：${result.normal} 篇`,
+      `  🔴 低品質（< 5）：${result.lowQuality} 篇`,
+      `  ⚪ MOC 豁免：${result.mocSkipped} 篇`,
+      '',
+      dryRun ? '（dry-run：未實際推送或寫入）' : `📲 Telegram 推送：${result.notified} 篇`,
+    ].filter(Boolean).join('\n');
+
+    await ctx.reply(lines);
+  } catch (err) {
+    stopTyping(typing);
+    await ctx.reply(`Guardian 執行失敗：${String(err)}`);
   }
 }
 
