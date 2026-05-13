@@ -4,6 +4,12 @@ All notable changes to KnowPipe are documented here.
 
 Format: [MAJOR.MINOR.PATCH] — YYYY-MM-DD
 
+## [1.0.1.1] — 2026-05-13
+
+### Fixed
+
+- **TikTok 圖片嵌入修正**：TikTok 圖片 URL 路徑常以 `.image` 結尾，導致下載後副檔名為 `.image`，Obsidian 無法識別並嵌入顯示。現在改為先驗證標準圖片副檔名白名單，非標準時讀取 `Content-Type` 標頭判斷真實格式，最終 fallback 為 `.jpg`，確保存入 Vault 的圖片可直接在 Obsidian 中渲染。
+
 ## [1.0.1.0] — 2026-05-03
 
 ### Added
