@@ -43,7 +43,7 @@ async function getLastRunTime(sinceArg: string): Promise<Date> {
 }
 
 async function detectNewArticles(vaultPath: string, since: Date): Promise<string[]> {
-  const pattern = join(vaultPath, 'ObsBot', '**', '*.md');
+  const pattern = join(vaultPath, 'KnowPipe', '**', '*.md');
   const files = await glob(pattern, { absolute: true });
   const sinceTs = since.getTime();
   const results: string[] = [];
