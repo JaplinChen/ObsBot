@@ -21,6 +21,8 @@ vi.mock('../../learning/dynamic-classifier.js', () => ({
 
 vi.mock('../../utils/content-cleaner.js', () => ({
   cleanTitle: vi.fn((t: string) => t),
+  cleanAdSpeak: vi.fn((t: string) => t),
+  stripPromoBlocks: vi.fn((t: string) => t),
 }));
 
 import { classifyContent } from '../../classifier.js';
