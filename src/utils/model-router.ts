@@ -14,6 +14,8 @@ export type TaskType =
   | 'analyze'
   | 'digest'
   | 'vision'
+  | 'enrich'
+  | 'review'
   | 'general';
 
 /**
