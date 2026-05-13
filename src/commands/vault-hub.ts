@@ -45,10 +45,11 @@ function mainMenu() {
 
 const CAT_DEFS = {
   quality: {
-    text: '🩺 *品質維護*\n\n掃描、除重、修排版、品質基準：',
+    text: '🩺 *品質維護*\n\n掃描、除重、修排版、品質基準、低品質修復：',
     keyboard: () => Markup.inlineKeyboard([
       [Markup.button.callback('📊 品質報告', 'vlt:quality'), Markup.button.callback('🔍 重複掃描', 'vlt:dedup')],
       [Markup.button.callback('📐 修復排版', 'vlt:reformat'), Markup.button.callback('📈 品質基準', 'vlt:benchmark')],
+      [Markup.button.callback('🔧 低品質修復', 'vlt:low-quality')],
       [Markup.button.callback('‹ 返回', 'vlt:back')],
     ]),
   },
@@ -276,6 +277,12 @@ export function createVaultCallback(stats: BotStats) {
     }
 
     if (mode === 'feeds') { await handleVaultFeeds(ctx, config); return; }
+
+    if (mode === 'low-quality') {
+      rewriteText(ctx, '/reprocess', '--low-quality');
+      await handleReprocess(ctx, config);
+      return;
+    }
 
     if (mode === 'graph') { await handleVaultGraph(ctx, config, ''); return; }
     if (mode === 'dreaming') { await handleVaultDreaming(ctx, config, ''); return; }

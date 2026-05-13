@@ -100,18 +100,10 @@ function fallbackSummary(content: ExtractedContent, displayText: string): string
   return '';
 }
 
-function fallbackAnalysis(content: ExtractedContent, displayText: string): string {
-  const sentences = collectContentSentences(content, displayText);
-  if (sentences.length >= 2) {
-    const top = sentences.slice(0, 3);
-    const hasVideo = !!(content.videos && content.videos.length > 0);
-    const focusLabel = hasVideo ? '影片重點聚焦在' : '主要探討';
-    return [
-      `${focusLabel}：${truncateAtBoundary(top[0], 80)}。`,
-      `重點在於：${truncateAtBoundary(top[1], 80)}。`,
-      top[2] ? `補充觀點：${truncateAtBoundary(top[2], 80)}。` : null,
-    ].filter(Boolean).join(' ');
-  }
+function fallbackAnalysis(): string {
+  // Intentionally empty: without LLM enrichment, displaying raw sentence fragments
+  // as "analysis" produces low-quality formulaic output worse than no section at all.
+  // Articles without enrichedAnalysis simply omit the ## 內容分析 section.
   return '';
 }
 
@@ -170,7 +162,7 @@ export function assembleNote(
     && isReadableText(content.enrichedAnalysis)
     && !looksGeneric(content.enrichedAnalysis)
     ? content.enrichedAnalysis
-    : fallbackAnalysis(content, displayText);
+    : fallbackAnalysis();
   // 若 analysis 與 summary 高度重複則不渲染，避免三個 section 複述同一句話
   const cleanAnalysis = rawAnalysis && cleanSummary && isDuplicateContent(cleanSummary, rawAnalysis)
     ? null

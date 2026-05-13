@@ -26,7 +26,11 @@ interface ParsedArgs {
   sinceDays?: number;
   refetch?: boolean;
   pendingReview?: boolean;
+  lowQuality?: boolean;
 }
+
+/** Articles using the formulaic fallback pattern or missing 內容分析 are low-quality targets. */
+const LOW_QUALITY_RE = /主要探討：|重點在於：|影片重點聚焦在：/;
 
 /** Parse command arguments into execution mode */
 function parseArgs(text: string): ParsedArgs | null {
@@ -34,13 +38,14 @@ function parseArgs(text: string): ParsedArgs | null {
   const args = text.replace(/^\/reprocess\s*/, '').replace(/\u2014/g, '--').replace(/\u2013/g, '--').trim();
   if (!args) return null;
 
-  if (args.startsWith('--all') || args.startsWith('--refetch') || args.startsWith('--since') || args.startsWith('--pending-review')) {
+  if (args.startsWith('--all') || args.startsWith('--refetch') || args.startsWith('--since') || args.startsWith('--pending-review') || args.startsWith('--low-quality')) {
     const refetch = args.includes('--refetch');
     const pendingReview = args.includes('--pending-review');
+    const lowQuality = args.includes('--low-quality');
     const sinceMatch = args.match(/--since\s+(\d+)d/);
     // No --since means process ALL notes (sinceDays = undefined)
     const sinceDays = sinceMatch ? parseInt(sinceMatch[1], 10) : undefined;
-    return { mode: 'batch', sinceDays, refetch, pendingReview };
+    return { mode: 'batch', sinceDays, refetch, pendingReview, lowQuality };
   }
 
   // Single mode — optionally with --refetch flag
@@ -118,11 +123,17 @@ async function reprocessBatch(
   refetch: boolean,
   onProgress: (processed: number, total: number, current: string) => Promise<void>,
   pendingReview?: boolean,
+  lowQuality?: boolean,
 ): Promise<{ total: number; success: number; failed: number; errors: string[] }> {
   const notes = await scanVaultNotes(config.vaultPath);
 
   let targets = notes;
-  if (pendingReview) {
+  if (lowQuality) {
+    // Target articles with formulaic fallback pattern OR missing 內容分析 section
+    targets = notes.filter(n =>
+      LOW_QUALITY_RE.test(n.rawContent) || !n.rawContent.includes('## 內容分析'),
+    );
+  } else if (pendingReview) {
     targets = notes.filter(n => n.rawContent.includes('pending-review'));
   } else if (sinceDays != null) {
     const cutoff = new Date();
@@ -190,6 +201,7 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
         '• 單篇重新抓取：AI/Claude-Code/xxx.md --refetch',
         '• 全部重新豐富：--all',
         '• 近 N 天：--all --since 7d',
+        '• 低品質修復（缺分析/公式化）：--low-quality',
         '• 重新處理 pending-review：--pending-review',
         '• 重新抓取（含 GitHub 元資料）：--refetch',
         '• 近 N 天重新抓取：--refetch --since 7d',
@@ -216,7 +228,8 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
   // Batch mode
   const refetch = parsed.refetch ?? false;
   const pendingReview = parsed.pendingReview ?? false;
-  const dayLabel = pendingReview ? 'pending-review' : (parsed.sinceDays != null ? `近 ${parsed.sinceDays} 天` : '全部');
+  const lowQuality = parsed.lowQuality ?? false;
+  const dayLabel = lowQuality ? '低品質（缺分析/公式化）' : pendingReview ? 'pending-review' : (parsed.sinceDays != null ? `近 ${parsed.sinceDays} 天` : '全部');
   const modeLabel = refetch ? '（重新抓取模式）' : '';
   await withStatusMessage(ctx, `正在掃描並重新處理${dayLabel}的筆記${modeLabel}...`, async (status) => {
     const result = await reprocessBatch(config, parsed.sinceDays, refetch, async (processed, total, current) => {
@@ -226,7 +239,7 @@ export async function handleReprocess(ctx: Context, config: AppConfig): Promise<
           `處理中 ${processed}/${total}：${current.slice(0, 40)}`,
         );
       } catch { /* rate limit or unchanged text */ }
-    }, pendingReview);
+    }, pendingReview, lowQuality);
 
     const lines = [
       `重新處理完成${modeLabel}（${dayLabel}）`,
