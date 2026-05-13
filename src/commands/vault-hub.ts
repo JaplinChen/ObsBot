@@ -130,7 +130,7 @@ export function createVaultHub(stats: BotStats) {
     if (sub === 'bookmark-gap') { await handleVaultBookmarkGap(ctx, config, rest); return; }
     if (sub === 'draft') { await handleVaultDraft(ctx, config, rest); return; }
     if (sub === 'audit') { await handleVaultAudit(ctx, config); return; }
-    if (sub === 'guardian') { await handleVaultGuardian(ctx as Parameters<typeof handleVaultGuardian>[0], config, rest); return; }
+    if (sub === 'guardian') { await handleVaultGuardian(ctx, config, rest); return; }
 
     // retry needs special handling (uses stats closure)
     if (sub === 'retry') {

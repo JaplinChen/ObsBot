@@ -2,7 +2,7 @@ import { readFile, writeFile, appendFile, mkdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { glob } from 'glob';
-import type { Telegraf } from 'telegraf';
+import type { Telegram } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
 import { getOwnerUserId } from '../utils/config.js';
 import { logger } from '../core/logger.js';
@@ -69,7 +69,7 @@ function readFrontmatterTitle(content: string): { title: string; category: strin
 }
 
 async function sendTelegramAlert(
-  bot: Telegraf,
+  telegram: Telegram,
   userId: number,
   result: ArticleResult,
   vaultPath: string,
@@ -89,7 +89,7 @@ async function sendTelegramAlert(
     `👉 修復：/vault reprocess --low-quality`,
   ].filter(l => l !== undefined).join('\n').trim();
 
-  await bot.telegram.sendMessage(userId, msg.slice(0, 4000)).catch(() => {});
+  await telegram.sendMessage(userId, msg.slice(0, 4000)).catch(() => {});
 }
 
 async function appendQueueEntry(sourceUrl: string): Promise<void> {
@@ -130,7 +130,7 @@ async function appendDailyReport(vaultPath: string, date: string, results: Guard
 }
 
 export async function runGuardianCycle(
-  bot: Telegraf,
+  telegram: Telegram,
   config: AppConfig,
   sinceArg = '24h',
   dryRun = false,
@@ -164,7 +164,7 @@ export async function runGuardianCycle(
           if (urlMatch?.[1]) await appendQueueEntry(urlMatch[1].trim());
           result.queued++;
           if (userId) {
-            await sendTelegramAlert(bot, userId, articleResult, config.vaultPath);
+            await sendTelegramAlert(telegram, userId, articleResult, config.vaultPath);
             result.notified++;
           }
         }

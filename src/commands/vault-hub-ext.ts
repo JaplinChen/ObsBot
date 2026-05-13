@@ -217,7 +217,7 @@ ${wikiSection}
 }
 
 /** /vault guardian [--since 24h] [--dry-run] — 品質守護週期 */
-export async function handleVaultGuardian(ctx: Context & { bot?: import('telegraf').Telegraf }, config: AppConfig, args: string): Promise<void> {
+export async function handleVaultGuardian(ctx: Context, config: AppConfig, args: string): Promise<void> {
   const sinceMatch = args.match(/--since\s+(\S+)/);
   const since = sinceMatch?.[1] ?? '24h';
   const dryRun = args.includes('--dry-run');
@@ -225,11 +225,7 @@ export async function handleVaultGuardian(ctx: Context & { bot?: import('telegra
   await ctx.reply(`🛡️ 品質守護掃描中（最近 ${since}${dryRun ? '，dry-run 模式' : ''}）…`);
 
   try {
-    // @ts-expect-error bot is injected at registration time
-    const bot = ctx.bot ?? ctx.telegram?._client;
-    if (!bot) { stopTyping(typing); await ctx.reply('無法取得 bot 實例，請用標準啟動方式執行。'); return; }
-
-    const result = await runGuardianCycle(bot, config, since, dryRun);
+    const result = await runGuardianCycle(ctx.telegram, config, since, dryRun);
     stopTyping(typing);
 
     const lines = [
