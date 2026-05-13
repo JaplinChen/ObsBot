@@ -39,7 +39,17 @@ export async function downloadImage(
     const res = await fetchWithTimeout(imageUrl, 30_000);
     if (!res.ok) throw new Error(`Failed to download image: ${res.status} ${imageUrl}`);
     const buffer = Buffer.from(await res.arrayBuffer());
-    const ext = extname(new URL(imageUrl).pathname) || '.jpg';
+    const VALID_IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg']);
+    const urlExt = extname(new URL(imageUrl).pathname).toLowerCase();
+    let ext = VALID_IMAGE_EXTS.has(urlExt) ? urlExt : '';
+    if (!ext) {
+      const ct = res.headers.get('content-type') ?? '';
+      if (ct.includes('png')) ext = '.png';
+      else if (ct.includes('gif')) ext = '.gif';
+      else if (ct.includes('webp')) ext = '.webp';
+      else if (ct.includes('avif')) ext = '.avif';
+      else ext = '.jpg';
+    }
     const fullName = `${filename}${ext}`;
     await writeFile(join(destDir, fullName), buffer);
     return `attachments/knowpipe/${platform}/${fullName}`;
