@@ -26,7 +26,7 @@ export async function backupToTelegram(
   form.append('chat_id', channelId);
   form.append('caption', caption);
   form.append('reply_markup', replyMarkup);
-  form.append('document', new Blob([markdown], { type: 'text/plain' }), filename);
+  form.append('document', new Blob([markdown], { type: 'text/plain; charset=utf-8' }), filename);
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
     method: 'POST',
