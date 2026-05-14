@@ -4,6 +4,12 @@ All notable changes to KnowPipe are documented here.
 
 Format: [MAJOR.MINOR.PATCH] — YYYY-MM-DD
 
+## [1.0.2.0] — 2026-05-14
+
+### Added
+
+- **HTML 筆記回傳**：Bot 存入 Vault 後，現在自動回傳美觀 HTML 版本（`note-html-renderer.ts`）取代裸 `.md` 附件。HTML 採 Apple-inspired 卡片式設計——白卡 / 淺灰背景、CJK 字型（PingFang TC / Noto Sans TC）、深色 code block、frontmatter 渲染為 metadata 卡片（來源連結、作者、日期、分類、標籤 chip）。支援完整 Markdown 元素：標題、清單、blockquote、table、code block。Vault 仍保持 `.md` 供 Obsidian 使用，HTML 為 Telegram 傳送用的臨時檔案，傳送後自動清理。
+
 ## [1.0.1.1] — 2026-05-13
 
 ### Fixed

@@ -18,6 +18,8 @@ import { reviewEnrichedContent } from './services/review-content-service.js';
 import { saveExtractedContent } from './services/save-content-service.js';
 import { isDuplicateUrl } from '../saver.js';
 import { createReclassifyButton } from '../commands/reclassify-action.js';
+import { writeHtmlTemp } from '../utils/note-html-renderer.js';
+import { unlink } from 'node:fs/promises';
 import { isCircuitAllowed, recordSuccess, recordFailure } from '../monitoring/circuit-breaker.js';
 import { recordMetric } from '../core/metrics.js';
 import { checkRateLimit } from '../core/rate-limiter.js';
@@ -235,9 +237,12 @@ export function registerUrlProcessingHandler(
           } catch { /* 圖片回傳非關鍵，靜默失敗 */ }
         }
 
-        // 回傳 .md 檔案到 Telegram
+        // 回傳 HTML 版本到 Telegram
         try {
-          await ctx.replyWithDocument({ source: result.mdPath, filename: result.mdPath.split('/').pop() ?? 'note.md' });
+          const htmlPath = await writeHtmlTemp(result.mdPath);
+          const htmlName = (result.mdPath.split('/').pop() ?? 'note').replace(/\.md$/, '') + '.html';
+          await ctx.replyWithDocument({ source: htmlPath, filename: htmlName });
+          unlink(htmlPath).catch(() => {});
         } catch { /* 檔案回傳非關鍵，靜默失敗 */ }
       } catch (err) {
         stopTyping();
