@@ -20,6 +20,7 @@ import { startTyping, stopTyping } from '../utils/typing-indicator.js';
 import { splitMessage } from '../utils/telegram.js';
 import { withTypingIndicator } from './command-runner.js';
 import { buildCardsMessage } from '../utils/visual-cards-builder.js';
+import { getRecentNoteAccesses } from '../utils/access-log.js';
 
 export interface NoteSummary {
   title: string;
@@ -76,6 +77,42 @@ export function groupByCategory(notes: NoteSummary[]): Record<string, NoteSummar
     (groups[note.category] ??= []).push(note);
   }
   return groups;
+}
+
+/**
+ * 建立「知識死角」報告 — 近 90 天有筆記但近 30 天從未被 /ask 命中的筆記。
+ */
+export async function buildDeadKnowledgeReport(vaultPath: string): Promise<string> {
+  const [recentAccesses, notes] = await Promise.all([
+    getRecentNoteAccesses(30),
+    collectRecentNotes(vaultPath, 90),
+  ]);
+  if (notes.length === 0) return '';
+
+  const accessedPaths = new Set(recentAccesses.map((e) => e.filePath));
+  const dead = notes.filter((n) => {
+    // 比對 filePath：access log 記錄絕對路徑，notes 只有 title+category，用 title 近似比對
+    return !recentAccesses.some((e) => e.title === n.title);
+  });
+  if (dead.length === 0) return '';
+
+  // 按 category 分組，每組最多 3 篇
+  const groups: Record<string, typeof dead> = {};
+  for (const note of dead) {
+    const root = note.category.split('/')[0] ?? note.category;
+    (groups[root] ??= []).push(note);
+  }
+
+  const lines = [`\n---\n💀 知識死角（近 30 天未查詢，共 ${dead.length} 篇）`];
+  for (const [cat, catNotes] of Object.entries(groups).slice(0, 5)) {
+    lines.push(`\n【${cat}】`);
+    for (const n of catNotes.slice(0, 3)) {
+      lines.push(`  • ${n.title}（${n.date}）`);
+    }
+    if (catNotes.length > 3) lines.push(`  … 另 ${catNotes.length - 3} 篇`);
+  }
+  void accessedPaths; // suppress unused warning
+  return lines.join('\n');
 }
 
 /** Build digest using LLM */
@@ -279,9 +316,10 @@ export async function handleDigest(ctx: Context, config: AppConfig): Promise<voi
       }
     }
 
-    const output = aiDigest
+    const deadReport = await buildDeadKnowledgeReport(config.vaultPath).catch(() => '');
+    const output = (aiDigest
       ? `${overview}\nAI 精華摘要\n${aiDigest}`
-      : overview;
+      : overview) + deadReport;
 
     await ctx.reply(output);
     logger.info('digest', '摘要完成', { days, notes: notes.length, categories: Object.keys(groups).length });

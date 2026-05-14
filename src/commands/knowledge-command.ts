@@ -20,6 +20,8 @@ import { compileTopics } from '../knowledge/topic-compiler.js';
 import { replyEmptyKnowledge, replyWithNextSteps, NEXT_STEPS } from './reply-buttons.js';
 import { startTyping, stopTyping } from '../utils/typing-indicator.js';
 import { withTypingIndicator } from './command-runner.js';
+import { computeKnowledgeDNA, formatDnaReport } from '../knowledge/knowledge-dna.js';
+import { saveReportToVault } from '../knowledge/report-saver.js';
 
 /** /knowledge [subcommand] — direct or menu */
 export async function handleKnowledge(ctx: Context, config: AppConfig): Promise<void> {
@@ -32,6 +34,8 @@ export async function handleKnowledge(ctx: Context, config: AppConfig): Promise<
   if (arg === 'analyze' || arg === '分析') { await handleAnalyze(ctx, config); return; }
   if (arg === 'dashboard' || arg === '儀表板') { await handleDashboard(ctx, config); return; }
   if (arg === 'health' || arg === '健康') { await handleHealth(ctx, config); return; }
+  if (arg === 'dna' || arg === '知識dna') { await handleKnowledgeDna(ctx, config); return; }
+  if (arg === 'evolve' || arg === '進化') { await handleClassifierEvolve(ctx, config); return; }
 
   const knowledge = await loadKnowledge();
   if (Object.keys(knowledge.notes).length === 0) {
@@ -51,6 +55,10 @@ export async function handleKnowledge(ctx: Context, config: AppConfig): Promise<
     [
       Markup.button.callback('🔍 深度分析', 'kb:analyze'),
       Markup.button.callback('🏥 知識健康', 'kb:health'),
+    ],
+    [
+      Markup.button.callback('🧬 知識 DNA', 'kb:dna'),
+      Markup.button.callback('🔬 分類器進化', 'kb:evolve'),
     ],
   ]));
 }
@@ -199,4 +207,48 @@ export async function handleHealth(ctx: Context, config: AppConfig): Promise<voi
   } finally {
     stopTyping(typing);
   }
+}
+
+/** kb:dna callback — compute and save Knowledge DNA report */
+export async function handleKnowledgeDna(ctx: Context, config: AppConfig): Promise<void> {
+  await withTypingIndicator(ctx, '正在分析知識 DNA...', async () => {
+    const dna = await computeKnowledgeDNA(config.vaultPath);
+    if (dna.totalNotes === 0) {
+      await ctx.reply('Vault 中尚無可分析的筆記。');
+      return;
+    }
+    const content = formatDnaReport(dna);
+    const date = new Date().toISOString().slice(0, 10);
+    const savedPath = await saveReportToVault(config.vaultPath, {
+      title: `知識 DNA 報告 ${date}`,
+      date,
+      content,
+      tags: ['knowledge-dna', 'auto-generated'],
+      filePrefix: 'knowledge-dna',
+      tool: 'report',
+    });
+
+    const preview = [
+      `🧬 知識 DNA 報告（${dna.totalNotes} 篇）`,
+      '',
+      `🏆 Top 5 關鍵字：${dna.topKeywords.slice(0, 5).map((k) => k.keyword).join('、')}`,
+      `📚 主要分類：${dna.categoryDist.slice(0, 3).map((c) => `${c.category}(${c.count})`).join('、')}`,
+      `✨ 近期新主題：${dna.recentShift.added.slice(0, 4).join('、') || '無'}`,
+      `🌫 淡出主題：${dna.recentShift.fading.slice(0, 4).join('、') || '無'}`,
+      `🕳 空白帶：${dna.blindSpots.slice(0, 3).join('、') || '無'}`,
+      '',
+      `💾 完整報告已存入 Vault`,
+    ].join('\n');
+    void savedPath;
+    await ctx.reply(preview);
+  }, '知識 DNA 分析失敗');
+}
+
+/** kb:evolve callback — run classifier evolution (placeholder, filled by D1) */
+export async function handleClassifierEvolve(ctx: Context, config: AppConfig): Promise<void> {
+  await withTypingIndicator(ctx, '正在進化分類器...', async () => {
+    const { runClassifierEvolution } = await import('../learning/classifier-evolver.js');
+    const result = await runClassifierEvolution(config.vaultPath);
+    await ctx.reply(result);
+  }, '分類器進化失敗');
 }

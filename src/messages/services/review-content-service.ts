@@ -64,6 +64,15 @@ function runRuleBasedChecks(content: ExtractedContent): ReviewIssue[] {
     issues.push({ field: 'category', problem: '內容充足但分類為「其他」', severity: 'low' });
   }
 
+  // AI 偽裝偵測：關鍵字與原文重疊率低 → 可能是 AI 捏造的關鍵字
+  if (keywords && keywords.length > 0 && content.text) {
+    const textLower = content.text.toLowerCase().slice(0, 1000);
+    const overlapping = keywords.filter((kw) => textLower.includes(kw.toLowerCase()));
+    if (overlapping.length < 2) {
+      issues.push({ field: 'summary', problem: 'AI 摘要術語與原文重疊率低，可能偽裝', severity: 'medium' });
+    }
+  }
+
   return issues;
 }
 

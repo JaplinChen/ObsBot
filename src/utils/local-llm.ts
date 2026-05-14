@@ -12,6 +12,7 @@ import {
 } from './openai-client.js';
 import { loadSoul } from './soul-loader.js';
 import { recordCost } from '../core/cost-tracker.js';
+import { appendUsage } from './usage-tracker.js';
 
 /** Read CLI timeout from user config. */
 function getCliTimeout(): number {
@@ -148,6 +149,7 @@ export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}
   // Shared deadline: the entire provider chain must finish within timeoutMs.
   const deadline = Date.now() + timeoutMs;
   const remaining = () => Math.max(0, deadline - Date.now());
+  const startAt = Date.now();
 
   // Provider attempt functions (each receives the remaining budget, not the full timeoutMs)
   const providers: Record<string, () => Promise<string | null>> = {
@@ -198,7 +200,19 @@ export async function runLocalLlmPrompt(prompt: string, options: RunOptions = {}
     const fn = providers[key];
     if (!fn) continue;
     const result = await fn();
-    if (result) return result;
+    if (result) {
+      // Non-blocking usage tracking
+      void appendUsage({
+        ts: new Date().toISOString(),
+        task: options.task ?? 'general',
+        tier,
+        provider: key,
+        durationMs: Date.now() - startAt,
+        inputLen: prompt.length,
+        outputLen: result.length,
+      });
+      return result;
+    }
   }
 
   return null;

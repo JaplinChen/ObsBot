@@ -7,6 +7,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { runLocalLlmPrompt } from './local-llm.js';
 import { loadSoul } from './soul-loader.js';
+import { recordNoteAccess } from './access-log.js';
 
 const MAX_ROUNDS = 4;
 const MAX_CONTEXT_NOTES = 5;
@@ -64,7 +65,7 @@ async function searchVault(vaultPath: string, query: string): Promise<string> {
   const files = await findMdFiles(notesDir);
   const words = query.split(/\s+/).filter((w) => w.length >= 2);
 
-  const scored: Array<{ score: number; entry: string }> = [];
+  const scored: Array<{ score: number; entry: string; fp: string; title: string; category: string }> = [];
   for (const fp of files) {
     const raw = await readFile(fp, 'utf-8');
     const fm = parseFm(raw);
@@ -81,12 +82,17 @@ async function searchVault(vaultPath: string, query: string): Promise<string> {
       if (summary.toLowerCase().includes(lw)) score += 1;
       if (category.toLowerCase().includes(lw)) score += 1;
     }
-    if (score > 0) scored.push({ score, entry: `[${title}] (${category}) ${summary}` });
+    if (score > 0) scored.push({ score, entry: `[${title}] (${category}) ${summary}`, fp, title, category });
   }
 
   scored.sort((a, b) => b.score - a.score);
+  const topHits = scored.slice(0, MAX_CONTEXT_NOTES);
+
+  // 記錄命中的筆記（best-effort，不阻塞搜尋）
+  void Promise.all(topHits.map((h) => recordNoteAccess(h.fp, h.title, h.category)));
+
   let ctx = '';
-  for (const { entry } of scored.slice(0, MAX_CONTEXT_NOTES)) {
+  for (const { entry } of topHits) {
     if (ctx.length + entry.length > MAX_CONTEXT_CHARS) break;
     ctx += entry + '\n';
   }

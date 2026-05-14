@@ -3,7 +3,7 @@ import type { Context, Telegraf } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
 import { handleTimeline } from './timeline-command.js';
 import { handleMonitor, handleSearch } from './monitor-command.js';
-import { handleKnowledge, handleGaps, handleSkills, handleAnalyze, handleDashboard, handleHealth, handleCompile } from './knowledge-command.js';
+import { handleKnowledge, handleGaps, handleSkills, handleAnalyze, handleDashboard, handleHealth, handleCompile, handleKnowledgeDna, handleClassifierEvolve } from './knowledge-command.js';
 import { handleSkillsCommand, registerSkillCallbacks } from './skill-command.js';
 import { handlePreferences, handleDistill } from './distill-command.js';
 import { handleConsolidate } from './consolidate-command.js';
@@ -124,6 +124,8 @@ export function registerCommands(
       dashboard: handleDashboard,
       analyze: handleAnalyze,
       health: handleHealth,
+      dna: handleKnowledgeDna,
+      evolve: handleClassifierEvolve,
     };
     const handler = handlers[mode];
     if (handler) await handler(ctx, config);

@@ -6,7 +6,7 @@ import type { Context } from 'telegraf';
 import type { AppConfig } from '../utils/config.js';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { getRegisteredExtractors } from '../extractors/index.js';
@@ -43,6 +43,44 @@ async function countFiles(dir: string, ext: string): Promise<number> {
     }
   } catch { /* dir may not exist */ }
   return count;
+}
+
+interface ResilienceCheck {
+  file: string;
+  line: number;
+  protected: boolean;
+  snippet: string;
+}
+
+/** Scan src/ for runLocalLlmPrompt calls and check if they have try/catch or ?? fallback */
+async function auditPipelineResilience(): Promise<ResilienceCheck[]> {
+  const results: ResilienceCheck[] = [];
+  const srcDir = join(process.cwd(), 'src');
+
+  async function scanDir(dir: string): Promise<void> {
+    let entries: { name: string; isDirectory(): boolean; isFile(): boolean }[];
+    try { entries = await readdir(dir, { withFileTypes: true }) as typeof entries; } catch { return; }
+    for (const e of entries) {
+      const fp = join(dir, e.name);
+      if (e.isDirectory()) { await scanDir(fp); continue; }
+      if (!e.name.endsWith('.ts') || e.name.endsWith('.d.ts')) continue;
+      try {
+        const raw = await readFile(fp, 'utf-8');
+        const lines = raw.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!lines[i].includes('runLocalLlmPrompt(')) continue;
+          // Check ±5 lines for protection patterns
+          const window = lines.slice(Math.max(0, i - 5), Math.min(lines.length, i + 6)).join('\n');
+          const isProtected = /try\s*\{/.test(window) || /\?\?/.test(window) || /\.catch\(/.test(window) || /withTypingIndicator/.test(window);
+          const rel = fp.replace(srcDir + '/', '');
+          results.push({ file: rel, line: i + 1, protected: isProtected, snippet: lines[i].trim().slice(0, 60) });
+        }
+      } catch { /* skip */ }
+    }
+  }
+
+  await scanDir(srcDir);
+  return results;
 }
 
 export async function handleDoctor(ctx: Context, config: AppConfig): Promise<void> {
@@ -183,7 +221,21 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
     }
   } catch { /* 略過，不影響主報告 */ }
 
-  // 6. Format final report (edit the same message)
+  // 6. Pipeline resilience audit
+  const resChecks = await auditPipelineResilience();
+  const resLines: string[] = [];
+  if (resChecks.length === 0) {
+    resLines.push('（未找到 LLM 呼叫）');
+  } else {
+    const unprotected = resChecks.filter((c) => !c.protected);
+    const protected_ = resChecks.filter((c) => c.protected);
+    resLines.push(`🔍 共 ${resChecks.length} 個 LLM 呼叫點｜✅ ${protected_.length} 有保護｜${unprotected.length > 0 ? `⚠️ ${unprotected.length} 無降級` : '🎉 全部有保護'}`);
+    for (const c of unprotected.slice(0, 5)) {
+      resLines.push(`  ⚠️ ${c.file}:${c.line} — ${c.snippet}`);
+    }
+  }
+
+  // 7. Format final report (edit the same message)
   const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
   const lines = [
     '🩺 系統診斷報告',
@@ -216,6 +268,9 @@ export async function handleDoctor(ctx: Context, config: AppConfig): Promise<voi
         ...sigLines,
       ];
     })(),
+    '',
+    '━━ ⚡ 管線韌性稽核 ━━',
+    ...resLines,
     '',
     `⏱ 診斷耗時 ${elapsed}s`,
   ];
