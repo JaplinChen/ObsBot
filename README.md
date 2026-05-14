@@ -107,6 +107,7 @@ Ingest   Compile   Query    Output    Lint
 - **自我修復** — 排程掃描自動修復 HTML 殘留 / 壞路徑，Extractor 健康探測 + 降級告警
 - **失敗反思系統** — Extractor 失敗自動分類原因（`auth_blocked` / `timeout` / `structure_changed`），重試時輸出診斷日誌
 - **事故偵測** — 每 5 分鐘掃描 log 的已知錯誤簽名，異常達閾值時 Telegram 推播警報；`/doctor` 顯示 24h 自癒事件統計
+- **自癒 CI** — GitHub Actions workflow（`self-heal.yml`）偵測 PR CI 失敗時，自動呼叫 Claude Code 分析並修復，最多 3 次迭代；超過次數或判斷無法自動修復時，自動建立 GitHub Issue 升級給人工
 
 #### 系統
 - **10 個核心指令 + 34 個完整指令** — InlineKeyboard 按鈕引導
@@ -453,15 +454,18 @@ Ingest               Compile                 Query              Output
 
 ### Claude Code Skills（開發輔助）
 
-17 個自訂技能，涵蓋開發全流程：
+20 個自訂技能，涵蓋開發全流程：
 
 | 類別 | 技能 | 用途 |
 |------|------|------|
 | 開發流程 | `/design` `/dev` `/ship` `/improve` | 架構確認 → 開發 → 驗證提交推送 → 審計改善 |
+| **驗證** | **`/verify`** | **完成前 4 步驟閘門：tsc → 單元測試 → smoke check → git status** |
 | Session | `/resume` `/handoff` | 自動啟動 / 交接記錄 |
 | 測試 | `/test` | classify / extractor / smoke / status |
 | 重構 | `/refactor` | 影響分析 → 遷移 → 模組化拆分 |
 | Vault | `/vault` `/vault-audit` `/vault-guardian` | 維護修復 / Vault 全量品質稽核 / 品質守護排程 |
+| **Vault 蜂群** | **`/vault-swarm`** | **平行 Task agents 按分類稽核 Vault 品質，合併為單一 PR** |
+| **Spec 驅動** | **`/spec`** | **從 `specs/<name>.md` 生成失敗測試 → TDD 迴圈直到通過 → 開 PR** |
 | Bot 管理 | `/launch` | 啟動 / 停止 / 診斷 409 |
 | 維護 | `/health` `/weekly` | 即時快照 / 週維護（含依賴檢查） |
 | 新平台 | `/new-platform` | 腳手架 → 實作 → 測試 → 提交 |
