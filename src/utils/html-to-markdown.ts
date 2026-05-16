@@ -74,6 +74,31 @@ function createTurndown(baseUrl?: string): TurndownService {
     });
   }
 
+  // Decode GitHub camo proxy images to their original URLs so the image
+  // downloader can fetch them (camo URLs require GitHub's Referer header).
+  // Badges decoded to shields.io/etc. are removed by the removeBadges rule below.
+  td.addRule('decodeCamoImages', {
+    filter: (node: HTMLElement) => {
+      if (node.nodeName !== 'IMG') return false;
+      const src = node.getAttribute('src') || '';
+      return src.startsWith('https://camo.githubusercontent.com/');
+    },
+    replacement: (_content: string, node: HTMLElement) => {
+      const src = node.getAttribute('src') || '';
+      const alt = node.getAttribute('alt') || '';
+      const m = src.match(/^https?:\/\/camo\.githubusercontent\.com\/[^/]+\/([0-9a-f]{20,})\/?$/i);
+      if (!m) return '';
+      try {
+        const decoded = Buffer.from(m[1], 'hex').toString('utf-8');
+        // Let removeBadges handle shield/badge URLs
+        if (/shields\.io|badge|img\.shields/i.test(decoded)) return '';
+        return `![${alt}](${decoded})`;
+      } catch {
+        return '';
+      }
+    },
+  });
+
   // Remove badge images (shields.io etc.)
   td.addRule('removeBadges', {
     filter: (node: HTMLElement) => {
